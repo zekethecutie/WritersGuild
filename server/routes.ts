@@ -127,6 +127,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { email, password } = req.body;
 
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email/username and password are required" });
+      }
+
       // Find user by email or username
       let user = null;
       if (email.includes('@')) {
@@ -136,18 +140,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!user) {
+        console.log(`Login attempt failed: user not found for "${email}"`);
+        return res.status(401).json({ message: "Invalid username/email or password" });
+      }
+
+      if (!user.password) {
+        console.log(`Login attempt failed: no password set for user "${email}"`);
         return res.status(401).json({ message: "Invalid username/email or password" });
       }
 
       // Check password
-      const isValid = await bcrypt.compare(password, user.password || '');
+      const isValid = await bcrypt.compare(password, user.password);
       if (!isValid) {
+        console.log(`Login attempt failed: invalid password for user "${email}"`);
         return res.status(401).json({ message: "Invalid username/email or password" });
       }
 
       // Set session
       (req.session as any).userId = user.id;
+      
+      // Save session explicitly
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
 
+      console.log(`✅ User logged in successfully: ${user.username} (${user.id})`);
       res.json({ user: { ...user, password: undefined } });
     } catch (error) {
       console.error("Login error:", error);

@@ -6,11 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
-  Play, 
-  Pause, 
-  Music, 
-  Search, 
+import {
+  Play,
+  Pause,
+  Music,
+  Search,
   X,
   Volume2,
   ExternalLink
@@ -103,9 +103,9 @@ export default function SpotifyPlayer({
               <h3 className="font-semibold">Add Music from Spotify</h3>
             </div>
             {onClose && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={onClose}
                 className="p-1 h-auto"
                 data-testid="button-close-spotify"

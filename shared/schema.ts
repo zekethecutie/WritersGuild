@@ -25,28 +25,28 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// Users table for Replit Auth
+// Users table
 export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: uuid("id").defaultRandom().primaryKey(),
   email: varchar("email").unique(),
   password: varchar("password"),
-  firstName: varchar("first_name"),
-  lastName: varchar("last_name"),
-  profileImageUrl: varchar("profile_image_url"),
-  username: varchar("username").unique().notNull(),
+  firstName: varchar("first_name", { length: 255 }).notNull().default(""),
+  lastName: varchar("last_name", { length: 255 }).notNull().default(""),
+  username: varchar("username", { length: 255 }).notNull().unique().default(""),
   bio: text("bio"),
   location: varchar("location"),
   website: varchar("website"),
+  profileImageUrl: text("profile_image_url"),
+  coverImageUrl: text("cover_image_url"),
   genres: text("genres").array(),
   writingStreak: integer("writing_streak").default(0),
-  wordCountGoal: integer("word_count_goal").default(1000),
-  weeklyPostsGoal: integer("weekly_posts_goal").default(7),
+  wordCountGoal: integer("word_count_goal").default(500),
+  weeklyPostsGoal: integer("weekly_posts_goal").default(5),
   isVerified: boolean("is_verified").default(false),
   isAdmin: boolean("is_admin").default(false),
   isSuperAdmin: boolean("is_super_admin").default(false),
   postsCount: integer("posts_count").default(0),
   commentsCount: integer("comments_count").default(0),
-  coverImageUrl: varchar("cover_image_url"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

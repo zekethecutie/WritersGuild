@@ -97,7 +97,7 @@ export class DatabaseStorage implements IStorage {
       }
 
       if (!existingAdmin) {
-        const bcrypt = require("bcrypt");
+        const bcrypt = await import("bcrypt");
         const hashedPassword = await bcrypt.hash("122209", 10);
         
         await db.insert(users).values({
