@@ -554,6 +554,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Profile picture upload route
+  app.post('/api/upload/profile-picture', requireAuth, upload.single('profilePicture'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const userId = req.session.userId;
+      const filename = `profile-${userId}-${Date.now()}.webp`;
+      const filepath = path.join(uploadsDir, filename);
+
+      // Resize to 720p (720x720 for profile pictures)
+      await sharp(req.file.buffer)
+        .resize(720, 720, {
+          fit: 'cover',
+          position: 'center',
+        })
+        .webp({ quality: 90 })
+        .toFile(filepath);
+
+      const imageUrl = `/uploads/${filename}`;
+
+      // Update user's profile picture
+      await storage.updateUserProfile(userId, { profileImageUrl: imageUrl });
+
+      res.json({ imageUrl });
+    } catch (error) {
+      console.error("Error uploading profile picture:", error);
+      res.status(500).json({ message: "Failed to upload profile picture" });
+    }
+  });
+
+  // Cover photo upload route
+  app.post('/api/upload/cover-photo', requireAuth, upload.single('coverPhoto'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const userId = req.session.userId;
+      const filename = `cover-${userId}-${Date.now()}.webp`;
+      const filepath = path.join(uploadsDir, filename);
+
+      // Resize to 1080p (1920x1080 for cover photos)
+      await sharp(req.file.buffer)
+        .resize(1920, 1080, {
+          fit: 'cover',
+          position: 'center',
+        })
+        .webp({ quality: 85 })
+        .toFile(filepath);
+
+      const imageUrl = `/uploads/${filename}`;
+
+      // Update user's cover photo
+      await storage.updateUserProfile(userId, { coverImageUrl: imageUrl });
+
+      res.json({ imageUrl });
+    } catch (error) {
+      console.error("Error uploading cover photo:", error);
+      res.status(500).json({ message: "Failed to upload cover photo" });
+    }
+  });
+
   // Spotify integration routes
   app.get('/api/spotify/search', requireAuth, async (req, res) => {
     try {

@@ -86,7 +86,16 @@ export class DatabaseStorage implements IStorage {
   // Initialize hardcoded admin account
   async initializeAdminAccount(): Promise<void> {
     try {
-      const existingAdmin = await this.getUserByUsername("itsicxrus");
+      // Check if the admin account already exists
+      let existingAdmin;
+      try {
+        existingAdmin = await this.getUserByUsername("itsicxrus");
+      } catch (error) {
+        // Column might not exist yet, continue with creation
+        console.log("Admin check failed, will attempt to create after migration");
+        return;
+      }
+
       if (!existingAdmin) {
         const bcrypt = require("bcrypt");
         const hashedPassword = await bcrypt.hash("122209", 10);
@@ -103,10 +112,14 @@ export class DatabaseStorage implements IStorage {
           isSuperAdmin: true,
           profileImageUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=itsicxrus",
         });
-        console.log("Hardcoded admin account created: @itsicxrus");
+        console.log("✅ Hardcoded admin account created: @itsicxrus");
+        console.log("🔑 Admin login: username='itsicxrus', password='122209'");
+      } else {
+        console.log("✅ Admin account @itsicxrus already exists");
       }
     } catch (error) {
-      console.error("Error creating admin account:", error);
+      console.error("❌ Error creating admin account:", error);
+      // Don't throw, let the app continue running
     }
   }
 

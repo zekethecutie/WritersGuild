@@ -1,6 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -31,6 +31,9 @@ export default function Profile() {
   const { username } = useParams();
   const { user: currentUser, isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [isUploadingProfile, setIsUploadingProfile] = useState(false);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
 
   // Use current user's username/id if no username provided
   const profileUsername = username || currentUser?.username || currentUser?.id;
@@ -88,6 +91,104 @@ export default function Profile() {
 
   const isOwnProfile = currentUser?.id === profileUser?.id;
 
+  // Profile picture upload mutation
+  const profilePictureMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('profilePicture', file);
+      
+      const response = await fetch('/api/upload/profile-picture', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to upload profile picture');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users", profileUsername] });
+      toast({
+        title: "Success",
+        description: "Profile picture updated successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to upload profile picture",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Cover photo upload mutation
+  const coverPhotoMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('coverPhoto', file);
+      
+      const response = await fetch('/api/upload/cover-photo', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to upload cover photo');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users", profileUsername] });
+      toast({
+        title: "Success",
+        description: "Cover photo updated successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to upload cover photo",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleProfilePictureUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        toast({
+          title: "Error",
+          description: "File size must be less than 10MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      profilePictureMutation.mutate(file);
+    }
+  };
+
+  const handleCoverPhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        toast({
+          title: "Error",
+          description: "File size must be less than 10MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      coverPhotoMutation.mutate(file);
+    }
+  };
+
   if (authLoading || profileLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -144,15 +245,27 @@ export default function Profile() {
                 />
               )}
               {isOwnProfile && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="absolute top-4 right-4 bg-background/80 backdrop-blur-sm"
-                  data-testid="button-edit-cover"
-                >
-                  <Camera className="w-4 h-4 mr-2" />
-                  Edit Cover
-                </Button>
+                <label htmlFor="cover-photo-upload">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="absolute top-4 right-4 bg-background/80 backdrop-blur-sm"
+                    data-testid="button-edit-cover"
+                    asChild
+                  >
+                    <span>
+                      <Camera className="w-4 h-4 mr-2" />
+                      Edit Cover
+                    </span>
+                  </Button>
+                  <input
+                    id="cover-photo-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleCoverPhotoUpload}
+                  />
+                </label>
               )}
             </div>
 
@@ -166,13 +279,25 @@ export default function Profile() {
                   data-testid="img-profile-avatar"
                 />
                 {isOwnProfile && (
-                  <Button 
-                    size="sm" 
-                    className="absolute bottom-2 right-2 w-8 h-8 rounded-full p-0"
-                    data-testid="button-edit-avatar"
-                  >
-                    <Camera className="w-4 h-4" />
-                  </Button>
+                  <label htmlFor="profile-picture-upload">
+                    <Button 
+                      size="sm" 
+                      className="absolute bottom-2 right-2 w-8 h-8 rounded-full p-0"
+                      data-testid="button-edit-avatar"
+                      asChild
+                    >
+                      <span>
+                        <Camera className="w-4 h-4" />
+                      </span>
+                    </Button>
+                    <input
+                      id="profile-picture-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleProfilePictureUpload}
+                    />
+                  </label>
                 )}
               </div>
             </div>
@@ -212,17 +337,55 @@ export default function Profile() {
           {/* Profile Info */}
           <div className="pt-20 px-6 pb-6">
             <div className="mb-4">
-              <h1 className="text-2xl font-bold" data-testid="text-user-name">
-                {profileUser.firstName} {profileUser.lastName}
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold" data-testid="text-user-name">
+                  {profileUser.firstName} {profileUser.lastName}
+                </h1>
+                {profileUser.isVerified && (
+                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                )}
+                {profileUser.isSuperAdmin && (
+                  <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center">
+                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                  </div>
+                )}
+                {profileUser.isAdmin && !profileUser.isSuperAdmin && (
+                  <div className="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
+                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                )}
+              </div>
               <p className="text-muted-foreground" data-testid="text-username">
                 @{profileUser.username}
               </p>
-              {profileUser.isVerified && (
-                <Badge variant="secondary" className="mt-1">
-                  Verified Writer
-                </Badge>
-              )}
+              <div className="flex flex-wrap gap-2 mt-1">
+                {profileUser.isVerified && (
+                  <Badge variant="secondary" className="text-xs">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full mr-1"></div>
+                    Verified Writer
+                  </Badge>
+                )}
+                {profileUser.isSuperAdmin && (
+                  <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800">
+                    <div className="w-3 h-3 bg-yellow-500 rounded-full mr-1"></div>
+                    Super Admin
+                  </Badge>
+                )}
+                {profileUser.isAdmin && !profileUser.isSuperAdmin && (
+                  <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800">
+                    <div className="w-3 h-3 bg-purple-500 rounded-full mr-1"></div>
+                    Admin
+                  </Badge>
+                )}
+              </div>
             </div>
 
             {profileUser.bio && (
