@@ -3,6 +3,33 @@ import { SpotifyApi } from "@spotify/web-api-ts-sdk";
 let connectionSettings: any;
 
 async function getAccessToken() {
+  // Try environment variables first
+  const clientId = process.env.SPOTIFY_CLIENT_ID;
+  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+  
+  if (clientId && clientSecret) {
+    // Use client credentials flow for app-only access
+    const response = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`
+      },
+      body: 'grant_type=client_credentials'
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return {
+        accessToken: data.access_token,
+        clientId,
+        refreshToken: null,
+        expiresIn: data.expires_in
+      };
+    }
+  }
+
+  // Fallback to Replit connector if environment variables not set
   if (connectionSettings && connectionSettings.settings.expires_at && new Date(connectionSettings.settings.expires_at).getTime() > Date.now()) {
     return connectionSettings.settings.access_token;
   }
@@ -15,7 +42,7 @@ async function getAccessToken() {
     : null;
 
   if (!xReplitToken) {
-    throw new Error('X_REPLIT_TOKEN not found for repl/depl');
+    throw new Error('Spotify credentials not found. Please set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET environment variables.');
   }
 
   connectionSettings = await fetch(
@@ -30,12 +57,12 @@ async function getAccessToken() {
    const refreshToken =
     connectionSettings?.settings?.oauth?.credentials?.refresh_token;
   const accessToken = connectionSettings?.settings?.access_token || connectionSettings.settings?.oauth?.credentials?.access_token;
-const clientId = connectionSettings?.settings?.oauth?.credentials?.client_id;
+const connectorClientId = connectionSettings?.settings?.oauth?.credentials?.client_id;
   const expiresIn = connectionSettings.settings?.oauth?.credentials?.expires_in;
-  if (!connectionSettings || (!accessToken || !clientId || !refreshToken)) {
-    throw new Error('Spotify not connected');
+  if (!connectionSettings || (!accessToken || !connectorClientId || !refreshToken)) {
+    throw new Error('Spotify not connected via connector and no environment variables set');
   }
-  return {accessToken, clientId, refreshToken, expiresIn};
+  return {accessToken, clientId: connectorClientId, refreshToken, expiresIn};
 }
 
 // WARNING: Never cache this client.

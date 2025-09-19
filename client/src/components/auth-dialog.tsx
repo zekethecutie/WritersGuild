@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -21,7 +20,7 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
   const { toast } = useToast();
 
   const [loginForm, setLoginForm] = useState({
-    email: "",
+    identifier: "", // Changed from email to identifier for username or email
     password: "",
   });
 
@@ -39,8 +38,9 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
     setIsLoading(true);
 
     try {
-      const result = await authService.login(loginForm.email, loginForm.password);
-      
+      // Assuming authService.login can now handle both email and username
+      const result = await authService.login(loginForm.identifier, loginForm.password);
+
       if (result.success) {
         toast({
           title: "Welcome back!",
@@ -68,7 +68,7 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (registerForm.password !== registerForm.confirmPassword) {
       toast({
         title: "Passwords don't match",
@@ -82,13 +82,13 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
 
     try {
       const result = await authService.register({
-        email: registerForm.email,
+        email: registerForm.email, // Email is now optional, so it can be empty
         password: registerForm.password,
         firstName: registerForm.firstName,
         lastName: registerForm.lastName,
         username: registerForm.username,
       });
-      
+
       if (result.success) {
         toast({
           title: "Welcome to Writers Guild!",
@@ -120,26 +120,27 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
         <DialogHeader>
           <DialogTitle>Join Writers Guild</DialogTitle>
         </DialogHeader>
-        
+
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Login</TabsTrigger>
             <TabsTrigger value="register">Register</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="login" className="space-y-4">
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="login-email">Email</Label>
+                <Label htmlFor="login-identifier">Username or Email</Label>
                 <Input
-                  id="login-email"
-                  type="email"
-                  value={loginForm.email}
-                  onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
+                  id="login-identifier"
+                  type="text" // Changed type to text
+                  placeholder="Enter your username or email"
+                  value={loginForm.identifier}
+                  onChange={(e) => setLoginForm({ ...loginForm, identifier: e.target.value })}
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="login-password">Password</Label>
                 <Input
@@ -150,14 +151,14 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
                   required
                 />
               </div>
-              
+
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Login
               </Button>
             </form>
           </TabsContent>
-          
+
           <TabsContent value="register" className="space-y-4">
             <form onSubmit={handleRegister} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -180,7 +181,7 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="register-username">Username</Label>
                 <Input
@@ -190,18 +191,19 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
-                <Label htmlFor="register-email">Email</Label>
+                <Label htmlFor="register-email">Email (optional)</Label>
                 <Input
                   id="register-email"
                   type="email"
+                  placeholder="Enter your email (optional)"
                   value={registerForm.email}
                   onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
-                  required
+                  // Removed 'required' attribute
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="register-password">Password</Label>
                 <Input
@@ -212,7 +214,7 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="register-confirmPassword">Confirm Password</Label>
                 <Input
@@ -223,7 +225,7 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
                   required
                 />
               </div>
-              
+
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Create Account

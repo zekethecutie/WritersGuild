@@ -84,10 +84,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { email, password, firstName, lastName, username } = req.body;
 
-      // Check if user already exists
-      const existingUser = await storage.getUserByEmail(email);
-      if (existingUser) {
-        return res.status(400).json({ message: "User already exists with this email" });
+      // Check if email is provided and user already exists
+      if (email) {
+        const existingUser = await storage.getUserByEmail(email);
+        if (existingUser) {
+          return res.status(400).json({ message: "User already exists with this email" });
+        }
       }
 
       // Check if username is taken
@@ -101,7 +103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create user
       const user = await storage.createUser({
-        email,
+        email: email || undefined,
         password: hashedPassword,
         firstName,
         lastName,
@@ -122,16 +124,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { email, password } = req.body;
 
-      // Find user
-      const user = await storage.getUserByEmail(email);
+      // Find user by email or username
+      let user = null;
+      if (email.includes('@')) {
+        user = await storage.getUserByEmail(email);
+      } else {
+        user = await storage.getUserByUsername(email);
+      }
+
       if (!user) {
-        return res.status(401).json({ message: "Invalid email or password" });
+        return res.status(401).json({ message: "Invalid username/email or password" });
       }
 
       // Check password
       const isValid = await bcrypt.compare(password, user.password || '');
       if (!isValid) {
-        return res.status(401).json({ message: "Invalid email or password" });
+        return res.status(401).json({ message: "Invalid username/email or password" });
       }
 
       // Set session

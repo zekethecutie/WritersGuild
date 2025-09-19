@@ -65,7 +65,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold mb-4 text-foreground">
-              Crafted for <span className="gradient-text">Creative Minds</span>
+              Crafted for <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Creative Minds</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Every feature designed to elevate your writing and connect you with fellow storytellers.
@@ -152,7 +152,7 @@ export default function Landing() {
       <div className="py-24">
         <div className="max-w-4xl mx-auto text-center px-4">
           <h2 className="text-3xl sm:text-4xl font-bold mb-6 text-foreground">
-            Ready to Share Your <span className="gradient-text">Voice</span>?
+            Ready to Share Your <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Voice</span>?
           </h2>
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
             Join thousands of writers who have found their home in the Writers Guild. 
