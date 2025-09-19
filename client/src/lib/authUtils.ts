@@ -1,3 +1,8 @@
+
+import { authService } from "./auth";
+
 export function isUnauthorizedError(error: Error): boolean {
-  return /^401: .*Unauthorized/.test(error.message);
+  return authService.isUnauthorizedError(error);
 }
+
+export { authService };

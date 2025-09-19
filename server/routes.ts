@@ -10,6 +10,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { insertPostSchema, insertCommentSchema } from "@shared/schema";
 import { getSpotifyClient } from "./spotifyClient";
+import spotifyRoutes from "./spotifyRoutes";
 
 // Configure multer for image uploads
 const upload = multer({
@@ -60,7 +61,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const updateData = req.body;
-      
+
       const user = await storage.updateUserProfile(userId, updateData);
       res.json(user);
     } catch (error) {
@@ -73,11 +74,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { username } = req.params;
       const user = await storage.getUserByUsername(username);
-      
+
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      
+
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -93,7 +94,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         authorId: userId,
       });
-      
+
       const post = await storage.createPost(postData);
       res.json(post);
     } catch (error) {
@@ -121,11 +122,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const post = await storage.getPost(id);
-      
+
       if (!post) {
         return res.status(404).json({ message: "Post not found" });
       }
-      
+
       res.json(post);
     } catch (error) {
       console.error("Error fetching post:", error);
@@ -137,7 +138,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { userId } = req.params;
       const { limit = 20, offset = 0 } = req.query;
-      
+
       const posts = await storage.getPostsByUser(
         userId,
         parseInt(limit as string),
@@ -155,12 +156,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const { id: postId } = req.params;
-      
+
       const hasLiked = await storage.hasUserLikedPost(userId, postId);
       if (hasLiked) {
         return res.status(400).json({ message: "Post already liked" });
       }
-      
+
       const like = await storage.likePost(userId, postId);
       res.json(like);
     } catch (error) {
@@ -173,7 +174,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const { id: postId } = req.params;
-      
+
       await storage.unlikePost(userId, postId);
       res.json({ message: "Post unliked" });
     } catch (error) {
@@ -187,13 +188,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const { id: postId } = req.params;
-      
+
       const commentData = insertCommentSchema.parse({
         ...req.body,
         userId,
         postId,
       });
-      
+
       const comment = await storage.createComment(commentData);
       res.json(comment);
     } catch (error) {
@@ -218,16 +219,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const followerId = req.user.claims.sub;
       const { id: followingId } = req.params;
-      
+
       if (followerId === followingId) {
         return res.status(400).json({ message: "Cannot follow yourself" });
       }
-      
+
       const isAlreadyFollowing = await storage.isFollowing(followerId, followingId);
       if (isAlreadyFollowing) {
         return res.status(400).json({ message: "Already following user" });
       }
-      
+
       const follow = await storage.followUser(followerId, followingId);
       res.json(follow);
     } catch (error) {
@@ -240,7 +241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const followerId = req.user.claims.sub;
       const { id: followingId } = req.params;
-      
+
       await storage.unfollowUser(followerId, followingId);
       res.json({ message: "User unfollowed" });
     } catch (error) {
@@ -255,7 +256,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const { id: postId } = req.params;
       const { comment } = req.body;
-      
+
       const repost = await storage.repostPost(userId, postId, comment);
       res.json(repost);
     } catch (error) {
@@ -269,7 +270,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const { id: postId } = req.params;
-      
+
       const bookmark = await storage.bookmarkPost(userId, postId);
       res.json(bookmark);
     } catch (error) {
@@ -296,7 +297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!query) {
         return res.status(400).json({ message: "Query parameter required" });
       }
-      
+
       const users = await storage.searchUsers(query as string, parseInt(limit as string));
       res.json(users);
     } catch (error) {
@@ -311,7 +312,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!query) {
         return res.status(400).json({ message: "Query parameter required" });
       }
-      
+
       const posts = await storage.searchPosts(query as string, parseInt(limit as string));
       res.json(posts);
     } catch (error) {
@@ -336,7 +337,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const { limit = 5 } = req.query;
-      
+
       const users = await storage.getSuggestedUsers(userId, parseInt(limit as string));
       res.json(users);
     } catch (error) {
@@ -376,11 +377,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const imageUrls = [];
-      
+
       for (const file of req.files) {
         const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}.webp`;
         const filepath = path.join(uploadsDir, filename);
-        
+
         // Process image with Sharp
         await sharp(file.buffer)
           .resize(1200, 1200, {
@@ -389,10 +390,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })
           .webp({ quality: 85 })
           .toFile(filepath);
-        
+
         imageUrls.push(`/uploads/${filename}`);
       }
-      
+
       res.json({ imageUrls });
     } catch (error) {
       console.error("Error uploading images:", error);
@@ -407,7 +408,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!query) {
         return res.status(400).json({ message: "Query parameter required" });
       }
-      
+
       const spotify = await getSpotifyClient();
       const results = await spotify.search(query as string, [type as any], 'US', parseInt(limit as string));
       res.json(results);
@@ -441,14 +442,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     ws.on('message', (message) => {
       try {
         const data = JSON.parse(message.toString());
-        
+
         // Handle different types of real-time events
         switch (data.type) {
           case 'subscribe_notifications':
             // Store user connection for notifications
             (ws as any).userId = data.userId;
             break;
-          
+
           case 'typing_start':
             // Broadcast typing indicator
             wss.clients.forEach((client) => {
@@ -461,7 +462,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             });
             break;
-          
+
           case 'typing_stop':
             // Broadcast typing stop
             wss.clients.forEach((client) => {

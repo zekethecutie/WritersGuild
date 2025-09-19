@@ -1,9 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
 
-export function useAuth() {
+import { useQuery } from "@tanstack/react-query";
+import { authService, type AuthState } from "@/lib/auth";
+
+export function useAuth(): AuthState {
   const { data: user, isLoading } = useQuery({
     queryKey: ["/api/auth/user"],
+    queryFn: () => authService.getCurrentUser(),
     retry: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   return {

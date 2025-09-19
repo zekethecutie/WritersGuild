@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { spotifyService, type SpotifyTrack } from "@/lib/spotify";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -53,49 +54,40 @@ export default function SpotifyPlayer({
 
   const { data: searchResults, isLoading } = useQuery({
     queryKey: ["/api/spotify/search", searchQuery],
-    queryFn: () => fetch(`/api/spotify/search?q=${encodeURIComponent(searchQuery)}&type=track&limit=10`).then(res => res.json()),
+    queryFn: () => spotifyService.search(searchQuery, 'track', 10),
     enabled: searchQuery.length > 2 && searchMode,
   });
 
   useEffect(() => {
     return () => {
-      if (audio) {
-        audio.pause();
-        audio.src = "";
-      }
+      spotifyService.stopPreview();
     };
-  }, [audio]);
+  }, []);
 
-  const handlePlayPause = (previewUrl: string) => {
-    if (!previewUrl) return;
+  const handlePlayPause = (track: SpotifyTrack) => {
+    if (!track.preview_url) return;
 
-    if (audio && !audio.paused) {
-      audio.pause();
+    const currentTrack = spotifyService.getCurrentTrack();
+    const isCurrentlyPlaying = spotifyService.getIsPlaying();
+
+    if (currentTrack?.id === track.id && isCurrentlyPlaying) {
+      spotifyService.pausePreview();
       setIsPlaying(false);
-      return;
-    }
-
-    if (audio) {
-      audio.pause();
-    }
-
-    const newAudio = new Audio(previewUrl);
-    newAudio.addEventListener("ended", () => setIsPlaying(false));
-    newAudio.addEventListener("error", () => setIsPlaying(false));
-    
-    setAudio(newAudio);
-    newAudio.play().then(() => {
+    } else if (currentTrack?.id === track.id && !isCurrentlyPlaying) {
+      spotifyService.resumePreview();
       setIsPlaying(true);
-    }).catch((error) => {
-      console.error("Error playing audio:", error);
-      setIsPlaying(false);
-    });
+    } else {
+      spotifyService.playPreview(track)
+        .then(() => setIsPlaying(true))
+        .catch((error) => {
+          console.error("Error playing audio:", error);
+          setIsPlaying(false);
+        });
+    }
   };
 
   const formatDuration = (ms: number) => {
-    const minutes = Math.floor(ms / 60000);
-    const seconds = Math.floor((ms % 60000) / 1000);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    return spotifyService.formatDuration(ms);
   };
 
   // Search Mode UI
@@ -149,7 +141,7 @@ export default function SpotifyPlayer({
                     data-testid={`spotify-track-${track.id}`}
                   >
                     <img
-                      src={track.album.images[2]?.url || track.album.images[0]?.url}
+                      src={spotifyService.getImageUrl(track.album.images, 'small')}
                       alt={track.album.name}
                       className="w-12 h-12 rounded object-cover"
                     />
@@ -168,7 +160,7 @@ export default function SpotifyPlayer({
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handlePlayPause(track.preview_url);
+                          handlePlayPause(track);
                         }}
                         className="p-2 text-green-500 hover:bg-green-500/10"
                         data-testid={`button-preview-${track.id}`}
