@@ -256,55 +256,76 @@ export default function PostCard({ post }: PostCardProps) {
         />
         <div className="flex-1 min-w-0">
           {/* Author Info */}
-          <div className="flex items-center space-x-2 mb-2">
-            <h3 className="font-semibold hover:underline cursor-pointer" data-testid="text-author-name">
-              {author.firstName} {author.lastName}
-            </h3>
-            <span className="text-muted-foreground text-sm" data-testid="text-author-username">
-              @{author.username}
-            </span>
-            {author.isSuperAdmin && (
-              <div className="flex items-center">
-                <Crown className="w-4 h-4 text-yellow-500" />
-                <Badge variant="outline" className="ml-1 text-xs bg-yellow-500/10 text-yellow-500 border-yellow-500">
-                  Owner
-                </Badge>
-              </div>
-            )}
-            {author.isAdmin && !author.isSuperAdmin && (
-              <Badge variant="outline" className="text-xs bg-red-500/10 text-red-500 border-red-500">
-                Admin
-              </Badge>
-            )}
-            {author.isVerified && (
-              <div className="flex items-center">
-                <CheckCircle className="w-4 h-4 text-blue-500 fill-current" />
-                <Badge variant="outline" className="ml-1 text-xs bg-blue-500/10 text-blue-500 border-blue-500">
-                  Verified
-                </Badge>
-              </div>
-            )}
-            <span className="text-muted-foreground text-sm">·</span>
-            <span className="text-muted-foreground text-sm flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
-            </span>
-            {post.postType !== "text" && (
-              <>
-                <div className={`w-2 h-2 rounded-full ${
-                  post.postType === "poetry" ? "bg-purple-400" :
-                  post.postType === "story" ? "bg-blue-400" :
-                  post.postType === "challenge" ? "bg-green-400" : "bg-muted-foreground"
-                }`} />
-                <span className={`text-xs font-medium ${
-                  post.postType === "poetry" ? "text-purple-400" :
-                  post.postType === "story" ? "text-blue-400" :
-                  post.postType === "challenge" ? "text-green-400" : "text-muted-foreground"
-                }`}>
-                  {post.postType.charAt(0).toUpperCase() + post.postType.slice(1)}
-                </span>
-              </>
-            )}
+          <div className="flex items-center flex-wrap gap-2 mb-2">
+            <div className="flex items-center space-x-2">
+              <h3 className="font-semibold hover:underline cursor-pointer" data-testid="text-author-name">
+                {author.firstName} {author.lastName}
+              </h3>
+              <span className="text-muted-foreground text-sm" data-testid="text-author-username">
+                @{author.username}
+              </span>
+            </div>
+
+            {/* Badges */}
+            <div className="flex items-center gap-1">
+              {author.isSuperAdmin && (
+                <div className="flex items-center gap-1">
+                  <div className="w-5 h-5 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center">
+                    <Crown className="w-3 h-3 text-white" />
+                  </div>
+                  <Badge variant="outline" className="text-xs bg-yellow-500/10 text-yellow-600 border-yellow-500/30 font-semibold">
+                    Owner
+                  </Badge>
+                </div>
+              )}
+              {author.isAdmin && !author.isSuperAdmin && (
+                <div className="flex items-center gap-1">
+                  <div className="w-5 h-5 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center">
+                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <Badge variant="outline" className="text-xs bg-red-500/10 text-red-600 border-red-500/30 font-semibold">
+                    Admin
+                  </Badge>
+                </div>
+              )}
+              {author.isVerified && (
+                <div className="flex items-center gap-1">
+                  <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+                    <CheckCircle className="w-3 h-3 text-white fill-current" />
+                  </div>
+                  <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/30 font-semibold">
+                    Verified
+                  </Badge>
+                </div>
+              )}
+            </div>
+
+            {/* Time and post type */}
+            <div className="flex items-center gap-2 text-muted-foreground text-sm">
+              <span>·</span>
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+              </span>
+              {post.postType !== "text" && (
+                <>
+                  <div className={`w-2 h-2 rounded-full ${
+                    post.postType === "poetry" ? "bg-purple-400" :
+                    post.postType === "story" ? "bg-blue-400" :
+                    post.postType === "challenge" ? "bg-green-400" : "bg-muted-foreground"
+                  }`} />
+                  <span className={`text-xs font-medium ${
+                    post.postType === "poetry" ? "text-purple-400" :
+                    post.postType === "story" ? "text-blue-400" :
+                    post.postType === "challenge" ? "text-green-400" : "text-muted-foreground"
+                  }`}>
+                    {post.postType.charAt(0).toUpperCase() + post.postType.slice(1)}
+                  </span>
+                </>
+              )}
+            </div>
           </div>
           
           {/* Post Content */}

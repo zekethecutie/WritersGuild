@@ -158,13 +158,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user;
+    try {
+      const [user] = await db.select().from(users).where(eq(users.username, username));
+      return user;
+    } catch (error: any) {
+      if (error.code === '42703') { // Column does not exist
+        console.log("Database schema not ready, running migration...");
+        return undefined;
+      }
+      throw error;
+    }
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user;
+    try {
+      const [user] = await db.select().from(users).where(eq(users.email, email));
+      return user;
+    } catch (error: any) {
+      if (error.code === '42703') { // Column does not exist
+        console.log("Database schema not ready, running migration...");
+        return undefined;
+      }
+      throw error;
+    }
   }
 
   async createUser(userData: { email?: string; password: string; firstName: string; lastName: string; username: string }): Promise<User> {
