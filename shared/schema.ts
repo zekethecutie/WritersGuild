@@ -42,6 +42,10 @@ export const users = pgTable("users", {
   wordCountGoal: integer("word_count_goal").default(1000),
   weeklyPostsGoal: integer("weekly_posts_goal").default(7),
   isVerified: boolean("is_verified").default(false),
+  isAdmin: boolean("is_admin").default(false),
+  isSuperAdmin: boolean("is_super_admin").default(false),
+  postsCount: integer("posts_count").default(0),
+  commentsCount: integer("comments_count").default(0),
   coverImageUrl: varchar("cover_image_url"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -82,6 +86,7 @@ export const comments = pgTable("comments", {
   postId: uuid("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
   parentId: uuid("parent_id").references(() => comments.id, { onDelete: "cascade" }),
+  level: integer("level").default(0), // For nested threading
   likesCount: integer("likes_count").default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

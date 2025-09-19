@@ -18,7 +18,10 @@ import {
   MoreHorizontal,
   Quote,
   Clock,
-  Eye
+  Eye,
+  Crown,
+  CheckCircle,
+  Trash2
 } from "lucide-react";
 import type { Post, User } from "@shared/schema";
 
@@ -141,6 +144,27 @@ export default function PostCard({ post }: PostCardProps) {
     },
   });
 
+  const adminDeleteMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("DELETE", `/api/admin/posts/${post.id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/trending/posts"] });
+      toast({
+        title: "Post deleted",
+        description: "Post has been removed by admin.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Delete failed",
+        description: "There was an error deleting this post.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const getPostTypeStyle = () => {
     switch (post.postType) {
       case "poetry":
@@ -239,10 +263,26 @@ export default function PostCard({ post }: PostCardProps) {
             <span className="text-muted-foreground text-sm" data-testid="text-author-username">
               @{author.username}
             </span>
-            {author.isVerified && (
-              <Badge variant="secondary" className="text-xs">
-                Verified
+            {author.isSuperAdmin && (
+              <div className="flex items-center">
+                <Crown className="w-4 h-4 text-yellow-500" />
+                <Badge variant="outline" className="ml-1 text-xs bg-yellow-500/10 text-yellow-500 border-yellow-500">
+                  Owner
+                </Badge>
+              </div>
+            )}
+            {author.isAdmin && !author.isSuperAdmin && (
+              <Badge variant="outline" className="text-xs bg-red-500/10 text-red-500 border-red-500">
+                Admin
               </Badge>
+            )}
+            {author.isVerified && (
+              <div className="flex items-center">
+                <CheckCircle className="w-4 h-4 text-blue-500 fill-current" />
+                <Badge variant="outline" className="ml-1 text-xs bg-blue-500/10 text-blue-500 border-blue-500">
+                  Verified
+                </Badge>
+              </div>
             )}
             <span className="text-muted-foreground text-sm">·</span>
             <span className="text-muted-foreground text-sm flex items-center gap-1">
@@ -364,6 +404,21 @@ export default function PostCard({ post }: PostCardProps) {
                 <Bookmark className={`w-5 h-5 ${post.isBookmarked ? "fill-current" : ""}`} />
               </div>
             </Button>
+
+            {(user?.isAdmin || user?.isSuperAdmin) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => adminDeleteMutation.mutate()}
+                disabled={adminDeleteMutation.isPending}
+                className="engagement-btn hover:text-red-400 group"
+                data-testid="button-admin-delete"
+              >
+                <div className="p-2 rounded-full group-hover:bg-red-400/10 transition-colors">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+              </Button>
+            )}
 
             <Button
               variant="ghost"

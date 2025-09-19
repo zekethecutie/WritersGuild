@@ -83,6 +83,33 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  // Initialize hardcoded admin account
+  async initializeAdminAccount(): Promise<void> {
+    try {
+      const existingAdmin = await this.getUserByUsername("itsicxrus");
+      if (!existingAdmin) {
+        const bcrypt = require("bcrypt");
+        const hashedPassword = await bcrypt.hash("122209", 10);
+        
+        await db.insert(users).values({
+          username: "itsicxrus",
+          email: "admin@writersguild.com",
+          password: hashedPassword,
+          firstName: "Super",
+          lastName: "Admin",
+          bio: "Owner and Super Administrator of Writers Guild",
+          isVerified: true,
+          isAdmin: true,
+          isSuperAdmin: true,
+          profileImageUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=itsicxrus",
+        });
+        console.log("Hardcoded admin account created: @itsicxrus");
+      }
+    } catch (error) {
+      console.error("Error creating admin account:", error);
+    }
+  }
+
   // User operations
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -144,6 +171,16 @@ export class DatabaseStorage implements IStorage {
   // Post operations
   async createPost(post: InsertPost): Promise<Post> {
     const [newPost] = await db.insert(posts).values(post).returning();
+    
+    // Increment user's posts count
+    await db
+      .update(users)
+      .set({ postsCount: sql`${users.postsCount} + 1` })
+      .where(eq(users.id, post.authorId));
+    
+    // Check auto verification
+    await this.checkAutoVerification(post.authorId);
+    
     return newPost;
   }
 
@@ -240,11 +277,20 @@ export class DatabaseStorage implements IStorage {
   async createComment(comment: InsertComment): Promise<Comment> {
     const [newComment] = await db.insert(comments).values(comment).returning();
     
-    // Increment comments count
+    // Increment comments count on post
     await db
       .update(posts)
       .set({ commentsCount: sql`${posts.commentsCount} + 1` })
       .where(eq(posts.id, comment.postId));
+    
+    // Increment user's comments count
+    await db
+      .update(users)
+      .set({ commentsCount: sql`${users.commentsCount} + 1` })
+      .where(eq(users.id, comment.userId));
+    
+    // Check auto verification
+    await this.checkAutoVerification(comment.userId);
     
     return newComment;
   }
@@ -254,6 +300,45 @@ export class DatabaseStorage implements IStorage {
       .from(comments)
       .where(eq(comments.postId, postId))
       .orderBy(asc(comments.createdAt));
+  }
+
+  async getRepliesForComment(commentId: string): Promise<Comment[]> {
+    return db.select()
+      .from(comments)
+      .where(eq(comments.parentId, commentId))
+      .orderBy(asc(comments.createdAt));
+  }
+
+  async createReply(reply: InsertComment & { parentId: string }): Promise<Comment> {
+    // Get parent comment to determine level
+    const parentComment = await db.select()
+      .from(comments)
+      .where(eq(comments.id, reply.parentId))
+      .limit(1);
+    
+    const level = parentComment[0] ? (parentComment[0].level || 0) + 1 : 0;
+    
+    const [newReply] = await db.insert(comments).values({
+      ...reply,
+      level: Math.min(level, 5) // Max 5 levels deep
+    }).returning();
+    
+    // Increment comments count on post
+    await db
+      .update(posts)
+      .set({ commentsCount: sql`${posts.commentsCount} + 1` })
+      .where(eq(posts.id, reply.postId));
+    
+    // Increment user's comments count
+    await db
+      .update(users)
+      .set({ commentsCount: sql`${users.commentsCount} + 1` })
+      .where(eq(users.id, reply.userId));
+    
+    // Check auto verification
+    await this.checkAutoVerification(reply.userId);
+    
+    return newReply;
   }
 
   // Follow operations
@@ -478,6 +563,70 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .limit(limit);
+  }
+
+  // Admin operations
+  async setUserAdmin(adminUserId: string, targetUserId: string, isAdmin: boolean): Promise<User | null> {
+    // Check if user making request is super admin
+    const adminUser = await this.getUser(adminUserId);
+    if (!adminUser?.isSuperAdmin) {
+      throw new Error("Only super admins can set admin status");
+    }
+
+    const [user] = await db
+      .update(users)
+      .set({ isAdmin, updatedAt: new Date() })
+      .where(eq(users.id, targetUserId))
+      .returning();
+    return user;
+  }
+
+  async setUserVerified(adminUserId: string, targetUserId: string, isVerified: boolean): Promise<User | null> {
+    // Check if user making request is admin
+    const adminUser = await this.getUser(adminUserId);
+    if (!adminUser?.isAdmin && !adminUser?.isSuperAdmin) {
+      throw new Error("Only admins can set verification status");
+    }
+
+    const [user] = await db
+      .update(users)
+      .set({ isVerified, updatedAt: new Date() })
+      .where(eq(users.id, targetUserId))
+      .returning();
+    return user;
+  }
+
+  async deleteUserAsAdmin(adminUserId: string, targetUserId: string): Promise<void> {
+    // Check if user making request is admin
+    const adminUser = await this.getUser(adminUserId);
+    if (!adminUser?.isAdmin && !adminUser?.isSuperAdmin) {
+      throw new Error("Only admins can delete users");
+    }
+
+    await db.delete(users).where(eq(users.id, targetUserId));
+  }
+
+  async deletePostAsAdmin(adminUserId: string, postId: string): Promise<void> {
+    // Check if user making request is admin
+    const adminUser = await this.getUser(adminUserId);
+    if (!adminUser?.isAdmin && !adminUser?.isSuperAdmin) {
+      throw new Error("Only admins can delete posts");
+    }
+
+    await db.delete(posts).where(eq(posts.id, postId));
+  }
+
+  // Check if user should be auto-verified (100 posts + 100 comments)
+  async checkAutoVerification(userId: string): Promise<void> {
+    const user = await this.getUser(userId);
+    if (!user || user.isVerified) return;
+
+    if ((user.postsCount || 0) >= 100 && (user.commentsCount || 0) >= 100) {
+      await db
+        .update(users)
+        .set({ isVerified: true, updatedAt: new Date() })
+        .where(eq(users.id, userId));
+    }
   }
 }
 

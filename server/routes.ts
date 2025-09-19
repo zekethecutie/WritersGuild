@@ -63,6 +63,9 @@ const requireAuth = (req: any, res: any, next: any) => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Initialize admin account
+  await storage.initializeAdminAccount();
+
   // Session middleware
   app.set("trust proxy", 1);
   app.use(getSession());
@@ -334,6 +337,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/comments/:id/reply', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { id: parentId } = req.params;
+      const { content, postId } = req.body;
+
+      const reply = await storage.createReply({
+        userId,
+        postId,
+        content,
+        parentId,
+      });
+      res.json(reply);
+    } catch (error) {
+      console.error("Error creating reply:", error);
+      res.status(500).json({ message: "Failed to create reply" });
+    }
+  });
+
+  app.get('/api/comments/:id/replies', async (req, res) => {
+    try {
+      const { id: commentId } = req.params;
+      const replies = await storage.getRepliesForComment(commentId);
+      res.json(replies);
+    } catch (error) {
+      console.error("Error fetching replies:", error);
+      res.status(500).json({ message: "Failed to fetch replies" });
+    }
+  });
+
   // Follow routes
   app.post('/api/users/:id/follow', requireAuth, async (req: any, res) => {
     try {
@@ -547,6 +580,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching Spotify track:", error);
       res.status(500).json({ message: "Failed to fetch track" });
+    }
+  });
+
+  // Admin routes
+  app.post('/api/admin/users/:id/admin', requireAuth, async (req: any, res) => {
+    try {
+      const adminUserId = req.session.userId;
+      const { id: targetUserId } = req.params;
+      const { isAdmin } = req.body;
+
+      const user = await storage.setUserAdmin(adminUserId, targetUserId, isAdmin);
+      res.json({ user: { ...user, password: undefined } });
+    } catch (error) {
+      console.error("Error setting admin status:", error);
+      res.status(403).json({ message: error.message });
+    }
+  });
+
+  app.post('/api/admin/users/:id/verify', requireAuth, async (req: any, res) => {
+    try {
+      const adminUserId = req.session.userId;
+      const { id: targetUserId } = req.params;
+      const { isVerified } = req.body;
+
+      const user = await storage.setUserVerified(adminUserId, targetUserId, isVerified);
+      res.json({ user: { ...user, password: undefined } });
+    } catch (error) {
+      console.error("Error setting verification status:", error);
+      res.status(403).json({ message: error.message });
+    }
+  });
+
+  app.delete('/api/admin/users/:id', requireAuth, async (req: any, res) => {
+    try {
+      const adminUserId = req.session.userId;
+      const { id: targetUserId } = req.params;
+
+      await storage.deleteUserAsAdmin(adminUserId, targetUserId);
+      res.json({ message: "User deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(403).json({ message: error.message });
+    }
+  });
+
+  app.delete('/api/admin/posts/:id', requireAuth, async (req: any, res) => {
+    try {
+      const adminUserId = req.session.userId;
+      const { id: postId } = req.params;
+
+      await storage.deletePostAsAdmin(adminUserId, postId);
+      res.json({ message: "Post deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting post:", error);
+      res.status(403).json({ message: error.message });
     }
   });
 

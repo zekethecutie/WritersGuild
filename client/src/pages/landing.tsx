@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,19 +23,19 @@ export default function Landing() {
                 <Feather className="w-10 h-10 text-primary-foreground" />
               </div>
             </div>
-            
+
             <h1 className="text-4xl sm:text-6xl font-bold mb-6 text-foreground">
               <span className="gradient-text">Writers Guild</span>
             </h1>
-            
+
             <p className="text-xl sm:text-2xl text-muted-foreground mb-4 max-w-3xl mx-auto">
               Where words find their voice
             </p>
-            
+
             <p className="text-lg text-muted-foreground mb-12 max-w-2xl mx-auto">
               A sophisticated social platform for writers and authors. Share your poetry, stories, and creative works with advanced formatting, Spotify integration, and a supportive community.
             </p>
-            
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 
                 size="lg" 
@@ -46,7 +45,7 @@ export default function Landing() {
               >
                 Enter the Guild
               </Button>
-              
+
               <Button 
                 variant="outline" 
                 size="lg" 
@@ -158,7 +157,7 @@ export default function Landing() {
             Join thousands of writers who have found their home in the Writers Guild. 
             Your story matters, and we're here to help you tell it beautifully.
           </p>
-          
+
           <Button 
             size="lg" 
             className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 text-lg"
@@ -180,7 +179,7 @@ export default function Landing() {
               </div>
               <span className="text-lg font-semibold text-foreground">Writers Guild</span>
             </div>
-            
+
             <div className="text-sm text-muted-foreground">
               Where words find their voice
             </div>
