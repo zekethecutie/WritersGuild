@@ -1,3 +1,4 @@
+
 import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
@@ -6,8 +7,10 @@ import multer from "multer";
 import sharp from "sharp";
 import path from "path";
 import fs from "fs";
+import bcrypt from "bcrypt";
+import session from "express-session";
+import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
 import { insertPostSchema, insertCommentSchema } from "@shared/schema";
 import { getSpotifyClient } from "./spotifyClient";
 import spotifyRoutes from "./spotifyRoutes";
@@ -28,9 +31,41 @@ const upload = multer({
   },
 });
 
+// Session middleware
+function getSession() {
+  const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
+  const pgStore = connectPg(session);
+  const sessionStore = new pgStore({
+    conString: process.env.DATABASE_URL,
+    createTableIfMissing: false,
+    ttl: sessionTtl,
+    tableName: "sessions",
+  });
+  return session({
+    secret: process.env.SESSION_SECRET || 'your-secret-key',
+    store: sessionStore,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: sessionTtl,
+    },
+  });
+}
+
+// Auth middleware
+const requireAuth = (req: any, res: any, next: any) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  next();
+};
+
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
-  await setupAuth(app);
+  // Session middleware
+  app.set("trust proxy", 1);
+  app.use(getSession());
 
   // Ensure uploads directory exists
   const uploadsDir = path.join(process.cwd(), 'uploads');
@@ -45,11 +80,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }, express.static(uploadsDir));
 
   // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.post('/api/auth/register', async (req, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const { email, password, firstName, lastName, username } = req.body;
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: "User already exists with this email" });
+      }
+
+      // Check if username is taken
+      const existingUsername = await storage.getUserByUsername(username);
+      if (existingUsername) {
+        return res.status(400).json({ message: "Username is already taken" });
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Create user
+      const user = await storage.createUser({
+        email,
+        password: hashedPassword,
+        firstName,
+        lastName,
+        username,
+      });
+
+      // Set session
+      (req.session as any).userId = user.id;
+
+      res.json({ user: { ...user, password: undefined } });
+    } catch (error) {
+      console.error("Registration error:", error);
+      res.status(500).json({ message: "Failed to create account" });
+    }
+  });
+
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const { email, password } = req.body;
+
+      // Find user
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+
+      // Check password
+      const isValid = await bcrypt.compare(password, user.password || '');
+      if (!isValid) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+
+      // Set session
+      (req.session as any).userId = user.id;
+
+      res.json({ user: { ...user, password: undefined } });
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ message: "Failed to login" });
+    }
+  });
+
+  app.post('/api/auth/logout', (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        console.error("Logout error:", err);
+        return res.status(500).json({ message: "Failed to logout" });
+      }
+      res.json({ message: "Logged out successfully" });
+    });
+  });
+
+  app.get('/api/auth/user', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
       const user = await storage.getUser(userId);
-      res.json(user);
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      res.json({ ...user, password: undefined });
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -57,9 +169,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User profile routes
-  app.patch('/api/users/profile', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/users/profile', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const updateData = req.body;
 
       const user = await storage.updateUserProfile(userId, updateData);
@@ -79,7 +191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      res.json(user);
+      res.json({ ...user, password: undefined });
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -87,9 +199,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Post routes
-  app.post('/api/posts', isAuthenticated, async (req: any, res) => {
+  app.post('/api/posts', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const postData = insertPostSchema.parse({
         ...req.body,
         authorId: userId,
@@ -152,9 +264,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Like routes
-  app.post('/api/posts/:id/like', isAuthenticated, async (req: any, res) => {
+  app.post('/api/posts/:id/like', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { id: postId } = req.params;
 
       const hasLiked = await storage.hasUserLikedPost(userId, postId);
@@ -170,9 +282,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/posts/:id/like', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/posts/:id/like', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { id: postId } = req.params;
 
       await storage.unlikePost(userId, postId);
@@ -184,9 +296,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Comment routes
-  app.post('/api/posts/:id/comments', isAuthenticated, async (req: any, res) => {
+  app.post('/api/posts/:id/comments', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { id: postId } = req.params;
 
       const commentData = insertCommentSchema.parse({
@@ -215,9 +327,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Follow routes
-  app.post('/api/users/:id/follow', isAuthenticated, async (req: any, res) => {
+  app.post('/api/users/:id/follow', requireAuth, async (req: any, res) => {
     try {
-      const followerId = req.user.claims.sub;
+      const followerId = req.session.userId;
       const { id: followingId } = req.params;
 
       if (followerId === followingId) {
@@ -237,9 +349,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/users/:id/follow', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/users/:id/follow', requireAuth, async (req: any, res) => {
     try {
-      const followerId = req.user.claims.sub;
+      const followerId = req.session.userId;
       const { id: followingId } = req.params;
 
       await storage.unfollowUser(followerId, followingId);
@@ -251,9 +363,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Repost routes
-  app.post('/api/posts/:id/repost', isAuthenticated, async (req: any, res) => {
+  app.post('/api/posts/:id/repost', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { id: postId } = req.params;
       const { comment } = req.body;
 
@@ -266,9 +378,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Bookmark routes
-  app.post('/api/posts/:id/bookmark', isAuthenticated, async (req: any, res) => {
+  app.post('/api/posts/:id/bookmark', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { id: postId } = req.params;
 
       const bookmark = await storage.bookmarkPost(userId, postId);
@@ -279,9 +391,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/bookmarks', isAuthenticated, async (req: any, res) => {
+  app.get('/api/bookmarks', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const bookmarks = await storage.getUserBookmarks(userId);
       res.json(bookmarks);
     } catch (error) {
@@ -333,9 +445,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/suggested/users', isAuthenticated, async (req: any, res) => {
+  app.get('/api/suggested/users', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { limit = 5 } = req.query;
 
       const users = await storage.getSuggestedUsers(userId, parseInt(limit as string));
@@ -347,9 +459,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Notification routes
-  app.get('/api/notifications', isAuthenticated, async (req: any, res) => {
+  app.get('/api/notifications', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const notifications = await storage.getUserNotifications(userId);
       res.json(notifications);
     } catch (error) {
@@ -358,7 +470,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/notifications/:id/read', isAuthenticated, async (req, res) => {
+  app.patch('/api/notifications/:id/read', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       await storage.markNotificationAsRead(id);
@@ -370,7 +482,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Image upload route
-  app.post('/api/upload/images', isAuthenticated, upload.array('images', 4), async (req: any, res) => {
+  app.post('/api/upload/images', requireAuth, upload.array('images', 4), async (req: any, res) => {
     try {
       if (!req.files || req.files.length === 0) {
         return res.status(400).json({ message: "No files uploaded" });
@@ -402,7 +514,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Spotify integration routes
-  app.get('/api/spotify/search', isAuthenticated, async (req, res) => {
+  app.get('/api/spotify/search', requireAuth, async (req, res) => {
     try {
       const { q: query, type = 'track', limit = 20 } = req.query;
       if (!query) {
@@ -418,7 +530,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/spotify/track/:id', isAuthenticated, async (req, res) => {
+  app.get('/api/spotify/track/:id', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       const spotify = await getSpotifyClient();

@@ -1,10 +1,19 @@
+
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { AuthDialog } from "@/components/auth-dialog";
 import { Feather, Users, Edit3, Heart, Music, Image, Quote } from "lucide-react";
 
 export default function Landing() {
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
+
+  const handleAuthSuccess = () => {
+    window.location.reload(); // Refresh to show authenticated state
+  };
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-background to-accent/20" />
@@ -16,7 +25,7 @@ export default function Landing() {
               </div>
             </div>
             
-            <h1 className="text-4xl sm:text-6xl font-bold mb-6">
+            <h1 className="text-4xl sm:text-6xl font-bold mb-6 text-foreground">
               <span className="gradient-text">Writers Guild</span>
             </h1>
             
@@ -32,7 +41,7 @@ export default function Landing() {
               <Button 
                 size="lg" 
                 className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 text-lg"
-                onClick={() => window.location.href = '/api/login'}
+                onClick={() => setShowAuthDialog(true)}
                 data-testid="button-login"
               >
                 Enter the Guild
@@ -55,7 +64,7 @@ export default function Landing() {
       <div className="py-24 bg-card/50">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">
+            <h2 className="text-3xl sm:text-4xl font-bold mb-4 text-foreground">
               Crafted for <span className="gradient-text">Creative Minds</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -69,7 +78,7 @@ export default function Landing() {
                 <div className="w-12 h-12 bg-primary/20 rounded-lg flex items-center justify-center mb-4">
                   <Edit3 className="w-6 h-6 text-primary" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">Advanced Formatting</h3>
+                <h3 className="text-xl font-semibold mb-2 text-card-foreground">Advanced Formatting</h3>
                 <p className="text-muted-foreground">
                   Rich text editor with poetry-specific formatting, custom typography, and beautiful layouts for your creative works.
                 </p>
@@ -81,7 +90,7 @@ export default function Landing() {
                 <div className="w-12 h-12 bg-accent/20 rounded-lg flex items-center justify-center mb-4">
                   <Music className="w-6 h-6 text-accent" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">Spotify Integration</h3>
+                <h3 className="text-xl font-semibold mb-2 text-card-foreground">Spotify Integration</h3>
                 <p className="text-muted-foreground">
                   Attach music to your posts, create writing soundtracks, and discover new inspiration through audio.
                 </p>
@@ -93,7 +102,7 @@ export default function Landing() {
                 <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center mb-4">
                   <Image className="w-6 h-6 text-blue-400" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">Visual Storytelling</h3>
+                <h3 className="text-xl font-semibold mb-2 text-card-foreground">Visual Storytelling</h3>
                 <p className="text-muted-foreground">
                   Upload multiple images, create galleries, and transform your posts into shareable visual art.
                 </p>
@@ -105,7 +114,7 @@ export default function Landing() {
                 <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center mb-4">
                   <Quote className="w-6 h-6 text-green-400" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">Poetry Mode</h3>
+                <h3 className="text-xl font-semibold mb-2 text-card-foreground">Poetry Mode</h3>
                 <p className="text-muted-foreground">
                   Specialized tools for poets with stanza breaks, indentation controls, and beautiful typography.
                 </p>
@@ -117,7 +126,7 @@ export default function Landing() {
                 <div className="w-12 h-12 bg-orange-500/20 rounded-lg flex items-center justify-center mb-4">
                   <Heart className="w-6 h-6 text-orange-400" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">Writing Goals</h3>
+                <h3 className="text-xl font-semibold mb-2 text-card-foreground">Writing Goals</h3>
                 <p className="text-muted-foreground">
                   Track your progress, maintain writing streaks, and celebrate achievements with the community.
                 </p>
@@ -129,7 +138,7 @@ export default function Landing() {
                 <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mb-4">
                   <Users className="w-6 h-6 text-purple-400" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">Supportive Community</h3>
+                <h3 className="text-xl font-semibold mb-2 text-card-foreground">Supportive Community</h3>
                 <p className="text-muted-foreground">
                   Connect with fellow writers, share feedback, and grow together in a positive environment.
                 </p>
@@ -142,7 +151,7 @@ export default function Landing() {
       {/* Call to Action */}
       <div className="py-24">
         <div className="max-w-4xl mx-auto text-center px-4">
-          <h2 className="text-3xl sm:text-4xl font-bold mb-6">
+          <h2 className="text-3xl sm:text-4xl font-bold mb-6 text-foreground">
             Ready to Share Your <span className="gradient-text">Voice</span>?
           </h2>
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
@@ -153,7 +162,7 @@ export default function Landing() {
           <Button 
             size="lg" 
             className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 text-lg"
-            onClick={() => window.location.href = '/api/login'}
+            onClick={() => setShowAuthDialog(true)}
             data-testid="button-join-guild"
           >
             Join the Guild Today
@@ -169,7 +178,7 @@ export default function Landing() {
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <Feather className="w-4 h-4 text-primary-foreground" />
               </div>
-              <span className="text-lg font-semibold">Writers Guild</span>
+              <span className="text-lg font-semibold text-foreground">Writers Guild</span>
             </div>
             
             <div className="text-sm text-muted-foreground">
@@ -178,6 +187,12 @@ export default function Landing() {
           </div>
         </div>
       </footer>
+
+      <AuthDialog 
+        open={showAuthDialog} 
+        onOpenChange={setShowAuthDialog}
+        onSuccess={handleAuthSuccess}
+      />
     </div>
   );
 }

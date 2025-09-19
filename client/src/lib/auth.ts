@@ -48,20 +48,69 @@ export class AuthService {
     }
   }
 
-  async login(): Promise<void> {
-    window.location.href = '/api/login';
+  async register(userData: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    username: string;
+  }): Promise<{ success: boolean; user?: User; error?: string }> {
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(userData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { success: false, error: data.message };
+      }
+
+      return { success: true, user: data.user };
+    } catch (error) {
+      console.error('Registration failed:', error);
+      return { success: false, error: 'Registration failed. Please try again.' };
+    }
+  }
+
+  async login(email: string, password: string): Promise<{ success: boolean; user?: User; error?: string }> {
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { success: false, error: data.message };
+      }
+
+      return { success: true, user: data.user };
+    } catch (error) {
+      console.error('Login failed:', error);
+      return { success: false, error: 'Login failed. Please try again.' };
+    }
   }
 
   async logout(): Promise<void> {
     try {
-      await fetch('/api/logout', {
+      await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include',
       });
       window.location.href = '/';
     } catch (error) {
       console.error('Logout failed:', error);
-      // Redirect anyway
       window.location.href = '/';
     }
   }
