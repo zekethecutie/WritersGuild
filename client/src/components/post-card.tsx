@@ -7,6 +7,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import SpotifyPlayer from "@/components/spotify-player";
 import ImageGallery from "@/components/image-gallery";
 import PostDownload from "@/components/post-download";
+import SavePostImage from "@/components/save-post-image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";

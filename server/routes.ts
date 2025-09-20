@@ -528,6 +528,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/trending/topics', async (req, res) => {
+    try {
+      const topics = await storage.getTrendingTopics();
+      res.json(topics);
+    } catch (error) {
+      console.error("Error fetching trending topics:", error);
+      res.status(500).json({ message: "Failed to fetch trending topics" });
+    }
+  });
+
+  app.get('/api/users/:id/stats', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const stats = await storage.getUserStats(id);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching user stats:", error);
+      res.status(500).json({ message: "Failed to fetch user stats" });
+    }
+  });
+
+  app.get('/api/users/:id/writing-goals', requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.session.userId;
+      
+      // Users can only see their own goals unless they're admin
+      if (id !== userId) {
+        const user = await storage.getUser(userId);
+        if (!user?.isAdmin && !user?.isSuperAdmin) {
+          return res.status(403).json({ message: "Unauthorized" });
+        }
+      }
+
+      const goals = await storage.getCurrentWritingGoals(id);
+      res.json(goals);
+    } catch (error) {
+      console.error("Error fetching writing goals:", error);
+      res.status(500).json({ message: "Failed to fetch writing goals" });
+    }
+  });
+
   app.get('/api/suggested/users', requireAuth, async (req: any, res) => {
     try {
       const userId = req.session.userId;

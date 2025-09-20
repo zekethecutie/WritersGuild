@@ -58,6 +58,19 @@ export default function Home() {
     queryFn: () => fetch("/api/trending/posts?limit=5").then(res => res.json()),
   });
 
+  // Fetch trending topics
+  const { data: trendingTopics } = useQuery({
+    queryKey: ["/api/trending/topics"],
+    queryFn: () => fetch("/api/trending/topics").then(res => res.json()),
+  });
+
+  // Fetch writing goals for authenticated user
+  const { data: writingGoals } = useQuery({
+    queryKey: ["/api/users", user?.id, "writing-goals"],
+    queryFn: () => fetch(`/api/users/${user?.id}/writing-goals`).then(res => res.json()),
+    enabled: !!user,
+  });
+
   // Fetch suggested users
   const { data: suggestedUsers } = useQuery({
     queryKey: ["/api/suggested/users"],
@@ -244,12 +257,12 @@ export default function Home() {
                     Trending in Writing
                   </h3>
                   <div className="space-y-3">
-                    {[
+                    {(trendingTopics || [
                       { rank: 1, category: "Poetry", hashtag: "#MidnightMusings", posts: "2,847" },
                       { rank: 2, category: "Fiction", hashtag: "#FlashFiction", posts: "1,923" },
                       { rank: 3, category: "Writing Challenge", hashtag: "#30DayChallenge", posts: "856" },
                       { rank: 4, category: "General", hashtag: "#WritersCommunity", posts: "634" },
-                    ].map((trend) => (
+                    ]).slice(0, 4).map((trend: any) => (
                       <div 
                         key={trend.rank}
                         className="hover:bg-secondary/50 p-2 rounded-lg cursor-pointer transition-colors"
@@ -309,19 +322,33 @@ export default function Home() {
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-medium">Daily Word Count</span>
-                        <span className="text-sm text-muted-foreground">750 / 1000</span>
+                        <span className="text-sm text-muted-foreground">
+                          {writingGoals?.dailyWordCount ? 
+                            `${writingGoals.dailyWordCount.current} / ${writingGoals.dailyWordCount.goal}` : 
+                            "0 / 500"}
+                        </span>
                       </div>
                       <div className="w-full bg-secondary rounded-full h-2">
-                        <div className="bg-primary h-2 rounded-full transition-all duration-300" style={{ width: "75%" }} />
+                        <div 
+                          className="bg-primary h-2 rounded-full transition-all duration-300" 
+                          style={{ width: `${writingGoals?.dailyWordCount?.percentage || 0}%` }} 
+                        />
                       </div>
                     </div>
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-medium">Weekly Posts</span>
-                        <span className="text-sm text-muted-foreground">5 / 7</span>
+                        <span className="text-sm text-muted-foreground">
+                          {writingGoals?.weeklyPosts ? 
+                            `${writingGoals.weeklyPosts.current} / ${writingGoals.weeklyPosts.goal}` : 
+                            "0 / 5"}
+                        </span>
                       </div>
                       <div className="w-full bg-secondary rounded-full h-2">
-                        <div className="bg-accent h-2 rounded-full transition-all duration-300" style={{ width: "71%" }} />
+                        <div 
+                          className="bg-accent h-2 rounded-full transition-all duration-300" 
+                          style={{ width: `${writingGoals?.weeklyPosts?.percentage || 0}%` }} 
+                        />
                       </div>
                     </div>
                     <div className="flex items-center justify-between text-sm">
@@ -329,7 +356,9 @@ export default function Home() {
                         <Flame className="w-4 h-4 text-orange-400 fire-icon" />
                         <span>Current Streak</span>
                       </span>
-                      <span className="font-bold text-orange-400">12 days</span>
+                      <span className="font-bold text-orange-400">
+                        {writingGoals?.currentStreak || 0} days
+                      </span>
                     </div>
                   </div>
                 </CardContent>

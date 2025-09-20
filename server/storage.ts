@@ -568,6 +568,129 @@ export class DatabaseStorage implements IStorage {
       .limit(limit);
   }
 
+  async getTrendingTopics(): Promise<{ rank: number; category: string; hashtag: string; posts: string }[]> {
+    // Get trending topics based on post genres and activity
+    const topicData = await db.select({
+      genre: posts.genre,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(posts)
+    .where(
+      and(
+        eq(posts.isPrivate, false),
+        sql`${posts.createdAt} >= NOW() - INTERVAL '7 days'`
+      )
+    )
+    .groupBy(posts.genre)
+    .orderBy(sql`count(*) DESC`)
+    .limit(10);
+
+    // Format the results to match the expected structure
+    return topicData.map((item, index) => ({
+      rank: index + 1,
+      category: item.genre || "General",
+      hashtag: `#${(item.genre || "WritersCommunity").replace(/\s+/g, '')}`,
+      posts: item.count.toLocaleString(),
+    }));
+  }
+
+  async getUserStats(userId: string): Promise<{ 
+    followersCount: number; 
+    followingCount: number; 
+    postsCount: number; 
+    likesReceived: number; 
+  }> {
+    const [followersResult] = await db.select({ 
+      count: sql<number>`count(*)::int` 
+    })
+    .from(follows)
+    .where(eq(follows.followingId, userId));
+
+    const [followingResult] = await db.select({ 
+      count: sql<number>`count(*)::int` 
+    })
+    .from(follows)
+    .where(eq(follows.followerId, userId));
+
+    const [postsResult] = await db.select({ 
+      count: sql<number>`count(*)::int` 
+    })
+    .from(posts)
+    .where(eq(posts.authorId, userId));
+
+    const [likesResult] = await db.select({ 
+      count: sql<number>`count(*)::int` 
+    })
+    .from(likes)
+    .innerJoin(posts, eq(likes.postId, posts.id))
+    .where(eq(posts.authorId, userId));
+
+    return {
+      followersCount: followersResult?.count || 0,
+      followingCount: followingResult?.count || 0,
+      postsCount: postsResult?.count || 0,
+      likesReceived: likesResult?.count || 0,
+    };
+  }
+
+  async getCurrentWritingGoals(userId: string): Promise<{
+    dailyWordCount: { current: number; goal: number; percentage: number };
+    weeklyPosts: { current: number; goal: number; percentage: number };
+    currentStreak: number;
+  }> {
+    const user = await this.getUser(userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+
+    // Get today's word count
+    const [todayGoal] = await db.select()
+      .from(writingGoals)
+      .where(
+        and(
+          eq(writingGoals.userId, userId),
+          sql`DATE(${writingGoals.date}) = DATE(${today})`
+        )
+      );
+
+    // Get this week's posts
+    const [weeklyPosts] = await db.select({ 
+      count: sql<number>`count(*)::int` 
+    })
+    .from(posts)
+    .where(
+      and(
+        eq(posts.authorId, userId),
+        sql`${posts.createdAt} >= ${startOfWeek}`
+      )
+    );
+
+    const dailyWordGoal = user.wordCountGoal || 500;
+    const weeklyPostGoal = user.weeklyPostsGoal || 5;
+    const currentWordCount = todayGoal?.wordCount || 0;
+    const currentWeeklyPosts = weeklyPosts?.count || 0;
+
+    return {
+      dailyWordCount: {
+        current: currentWordCount,
+        goal: dailyWordGoal,
+        percentage: Math.min(100, Math.round((currentWordCount / dailyWordGoal) * 100)),
+      },
+      weeklyPosts: {
+        current: currentWeeklyPosts,
+        goal: weeklyPostGoal,
+        percentage: Math.min(100, Math.round((currentWeeklyPosts / weeklyPostGoal) * 100)),
+      },
+      currentStreak: user.writingStreak || 0,
+    };
+  }
+
   // Admin operations
   async setUserAdmin(adminUserId: string, targetUserId: string, isAdmin: boolean): Promise<User | null> {
     // Check if user making request is super admin

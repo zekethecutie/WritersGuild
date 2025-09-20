@@ -60,6 +60,13 @@ export default function Profile() {
     enabled: !!profileUsername,
   });
 
+  // Fetch user stats for real follower/following counts
+  const { data: userStats } = useQuery({
+    queryKey: ["/api/users", profileUser?.id, "stats"],
+    queryFn: () => fetch(`/api/users/${profileUser?.id}/stats`).then(res => res.json()),
+    enabled: !!profileUser?.id,
+  });
+
   // Fetch user posts
   const { 
     data: userPosts, 
@@ -443,12 +450,18 @@ export default function Profile() {
             <div className="flex gap-6 text-sm">
               <div className="flex items-center gap-1 cursor-pointer hover:underline">
                 <Users className="w-4 h-4" />
-                <span className="font-semibold">247</span>
+                <span className="font-semibold">{userStats?.followingCount || 0}</span>
                 <span className="text-muted-foreground">Following</span>
               </div>
               <div className="flex items-center gap-1 cursor-pointer hover:underline">
                 <Users className="w-4 h-4" />
-                <span className="font-semibold">1.2k</span>
+                <span className="font-semibold">
+                  {userStats?.followersCount ? 
+                    userStats.followersCount > 1000 ? 
+                      `${(userStats.followersCount / 1000).toFixed(1)}k` : 
+                      userStats.followersCount.toString() : 
+                    '0'}
+                </span>
                 <span className="text-muted-foreground">Followers</span>
               </div>
               {profileUser.writingStreak > 0 && (
