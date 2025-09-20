@@ -92,6 +92,8 @@ export default function PostCard({ post }: PostCardProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/trending/posts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/trending/topics"] });
       toast({
         title: "Reposted!",
         description: "Post has been shared to your profile.",
@@ -253,6 +255,7 @@ export default function PostCard({ post }: PostCardProps) {
     <article
       ref={postRef}
       data-post-download
+      data-post-id={post.id}
       className="border-b border-border p-6 hover:bg-card/50 transition-colors"
     >
       <div className="flex space-x-3">
@@ -379,7 +382,7 @@ export default function PostCard({ post }: PostCardProps) {
           )}
 
           {/* Engagement Buttons */}
-          <div className="flex items-center justify-between text-muted-foreground -mx-2">
+          <div className="flex items-center justify-between text-muted-foreground -mx-2" data-hide-in-image="true">
             <Button
               variant="ghost"
               size="sm"
@@ -445,6 +448,8 @@ export default function PostCard({ post }: PostCardProps) {
             </Button>
 
             <PostDownload post={post} postRef={postRef} />
+
+            <SavePostImage postRef={postRef} postId={post.id} disabled={!user} />
 
             {(user?.isAdmin || user?.isSuperAdmin) && (
               <Button
