@@ -86,17 +86,24 @@ export class DatabaseStorage implements IStorage {
   // Initialize hardcoded admin account
   async initializeAdminAccount(): Promise<void> {
     try {
+      // Add a small delay to ensure database is ready
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       // Check if the admin account already exists
       let existingAdmin;
       try {
         existingAdmin = await this.getUserByUsername("itsicxrus");
-      } catch (error) {
-        // Column might not exist yet, continue with creation
-        console.log("Admin check failed, will attempt to create after migration");
-        return;
+      } catch (error: any) {
+        // If column doesn't exist, database schema isn't ready
+        if (error.code === '42703' || error.code === '42P01') {
+          console.log("⏳ Database schema not ready yet, skipping admin creation");
+          return;
+        }
+        console.log("Admin check failed, will attempt to create:", error.message);
       }
 
       if (!existingAdmin) {
+        // Use dynamic import for ES modules
         const bcrypt = await import("bcrypt");
         const hashedPassword = await bcrypt.hash("122209", 10);
         
@@ -117,8 +124,14 @@ export class DatabaseStorage implements IStorage {
       } else {
         console.log("✅ Admin account @itsicxrus already exists");
       }
-    } catch (error) {
-      console.error("❌ Error creating admin account:", error);
+    } catch (error: any) {
+      if (error.code === '42703') {
+        console.log("⏳ Database columns not ready yet, will retry on next startup");
+      } else if (error.code === '23505') {
+        console.log("✅ Admin account @itsicxrus already exists (duplicate key)");
+      } else {
+        console.error("❌ Error creating admin account:", error.message);
+      }
       // Don't throw, let the app continue running
     }
   }

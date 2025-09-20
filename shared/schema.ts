@@ -25,14 +25,14 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// Users table
+// Users table  
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   email: varchar("email").unique(),
   password: varchar("password"),
   firstName: varchar("first_name", { length: 255 }).notNull().default(""),
   lastName: varchar("last_name", { length: 255 }).notNull().default(""),
-  username: varchar("username", { length: 255 }).notNull().unique().default(""),
+  username: varchar("username", { length: 255 }).notNull().unique(),
   bio: text("bio"),
   location: varchar("location"),
   website: varchar("website"),

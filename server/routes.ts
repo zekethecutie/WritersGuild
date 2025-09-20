@@ -65,6 +65,15 @@ const requireAuth = (req: any, res: any, next: any) => {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize admin account
   await storage.initializeAdminAccount();
+  
+  // Retry admin account creation after a delay (in case database wasn't ready)
+  setTimeout(async () => {
+    try {
+      await storage.initializeAdminAccount();
+    } catch (error) {
+      console.log("Delayed admin initialization attempt completed");
+    }
+  }, 5000);
 
   // Session middleware
   app.set("trust proxy", 1);
@@ -133,10 +142,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Find user by email or username
       let user = null;
-      if (email.includes('@')) {
-        user = await storage.getUserByEmail(email);
-      } else {
-        user = await storage.getUserByUsername(email);
+      try {
+        if (email.includes('@')) {
+          user = await storage.getUserByEmail(email);
+        } else {
+          user = await storage.getUserByUsername(email);
+        }
+      } catch (error: any) {
+        console.error("Database error during login:", error);
+        return res.status(500).json({ message: "Database error, please try again" });
       }
 
       if (!user) {
@@ -162,8 +176,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Save session explicitly
       await new Promise<void>((resolve, reject) => {
         req.session.save((err) => {
-          if (err) reject(err);
-          else resolve();
+          if (err) {
+            console.error("Session save error:", err);
+            reject(err);
+          } else {
+            resolve();
+          }
         });
       });
 
@@ -171,7 +189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ user: { ...user, password: undefined } });
     } catch (error) {
       console.error("Login error:", error);
-      res.status(500).json({ message: "Failed to login" });
+      res.status(500).json({ message: "Failed to login. Please try again." });
     }
   });
 
