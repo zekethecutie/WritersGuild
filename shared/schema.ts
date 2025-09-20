@@ -54,7 +54,7 @@ export const users = pgTable("users", {
 // Posts table
 export const posts = pgTable("posts", {
   id: uuid("id").defaultRandom().primaryKey(),
-  authorId: varchar("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  authorId: uuid("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
   formattedContent: jsonb("formatted_content"), // Rich text formatting data
   postType: varchar("post_type").notNull().default("text"), // text, poetry, story, challenge
@@ -74,7 +74,7 @@ export const posts = pgTable("posts", {
 // Likes table
 export const likes = pgTable("likes", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   postId: uuid("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -82,10 +82,10 @@ export const likes = pgTable("likes", {
 // Comments table
 export const comments = pgTable("comments", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   postId: uuid("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
-  parentId: uuid("parent_id").references(() => comments.id, { onDelete: "cascade" }),
+  parentId: uuid("parent_id"),
   level: integer("level").default(0), // For nested threading
   likesCount: integer("likes_count").default(0),
   createdAt: timestamp("created_at").defaultNow(),
@@ -94,7 +94,7 @@ export const comments = pgTable("comments", {
 
 export const commentLikes = pgTable("comment_likes", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   commentId: uuid("comment_id").notNull().references(() => comments.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
@@ -105,15 +105,15 @@ export const commentLikes = pgTable("comment_likes", {
 // Follows table
 export const follows = pgTable("follows", {
   id: uuid("id").defaultRandom().primaryKey(),
-  followerId: varchar("follower_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  followingId: varchar("following_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  followerId: uuid("follower_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  followingId: uuid("following_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Reposts table
 export const reposts = pgTable("reposts", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   postId: uuid("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
   comment: text("comment"), // Quote repost comment
   createdAt: timestamp("created_at").defaultNow(),
@@ -122,7 +122,7 @@ export const reposts = pgTable("reposts", {
 // Bookmarks table
 export const bookmarks = pgTable("bookmarks", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   postId: uuid("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -130,9 +130,9 @@ export const bookmarks = pgTable("bookmarks", {
 // Notifications table
 export const notifications = pgTable("notifications", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   type: varchar("type").notNull(), // like, comment, follow, repost, mention
-  actorId: varchar("actor_id").references(() => users.id, { onDelete: "cascade" }),
+  actorId: uuid("actor_id").references(() => users.id, { onDelete: "cascade" }),
   postId: uuid("post_id").references(() => posts.id, { onDelete: "cascade" }),
   isRead: boolean("is_read").default(false),
   data: jsonb("data"),
@@ -142,7 +142,7 @@ export const notifications = pgTable("notifications", {
 // Writing goals table
 export const writingGoals = pgTable("writing_goals", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   date: timestamp("date").notNull(),
   wordCount: integer("word_count").default(0),
   postsCount: integer("posts_count").default(0),
@@ -153,7 +153,7 @@ export const writingGoals = pgTable("writing_goals", {
 // Series table for Wattpad-like functionality
 export const series = pgTable("series", {
   id: uuid("id").defaultRandom().primaryKey(),
-  authorId: varchar("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  authorId: uuid("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   coverImageUrl: text("cover_image_url"),
@@ -190,7 +190,7 @@ export const chapters = pgTable("chapters", {
 // Series followers table
 export const seriesFollowers = pgTable("series_followers", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   seriesId: uuid("series_id").notNull().references(() => series.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -198,7 +198,7 @@ export const seriesFollowers = pgTable("series_followers", {
 // Series likes table
 export const seriesLikes = pgTable("series_likes", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   seriesId: uuid("series_id").notNull().references(() => series.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -206,7 +206,7 @@ export const seriesLikes = pgTable("series_likes", {
 // Chapter likes table
 export const chapterLikes = pgTable("chapter_likes", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   chapterId: uuid("chapter_id").notNull().references(() => chapters.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -214,10 +214,10 @@ export const chapterLikes = pgTable("chapter_likes", {
 // Chapter comments table
 export const chapterComments = pgTable("chapter_comments", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   chapterId: uuid("chapter_id").notNull().references(() => chapters.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
-  parentId: uuid("parent_id").references(() => chapterComments.id, { onDelete: "cascade" }),
+  parentId: uuid("parent_id"),
   level: integer("level").default(0),
   likesCount: integer("likes_count").default(0),
   createdAt: timestamp("created_at").defaultNow(),
@@ -227,7 +227,7 @@ export const chapterComments = pgTable("chapter_comments", {
 // Reading progress table
 export const readingProgress = pgTable("reading_progress", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   seriesId: uuid("series_id").notNull().references(() => series.id, { onDelete: "cascade" }),
   lastChapterId: uuid("last_chapter_id").references(() => chapters.id, { onDelete: "set null" }),
   progressPercentage: integer("progress_percentage").default(0),
@@ -239,7 +239,7 @@ export const readingProgress = pgTable("reading_progress", {
 // Leaderboards table
 export const leaderboards = pgTable("leaderboards", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   category: varchar("category").notNull(), // 'weekly_posts', 'monthly_words', 'likes_received', 'series_followers', etc.
   period: varchar("period").notNull(), // 'daily', 'weekly', 'monthly', 'yearly', 'all_time'
   score: integer("score").default(0),
