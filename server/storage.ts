@@ -51,7 +51,7 @@ export interface IStorage {
   
   // Comment operations
   createComment(comment: InsertComment): Promise<Comment>;
-  getCommentsByPost(postId: string): Promise<Comment[]>;
+  getCommentsByPost(postId: string, userId?: string): Promise<Comment[]>;
   
   // Follow operations
   followUser(followerId: string, followingId: string): Promise<Follow>;
@@ -338,11 +338,51 @@ export class DatabaseStorage implements IStorage {
     return newComment;
   }
 
-  async getCommentsByPost(postId: string): Promise<Comment[]> {
-    return db.select()
+  async getCommentsByPost(postId: string, userId?: string): Promise<Comment[]> {
+    // Get base comments with authors
+    const baseComments = await db.select({
+      id: comments.id,
+      userId: comments.userId,
+      postId: comments.postId,
+      content: comments.content,
+      parentId: comments.parentId,
+      level: comments.level,
+      likesCount: comments.likesCount,
+      createdAt: comments.createdAt,
+      updatedAt: comments.updatedAt,
+      author: {
+        id: users.id,
+        username: users.username,
+        displayName: users.displayName,
+        profileImageUrl: users.profileImageUrl,
+        isVerified: users.isVerified,
+      }
+    })
       .from(comments)
+      .leftJoin(users, eq(comments.userId, users.id))
       .where(eq(comments.postId, postId))
       .orderBy(asc(comments.createdAt));
+
+    if (!userId || baseComments.length === 0) {
+      return baseComments;
+    }
+
+    // Get like status for current user
+    const commentIds = baseComments.map(c => c.id);
+    const userLikes = await db.select({ commentId: commentLikes.commentId })
+      .from(commentLikes)
+      .where(and(
+        eq(commentLikes.userId, userId),
+        sql`${commentLikes.commentId} = ANY(${sql.array(commentIds, 'uuid')})`
+      ));
+
+    const likedCommentIds = new Set(userLikes.map(like => like.commentId));
+
+    // Add isLiked status to comments
+    return baseComments.map(comment => ({
+      ...comment,
+      isLiked: likedCommentIds.has(comment.id)
+    }));
   }
 
   async getRepliesForComment(commentId: string): Promise<Comment[]> {

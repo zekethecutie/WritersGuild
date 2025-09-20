@@ -371,7 +371,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/posts/:id/comments', async (req, res) => {
     try {
       const { id: postId } = req.params;
-      const comments = await storage.getCommentsByPost(postId);
+      const userId = (req as any).session?.userId; // Get user ID if authenticated
+      const comments = await storage.getCommentsByPost(postId, userId);
       res.json(comments);
     } catch (error) {
       console.error("Error fetching comments:", error);
