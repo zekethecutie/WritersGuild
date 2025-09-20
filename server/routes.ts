@@ -669,7 +669,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const spotify = await getSpotifyClient();
-      const results = await spotify.search(query as string, [type as any], 'US', parseInt(limit as string));
+      const results = await spotify.search(query as string, [type as 'track'], 'US', parseInt(limit as string));
       res.json(results);
     } catch (error) {
       console.error("Error searching Spotify:", error);
@@ -700,7 +700,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ user: { ...user, password: undefined } });
     } catch (error) {
       console.error("Error setting admin status:", error);
-      res.status(403).json({ message: error.message });
+      res.status(403).json({ message: (error as Error).message || 'Error setting admin status' });
     }
   });
 
@@ -714,7 +714,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ user: { ...user, password: undefined } });
     } catch (error) {
       console.error("Error setting verification status:", error);
-      res.status(403).json({ message: error.message });
+      res.status(403).json({ message: (error as Error).message || 'Error setting verification status' });
     }
   });
 
@@ -727,7 +727,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "User deleted successfully" });
     } catch (error) {
       console.error("Error deleting user:", error);
-      res.status(403).json({ message: error.message });
+      res.status(403).json({ message: (error as Error).message || 'Error deleting user' });
     }
   });
 
@@ -740,7 +740,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Post deleted successfully" });
     } catch (error) {
       console.error("Error deleting post:", error);
-      res.status(403).json({ message: error.message });
+      res.status(403).json({ message: (error as Error).message || 'Error deleting post' });
     }
   });
 

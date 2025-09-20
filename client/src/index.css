@@ -133,6 +133,17 @@
   -webkit-text-fill-color: transparent;
   background-clip: text;
   color: transparent;
+  /* Fallback for unsupported browsers */
+  display: block;
+  font-weight: bold;
+}
+
+/* Ensure text is visible on all devices */
+@supports not (-webkit-background-clip: text) {
+  .gradient-text {
+    color: hsl(var(--primary));
+    -webkit-text-fill-color: unset;
+  }
 }
 
 /* Poetry formatting styles */

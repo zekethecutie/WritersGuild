@@ -45,7 +45,8 @@ export default function Home() {
     queryKey: ["/api/posts", activeTab === "following" ? user?.id : undefined],
     queryFn: ({ pageParam = 0 }) => 
       fetch(`/api/posts?limit=20&offset=${pageParam}&userId=${activeTab === "following" ? user?.id || "" : ""}`).then(res => res.json()),
-    getNextPageParam: (lastPage, pages) => {
+    initialPageParam: 0,
+    getNextPageParam: (lastPage: any, pages) => {
       return lastPage.length === 20 ? pages.length * 20 : undefined;
     },
     enabled: !!user,
@@ -203,8 +204,8 @@ export default function Home() {
                     </Button>
                   </div>
                 ) : (
-                  allPosts.map((post: Post) => (
-                    <PostCard key={post.id} post={post} />
+                  allPosts.map((post: any) => (
+                    <PostCard key={post.id} post={post as Post} />
                   ))
                 )}
                 

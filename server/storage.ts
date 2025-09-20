@@ -402,50 +402,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getFollowers(userId: string): Promise<User[]> {
-    return db.select({
-      id: users.id,
-      email: users.email,
-      firstName: users.firstName,
-      lastName: users.lastName,
-      profileImageUrl: users.profileImageUrl,
-      username: users.username,
-      bio: users.bio,
-      location: users.location,
-      website: users.website,
-      genres: users.genres,
-      writingStreak: users.writingStreak,
-      wordCountGoal: users.wordCountGoal,
-      weeklyPostsGoal: users.weeklyPostsGoal,
-      isVerified: users.isVerified,
-      coverImageUrl: users.coverImageUrl,
-      createdAt: users.createdAt,
-      updatedAt: users.updatedAt,
-    })
+    return db.select()
       .from(users)
       .innerJoin(follows, eq(follows.followerId, users.id))
       .where(eq(follows.followingId, userId));
   }
 
   async getFollowing(userId: string): Promise<User[]> {
-    return db.select({
-      id: users.id,
-      email: users.email,
-      firstName: users.firstName,
-      lastName: users.lastName,
-      profileImageUrl: users.profileImageUrl,
-      username: users.username,
-      bio: users.bio,
-      location: users.location,
-      website: users.website,
-      genres: users.genres,
-      writingStreak: users.writingStreak,
-      wordCountGoal: users.wordCountGoal,
-      weeklyPostsGoal: users.weeklyPostsGoal,
-      isVerified: users.isVerified,
-      coverImageUrl: users.coverImageUrl,
-      createdAt: users.createdAt,
-      updatedAt: users.updatedAt,
-    })
+    return db.select()
       .from(users)
       .innerJoin(follows, eq(follows.followingId, users.id))
       .where(eq(follows.followerId, userId));
@@ -561,8 +525,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         or(
           sql`${users.username} ILIKE ${`%${query}%`}`,
-          sql`${users.firstName} ILIKE ${`%${query}%`}`,
-          sql`${users.lastName} ILIKE ${`%${query}%`}`,
+          sql`${users.displayName} ILIKE ${`%${query}%`}`,
           sql`${users.bio} ILIKE ${`%${query}%`}`
         )
       )
