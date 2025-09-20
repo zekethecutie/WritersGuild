@@ -8,6 +8,7 @@ import SpotifyPlayer from "@/components/spotify-player";
 import ImageGallery from "@/components/image-gallery";
 import PostDownload from "@/components/post-download";
 import SavePostImage from "@/components/save-post-image";
+import CommentThread from "@/components/comment-thread";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
@@ -41,6 +42,7 @@ export default function PostCard({ post }: PostCardProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showComments, setShowComments] = useState(false);
   const postRef = useRef<HTMLDivElement>(null);
 
   // Mock author data if not provided (in real app, this would be joined in the query)
@@ -400,7 +402,8 @@ export default function PostCard({ post }: PostCardProps) {
             <Button
               variant="ghost"
               size="sm"
-              className="engagement-btn hover:text-blue-400 group"
+              onClick={() => setShowComments(!showComments)}
+              className={`engagement-btn hover:text-blue-400 group ${showComments ? "text-blue-400" : ""}`}
               data-testid="button-comment-post"
             >
               <div className="p-2 rounded-full group-hover:bg-blue-400/10 transition-colors">
@@ -479,6 +482,13 @@ export default function PostCard({ post }: PostCardProps) {
           </div>
         </div>
       </div>
+      
+      {/* Comments Section */}
+      {showComments && (
+        <div className="border-t border-border mt-4 pt-4">
+          <CommentThread postId={post.id} initialCount={post.commentsCount || 0} />
+        </div>
+      )}
     </article>
   );
 }

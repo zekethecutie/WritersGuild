@@ -29,18 +29,32 @@ export default function CommentCard({
   onReply, 
   onLike 
 }: CommentCardProps) {
-  const [showReplies, setShowReplies] = useState(false);
 
   const author = comment.author || {
     id: comment.userId,
+    email: null,
+    password: null,
+    displayName: `User ${comment.userId.slice(-4)}`,
     username: `user${comment.userId.slice(-4)}`,
-    firstName: "User",
-    lastName: `${comment.userId.slice(-4)}`,
+    bio: null,
+    location: null,
+    website: null,
     profileImageUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.userId}`,
+    coverImageUrl: null,
     isVerified: false,
     isAdmin: false,
     isSuperAdmin: false,
-    displayName: `User ${comment.userId.slice(-4)}`
+    writingStreak: 0,
+    wordCountGoal: 500,
+    weeklyPostsGoal: 5,
+    genres: [],
+    postsCount: 0,
+    followersCount: 0,
+    followingCount: 0,
+    likesCount: 0,
+    commentsCount: 0,
+    createdAt: new Date(),
+    updatedAt: new Date()
   } as User;
 
   return (
@@ -48,7 +62,7 @@ export default function CommentCard({
       <div className="flex space-x-3">
         <img
           src={author.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${author.username}`}
-          alt={`${author.firstName} ${author.lastName} profile`}
+          alt={`${author.displayName} profile`}
           className="w-8 h-8 rounded-full object-cover flex-shrink-0"
         />
         <div className="flex-1 min-w-0">
@@ -101,7 +115,7 @@ export default function CommentCard({
 
             <span className="text-muted-foreground text-xs flex items-center gap-1">
               <Clock className="w-3 h-3" />
-              {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
+              {formatDistanceToNow(new Date(comment.createdAt || new Date()), { addSuffix: true })}
             </span>
           </div>
 
@@ -143,33 +157,7 @@ export default function CommentCard({
             </Button>
           </div>
 
-          {/* Replies */}
-          {comment.replies && comment.replies.length > 0 && (
-            <div className="mt-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowReplies(!showReplies)}
-                className="text-primary text-xs p-0 h-auto"
-              >
-                {showReplies ? 'Hide' : 'Show'} {comment.replies.length} replies
-              </Button>
-
-              {showReplies && (
-                <div className="mt-2 space-y-2">
-                  {comment.replies.map((reply) => (
-                    <CommentCard
-                      key={reply.id}
-                      comment={reply}
-                      level={level + 1}
-                      onReply={onReply}
-                      onLike={onLike}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+{/* Note: Reply rendering is now handled by CommentTreeNode to avoid dual recursion */}
         </div>
       </div>
     </div>

@@ -9,6 +9,7 @@ import {
   integer,
   boolean,
   uuid,
+  unique,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -90,6 +91,16 @@ export const comments = pgTable("comments", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+export const commentLikes = pgTable("comment_likes", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  commentId: uuid("comment_id").notNull().references(() => comments.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  uniqueUserComment: unique().on(table.userId, table.commentId),
+}));
+
 
 // Follows table
 export const follows = pgTable("follows", {
@@ -468,6 +479,8 @@ export type InsertPost = z.infer<typeof insertPostSchema>;
 export type Post = typeof posts.$inferSelect;
 export type InsertComment = z.infer<typeof insertCommentSchema>;
 export type Comment = typeof comments.$inferSelect;
+export type CommentLike = typeof commentLikes.$inferSelect;
+export type InsertCommentLike = typeof commentLikes.$inferInsert;
 export type Like = typeof likes.$inferSelect;
 export type Follow = typeof follows.$inferSelect;
 export type Repost = typeof reposts.$inferSelect;

@@ -409,6 +409,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/comments/:id/like', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { id: commentId } = req.params;
+
+      const hasLiked = await storage.hasUserLikedComment(userId, commentId);
+      
+      if (hasLiked) {
+        await storage.unlikeComment(userId, commentId);
+        res.json({ liked: false, message: "Comment unliked" });
+      } else {
+        await storage.likeComment(userId, commentId);
+        res.json({ liked: true, message: "Comment liked" });
+      }
+    } catch (error) {
+      console.error("Error toggling comment like:", error);
+      res.status(500).json({ message: "Failed to toggle comment like" });
+    }
+  });
+
   // Follow routes
   app.post('/api/users/:id/follow', requireAuth, async (req: any, res) => {
     try {

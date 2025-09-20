@@ -3,6 +3,7 @@ import {
   posts,
   likes,
   comments,
+  commentLikes,
   follows,
   reposts,
   bookmarks,
@@ -14,6 +15,8 @@ import {
   type Post,
   type InsertComment,
   type Comment,
+  type CommentLike,
+  type InsertCommentLike,
   type Like,
   type Follow,
   type Repost,
@@ -379,6 +382,42 @@ export class DatabaseStorage implements IStorage {
     await this.checkAutoVerification(reply.userId);
     
     return newReply;
+  }
+
+  // Comment engagement operations
+  async likeComment(userId: string, commentId: string): Promise<void> {
+    // Insert like record (ignore if already exists)
+    await db
+      .insert(commentLikes)
+      .values({ userId, commentId })
+      .onConflictDoNothing();
+    
+    // Increment likes count
+    await db
+      .update(comments)
+      .set({ likesCount: sql`${comments.likesCount} + 1` })
+      .where(eq(comments.id, commentId));
+  }
+
+  async unlikeComment(userId: string, commentId: string): Promise<void> {
+    // Delete like record
+    await db
+      .delete(commentLikes)
+      .where(and(eq(commentLikes.userId, userId), eq(commentLikes.commentId, commentId)));
+    
+    // Decrement likes count (prevent negative)
+    await db
+      .update(comments)
+      .set({ likesCount: sql`GREATEST(${comments.likesCount} - 1, 0)` })
+      .where(eq(comments.id, commentId));
+  }
+
+  async hasUserLikedComment(userId: string, commentId: string): Promise<boolean> {
+    const [like] = await db
+      .select()
+      .from(commentLikes)
+      .where(and(eq(commentLikes.userId, userId), eq(commentLikes.commentId, commentId)));
+    return !!like;
   }
 
   // Follow operations

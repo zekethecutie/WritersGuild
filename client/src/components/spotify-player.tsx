@@ -209,7 +209,7 @@ export default function SpotifyPlayer({
             {track.name}
           </p>
           <p className={`text-green-100/80 truncate ${compact ? "text-xs" : "text-sm"}`}>
-            {track.artist} • {track.album}
+            {track.artist} • {track.album?.name || track.album}
           </p>
           {!compact && (
             <div className="flex items-center space-x-2 mt-1">
