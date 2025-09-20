@@ -60,7 +60,12 @@ export default function Home() {
   // Fetch suggested users
   const { data: suggestedUsers } = useQuery({
     queryKey: ["/api/suggested/users"],
-    queryFn: () => fetch("/api/suggested/users?limit=3").then(res => res.json()),
+    queryFn: async () => {
+      const res = await fetch("/api/suggested/users?limit=3");
+      const data = await res.json();
+      // Return empty array if API returns error or non-array data
+      return Array.isArray(data) ? data : [];
+    },
     enabled: !!user,
   });
 
@@ -263,20 +268,20 @@ export default function Home() {
                 <CardContent className="p-4">
                   <h3 className="font-bold text-lg mb-4">Writers to Follow</h3>
                   <div className="space-y-4">
-                    {suggestedUsers?.map((suggestedUser: User) => (
+                    {suggestedUsers && suggestedUsers.length > 0 ? suggestedUsers.map((suggestedUser: User) => (
                       <div key={suggestedUser.id} className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
                           <img 
                             src={suggestedUser.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${suggestedUser.username}`}
-                            alt={`${suggestedUser.firstName} ${suggestedUser.lastName}`}
+                            alt={suggestedUser.displayName}
                             className="w-10 h-10 rounded-full"
                           />
                           <div>
                             <p className="font-semibold text-sm">
-                              {suggestedUser.firstName} {suggestedUser.lastName}
+                              {suggestedUser.displayName}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {suggestedUser.genres?.[0] || "Writer"}
+                              @{suggestedUser.username}
                             </p>
                           </div>
                         </div>
@@ -288,7 +293,9 @@ export default function Home() {
                           Follow
                         </Button>
                       </div>
-                    ))}
+                    )) : (
+                      <p className="text-sm text-muted-foreground text-center">No suggestions available</p>
+                    )}
                   </div>
                 </CardContent>
               </Card>

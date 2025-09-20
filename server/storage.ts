@@ -596,8 +596,8 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .where(
         and(
-          sql`${users.id} != ${userId}`,
-          sql`${users.id} NOT IN (
+          sql`${users.id}::text != ${userId}`,
+          sql`${users.id}::text NOT IN (
             SELECT following_id FROM follows WHERE follower_id = ${userId}
           )`
         )
