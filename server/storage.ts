@@ -111,8 +111,7 @@ export class DatabaseStorage implements IStorage {
           username: "itsicxrus",
           email: "admin@writersguild.com",
           password: hashedPassword,
-          firstName: "Super",
-          lastName: "Admin",
+          displayName: "Super Admin",
           bio: "Owner and Super Administrator of Writers Guild",
           isVerified: true,
           isAdmin: true,
@@ -196,14 +195,13 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async createUser(userData: { email?: string; password: string; firstName: string; lastName: string; username: string }): Promise<User> {
+  async createUser(userData: { email?: string; password: string; displayName: string; username: string }): Promise<User> {
     const [user] = await db
       .insert(users)
       .values({
         email: userData.email,
         password: userData.password,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
+        displayName: userData.displayName,
         username: userData.username,
       })
       .returning();

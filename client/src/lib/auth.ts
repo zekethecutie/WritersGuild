@@ -1,9 +1,8 @@
 
 export interface User {
   id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
+  email?: string;
+  displayName: string;
   profileImageUrl?: string;
   username: string;
   bio?: string;
@@ -49,10 +48,9 @@ export class AuthService {
   }
 
   async register(userData: {
-    email: string;
+    email?: string;
     password: string;
-    firstName: string;
-    lastName: string;
+    displayName: string;
     username: string;
   }): Promise<{ success: boolean; user?: User; error?: string }> {
     try {

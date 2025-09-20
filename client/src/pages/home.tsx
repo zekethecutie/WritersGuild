@@ -13,25 +13,23 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, TrendingUp, Flame, Music } from "lucide-react";
+import { AuthDialog } from "@/components/auth-dialog";
 import type { Post, User } from "@shared/schema";
 
 export default function Home() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("for-you");
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
 
-  // Redirect if not authenticated
+  // Show login prompt if not authenticated but don't force redirect
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
+        title: "Welcome to Writers Guild",
+        description: "Create an account or log in to share your writing",
+        variant: "default",
       });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
-      return;
     }
   }, [isAuthenticated, isLoading, toast]);
 
@@ -148,9 +146,19 @@ export default function Home() {
                 </Tabs>
               </div>
 
-              {/* Post Composer */}
+              {/* Post Composer or Auth Prompt */}
               <div className="border-b border-border">
-                <PostComposer />
+                {isAuthenticated ? (
+                  <PostComposer />
+                ) : (
+                  <div className="p-6 text-center">
+                    <h3 className="text-lg font-semibold mb-2">Share Your Writing</h3>
+                    <p className="text-muted-foreground mb-4">Join Writers Guild to post your stories, poems, and creative works</p>
+                    <Button onClick={() => setShowAuthDialog(true)}>
+                      Create Account
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* Posts Feed */}
@@ -355,6 +363,12 @@ export default function Home() {
       </div>
       
       <MobileNav />
+      
+      <AuthDialog 
+        open={showAuthDialog} 
+        onOpenChange={setShowAuthDialog}
+        onSuccess={() => window.location.reload()}
+      />
     </div>
   );
 }

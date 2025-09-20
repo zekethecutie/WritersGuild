@@ -94,7 +94,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.post('/api/auth/register', async (req, res) => {
     try {
-      const { email, password, firstName, lastName, username } = req.body;
+      const { email, password, displayName, username } = req.body;
+
+      if (!displayName || !username || !password) {
+        return res.status(400).json({ message: "Display name, username, and password are required" });
+      }
 
       // Check if email is provided and user already exists
       if (email) {
@@ -117,14 +121,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.createUser({
         email: email || undefined,
         password: hashedPassword,
-        firstName,
-        lastName,
+        displayName,
         username,
       });
 
       // Set session
       (req.session as any).userId = user.id;
 
+      console.log(`✅ User registered successfully: ${user.username} (${user.id})`);
       res.json({ user: { ...user, password: undefined } });
     } catch (error) {
       console.error("Registration error:", error);

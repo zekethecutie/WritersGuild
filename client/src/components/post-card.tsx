@@ -48,6 +48,7 @@ export default function PostCard({ post }: PostCardProps) {
     username: `user${post.authorId.slice(-4)}`,
     firstName: "Writer",
     lastName: `${post.authorId.slice(-4)}`,
+    displayName: `User ${post.authorId.slice(-4)}`, // Added displayName
     profileImageUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.authorId}`,
     isVerified: false,
   } as User;
@@ -182,8 +183,8 @@ export default function PostCard({ post }: PostCardProps) {
 
   const renderFormattedContent = () => {
     const shouldExpand = post.content.length > 300;
-    const displayContent = shouldExpand && !isExpanded 
-      ? post.content.substring(0, 300) + "..." 
+    const displayContent = shouldExpand && !isExpanded
+      ? post.content.substring(0, 300) + "..."
       : post.content;
 
     if (post.postType === "poetry") {
@@ -218,7 +219,7 @@ export default function PostCard({ post }: PostCardProps) {
             )}
             Working on a new {post.genre || "story"}. Here's an excerpt:
           </p>
-          
+
           <div className={`rounded-xl p-5 font-serif ${getPostTypeStyle()}`}>
             <p className="italic text-foreground/90 leading-relaxed">
               "{displayContent}"
@@ -248,7 +249,7 @@ export default function PostCard({ post }: PostCardProps) {
   };
 
   return (
-    <article 
+    <article
       ref={postRef}
       data-post-download
       className="border-b border-border p-6 hover:bg-card/50 transition-colors"
@@ -264,9 +265,9 @@ export default function PostCard({ post }: PostCardProps) {
           {/* Author Info */}
           <div className="flex items-center flex-wrap gap-2 mb-2">
             <div className="flex items-center space-x-2">
-              <h3 className="font-semibold hover:underline cursor-pointer" data-testid="text-author-name">
-                {author.firstName} {author.lastName}
-              </h3>
+              <span className="font-semibold hover:underline cursor-pointer">
+                    {author.displayName}
+                  </span>
               <span className="text-muted-foreground text-sm" data-testid="text-author-username">
                 @{author.username}
               </span>
@@ -333,14 +334,14 @@ export default function PostCard({ post }: PostCardProps) {
               )}
             </div>
           </div>
-          
+
           {/* Post Content */}
           {renderFormattedContent()}
 
           {/* Images */}
           {post.imageUrls && post.imageUrls.length > 0 && (
             <div className="mb-4">
-              <ImageGallery 
+              <ImageGallery
                 images={post.imageUrls}
                 className="rounded-xl overflow-hidden"
                 data-testid="post-image-gallery"

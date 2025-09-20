@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -41,6 +40,7 @@ export default function CommentCard({
     isVerified: false,
     isAdmin: false,
     isSuperAdmin: false,
+    displayName: `User ${comment.userId.slice(-4)}`
   } as User;
 
   return (
@@ -56,7 +56,7 @@ export default function CommentCard({
           <div className="flex items-center flex-wrap gap-2 mb-1">
             <div className="flex items-center space-x-2">
               <h4 className="font-medium text-sm">
-                {author.firstName} {author.lastName}
+                {author.displayName}
               </h4>
               <span className="text-muted-foreground text-xs">
                 @{author.username}
@@ -154,7 +154,7 @@ export default function CommentCard({
               >
                 {showReplies ? 'Hide' : 'Show'} {comment.replies.length} replies
               </Button>
-              
+
               {showReplies && (
                 <div className="mt-2 space-y-2">
                   {comment.replies.map((reply) => (

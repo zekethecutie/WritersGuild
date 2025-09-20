@@ -38,18 +38,14 @@ export default function Profile() {
   // Use current user's username/id if no username provided
   const profileUsername = username || currentUser?.username || currentUser?.id;
 
-  // Redirect if not authenticated
+  // Show login prompt if not authenticated but allow viewing
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
+        title: "Limited Access",
+        description: "Log in to see all features and interact with posts",
+        variant: "default",
       });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
-      return;
     }
   }, [isAuthenticated, authLoading, toast]);
 
@@ -339,7 +335,7 @@ export default function Profile() {
             <div className="mb-4">
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-bold" data-testid="text-user-name">
-                  {profileUser.firstName} {profileUser.lastName}
+                  {profileUser.displayName}
                 </h1>
                 <div className="flex items-center gap-2">
                   {profileUser.isSuperAdmin && (

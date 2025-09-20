@@ -28,8 +28,7 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
     email: "",
     password: "",
     confirmPassword: "",
-    firstName: "",
-    lastName: "",
+    displayName: "",
     username: "",
   });
 
@@ -82,10 +81,9 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
 
     try {
       const result = await authService.register({
-        email: registerForm.email, // Email is now optional, so it can be empty
+        email: registerForm.email || undefined,
         password: registerForm.password,
-        firstName: registerForm.firstName,
-        lastName: registerForm.lastName,
+        displayName: registerForm.displayName,
         username: registerForm.username,
       });
 
@@ -161,31 +159,22 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
 
           <TabsContent value="register" className="space-y-4">
             <form onSubmit={handleRegister} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="register-firstName">First Name</Label>
-                  <Input
-                    id="register-firstName"
-                    value={registerForm.firstName}
-                    onChange={(e) => setRegisterForm({ ...registerForm, firstName: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="register-lastName">Last Name</Label>
-                  <Input
-                    id="register-lastName"
-                    value={registerForm.lastName}
-                    onChange={(e) => setRegisterForm({ ...registerForm, lastName: e.target.value })}
-                    required
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="register-displayName">Display Name</Label>
+                <Input
+                  id="register-displayName"
+                  placeholder="How you want to be known"
+                  value={registerForm.displayName}
+                  onChange={(e) => setRegisterForm({ ...registerForm, displayName: e.target.value })}
+                  required
+                />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="register-username">Username</Label>
                 <Input
                   id="register-username"
+                  placeholder="Unique username"
                   value={registerForm.username}
                   onChange={(e) => setRegisterForm({ ...registerForm, username: e.target.value })}
                   required
@@ -200,7 +189,6 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
                   placeholder="Enter your email (optional)"
                   value={registerForm.email}
                   onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
-                  // Removed 'required' attribute
                 />
               </div>
 
