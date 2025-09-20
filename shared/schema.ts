@@ -53,7 +53,7 @@ export const users = pgTable("users", {
 // Posts table
 export const posts = pgTable("posts", {
   id: uuid("id").defaultRandom().primaryKey(),
-  authorId: varchar("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  authorId: uuid("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
   formattedContent: jsonb("formatted_content"), // Rich text formatting data
   postType: varchar("post_type").notNull().default("text"), // text, poetry, story, challenge
@@ -81,10 +81,10 @@ export const likes = pgTable("likes", {
 // Comments table
 export const comments = pgTable("comments", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  postId: uuid("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull(),
+  postId: uuid("post_id").notNull(),
   content: text("content").notNull(),
-  parentId: uuid("parent_id").references(() => comments.id, { onDelete: "cascade" }),
+  parentId: uuid("parent_id"),
   level: integer("level").default(0), // For nested threading
   likesCount: integer("likes_count").default(0),
   createdAt: timestamp("created_at").defaultNow(),
