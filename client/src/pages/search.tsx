@@ -8,6 +8,7 @@ import MobileNav from "@/components/mobile-nav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import FollowButton from "@/components/follow-button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -115,23 +116,7 @@ export default function Search() {
                 <p className="text-muted-foreground text-sm">@{profileUser.username}</p>
               </div>
               {showFollowButton && user?.id !== profileUser.id && (
-                <Button
-                  variant={profileUser.isFollowing ? "outline" : "default"}
-                  size="sm"
-                  className="ml-2"
-                >
-                  {profileUser.isFollowing ? (
-                    <>
-                      <UserCheck className="w-4 h-4 mr-1" />
-                      Following
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="w-4 h-4 mr-1" />
-                      Follow
-                    </>
-                  )}
-                </Button>
+                <FollowButton userId={profileUser.id} isFollowing={profileUser.isFollowing} />
               )}
             </div>
             

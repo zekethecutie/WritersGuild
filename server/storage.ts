@@ -132,7 +132,8 @@ export class DatabaseStorage implements IStorage {
       if (!existingAdmin) {
         // Use dynamic import for ES modules
         const bcrypt = await import("bcrypt");
-        const hashedPassword = await bcrypt.hash("122209", 10);
+        const adminPassword = process.env.ADMIN_PASSWORD || "defaultAdminPassword123!";
+        const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
         await db.insert(users).values({
           username: "itsicxrus",
@@ -145,8 +146,8 @@ export class DatabaseStorage implements IStorage {
           isSuperAdmin: true,
           profileImageUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=itsicxrus",
         });
-        console.log("✅ Hardcoded admin account created: @itsicxrus");
-        console.log("🔑 Admin login: username='itsicxrus', password='122209'");
+        console.log("✅ Admin account created: @itsicxrus");
+        console.log("🔑 Admin login configured via ADMIN_PASSWORD environment variable");
       } else {
         console.log("✅ Admin account @itsicxrus already exists");
       }
@@ -632,6 +633,15 @@ export class DatabaseStorage implements IStorage {
 
   async markNotificationAsRead(id: string): Promise<void> {
     await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, id));
+  }
+
+  async markAllNotificationsAsRead(userId: string): Promise<void> {
+    await db.update(notifications)
+      .set({ isRead: true })
+      .where(and(
+        eq(notifications.userId, userId),
+        eq(notifications.isRead, false)
+      ));
   }
 
   // Writing goals

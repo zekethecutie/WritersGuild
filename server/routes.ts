@@ -641,6 +641,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put('/api/notifications/read-all', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      await storage.markAllNotificationsAsRead(userId);
+      res.json({ message: "All notifications marked as read" });
+    } catch (error: any) {
+      console.error("Error marking all notifications as read:", error);
+      if (error.code === '28P01' || error.code === 'ECONNREFUSED') {
+        return res.status(503).json({ message: "Service temporarily unavailable" });
+      }
+      res.status(500).json({ message: "Failed to mark all notifications as read" });
+    }
+  });
+
   // Image upload route
   app.post('/api/upload/images', requireAuth, upload.array('images', 4), async (req: any, res) => {
     try {
@@ -957,8 +971,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.session.userId;
       const recommendedUsers = await storage.getRecommendedUsers(userId);
       res.json(recommendedUsers);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching recommended users:", error);
+      if (error.code === '28P01' || error.code === 'ECONNREFUSED') {
+        return res.status(503).json({ message: "Service temporarily unavailable" });
+      }
       res.status(500).json({ message: "Failed to fetch recommended users" });
     }
   });
@@ -967,8 +984,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const trendingUsers = await storage.getTrendingUsers();
       res.json(trendingUsers);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching trending users:", error);
+      if (error.code === '28P01' || error.code === 'ECONNREFUSED') {
+        return res.status(503).json({ message: "Service temporarily unavailable" });
+      }
       res.status(500).json({ message: "Failed to fetch trending users" });
     }
   });
@@ -977,8 +997,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const popularPosts = await storage.getPopularPosts();
       res.json(popularPosts);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching popular posts:", error);
+      if (error.code === '28P01' || error.code === 'ECONNREFUSED') {
+        return res.status(503).json({ message: "Service temporarily unavailable" });
+      }
       res.status(500).json({ message: "Failed to fetch popular posts" });
     }
   });
@@ -993,8 +1016,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const results = await storage.searchContent(query.trim());
       res.json(results);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error performing search:", error);
+      if (error.code === '28P01' || error.code === 'ECONNREFUSED') {
+        return res.status(503).json({ message: "Service temporarily unavailable" });
+      }
       res.status(500).json({ message: "Failed to perform search" });
     }
   });

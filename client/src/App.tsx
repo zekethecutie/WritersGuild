@@ -10,6 +10,7 @@ import Home from "@/pages/home";
 import Profile from "@/pages/profile";
 import Explore from "@/pages/explore";
 import Messages from "@/pages/messages";
+import Notifications from "@/pages/notifications";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -24,6 +25,7 @@ function Router() {
           <Route path="/profile/:username?" component={Profile} />
           <Route path="/explore" component={Explore} />
           <Route path="/messages" component={Messages} />
+          <Route path="/notifications" component={Notifications} />
         </>
       )}
       <Route component={NotFound} />
