@@ -261,7 +261,7 @@ export class DatabaseStorage implements IStorage {
       );
     }
 
-    return query
+    return await query
       .where(eq(posts.isPrivate, false))
       .orderBy(desc(posts.createdAt))
       .limit(limit)
@@ -378,7 +378,7 @@ export class DatabaseStorage implements IStorage {
       .from(commentLikes)
       .where(and(
         eq(commentLikes.userId, userId),
-        sql`${commentLikes.commentId} = ANY(${sql.array(commentIds, 'uuid')})`
+        sql`${commentLikes.commentId} = ANY(ARRAY[${commentIds.join(',')}]::uuid[])`
       ));
 
     const likedCommentIds = new Set(userLikes.map(like => like.commentId));
@@ -486,17 +486,63 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getFollowers(userId: string): Promise<User[]> {
-    return db.select()
+    const result = await db.select({
+      id: users.id,
+      email: users.email,
+      password: users.password,
+      displayName: users.displayName,
+      username: users.username,
+      bio: users.bio,
+      location: users.location,
+      website: users.website,
+      profileImageUrl: users.profileImageUrl,
+      coverImageUrl: users.coverImageUrl,
+      genres: users.genres,
+      writingStreak: users.writingStreak,
+      wordCountGoal: users.wordCountGoal,
+      weeklyPostsGoal: users.weeklyPostsGoal,
+      isVerified: users.isVerified,
+      isAdmin: users.isAdmin,
+      isSuperAdmin: users.isSuperAdmin,
+      postsCount: users.postsCount,
+      commentsCount: users.commentsCount,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt
+    })
       .from(users)
       .innerJoin(follows, eq(follows.followerId, users.id))
       .where(eq(follows.followingId, userId));
+    return result;
   }
 
   async getFollowing(userId: string): Promise<User[]> {
-    return db.select()
+    const result = await db.select({
+      id: users.id,
+      email: users.email,
+      password: users.password,
+      displayName: users.displayName,
+      username: users.username,
+      bio: users.bio,
+      location: users.location,
+      website: users.website,
+      profileImageUrl: users.profileImageUrl,
+      coverImageUrl: users.coverImageUrl,
+      genres: users.genres,
+      writingStreak: users.writingStreak,
+      wordCountGoal: users.wordCountGoal,
+      weeklyPostsGoal: users.weeklyPostsGoal,
+      isVerified: users.isVerified,
+      isAdmin: users.isAdmin,
+      isSuperAdmin: users.isSuperAdmin,
+      postsCount: users.postsCount,
+      commentsCount: users.commentsCount,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt
+    })
       .from(users)
       .innerJoin(follows, eq(follows.followingId, users.id))
       .where(eq(follows.followerId, userId));
+    return result;
   }
 
   // Repost operations
