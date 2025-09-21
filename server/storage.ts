@@ -31,11 +31,11 @@ export interface IStorage {
   // User operations (mandatory for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
-  
+
   // User profile operations
   updateUserProfile(id: string, data: Partial<User>): Promise<User>;
   getUserByUsername(username: string): Promise<User | undefined>;
-  
+
   // Post operations
   createPost(post: InsertPost): Promise<Post>;
   getPost(id: string): Promise<Post | undefined>;
@@ -43,41 +43,41 @@ export interface IStorage {
   getPostsByUser(userId: string, limit?: number, offset?: number): Promise<Post[]>;
   updatePost(id: string, data: Partial<Post>): Promise<Post>;
   deletePost(id: string): Promise<void>;
-  
+
   // Engagement operations
   likePost(userId: string, postId: string): Promise<Like>;
   unlikePost(userId: string, postId: string): Promise<void>;
   hasUserLikedPost(userId: string, postId: string): Promise<boolean>;
-  
+
   // Comment operations
   createComment(comment: InsertComment): Promise<Comment>;
   getCommentsByPost(postId: string, userId?: string): Promise<Comment[]>;
-  
+
   // Follow operations
   followUser(followerId: string, followingId: string): Promise<Follow>;
   unfollowUser(followerId: string, followingId: string): Promise<void>;
   isFollowing(followerId: string, followingId: string): Promise<boolean>;
   getFollowers(userId: string): Promise<User[]>;
   getFollowing(userId: string): Promise<User[]>;
-  
+
   // Repost operations
   repostPost(userId: string, postId: string, comment?: string): Promise<Repost>;
   unrepost(userId: string, postId: string): Promise<void>;
-  
+
   // Bookmark operations
   bookmarkPost(userId: string, postId: string): Promise<Bookmark>;
   unbookmarkPost(userId: string, postId: string): Promise<void>;
   getUserBookmarks(userId: string): Promise<Post[]>;
-  
+
   // Notification operations
   createNotification(notification: Omit<Notification, 'id' | 'createdAt'>): Promise<Notification>;
   getUserNotifications(userId: string): Promise<Notification[]>;
   markNotificationAsRead(id: string): Promise<void>;
-  
+
   // Writing goals
   updateWritingGoal(userId: string, date: Date, wordCount: number, postsCount: number): Promise<WritingGoal>;
   getUserWritingGoals(userId: string, startDate: Date, endDate: Date): Promise<WritingGoal[]>;
-  
+
   // Search and discovery
   searchUsers(query: string, limit?: number): Promise<User[]>;
   searchPosts(query: string, limit?: number): Promise<Post[]>;
@@ -91,7 +91,7 @@ export class DatabaseStorage implements IStorage {
     try {
       // Add a small delay to ensure database is ready
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
       // Check if the admin account already exists
       let existingAdmin;
       try {
@@ -109,7 +109,7 @@ export class DatabaseStorage implements IStorage {
         // Use dynamic import for ES modules
         const bcrypt = await import("bcrypt");
         const hashedPassword = await bcrypt.hash("122209", 10);
-        
+
         await db.insert(users).values({
           username: "itsicxrus",
           email: "admin@writersguild.com",
@@ -156,7 +156,7 @@ export class DatabaseStorage implements IStorage {
         .returning();
       if (user) return user;
     }
-    
+
     // Insert new user
     const [user] = await db
       .insert(users)
@@ -216,16 +216,16 @@ export class DatabaseStorage implements IStorage {
   // Post operations
   async createPost(post: InsertPost): Promise<Post> {
     const [newPost] = await db.insert(posts).values(post).returning();
-    
+
     // Increment user's posts count
     await db
       .update(users)
       .set({ postsCount: sql`${users.postsCount} + 1` })
       .where(eq(users.id, post.authorId));
-    
+
     // Check auto verification
     await this.checkAutoVerification(post.authorId);
-    
+
     return newPost;
   }
 
@@ -236,14 +236,14 @@ export class DatabaseStorage implements IStorage {
 
   async getPosts(limit = 20, offset = 0, userId?: string): Promise<Post[]> {
     let query = db.select().from(posts);
-    
+
     if (userId) {
       // Get posts from followed users
       const followingSubquery = db
         .select({ followingId: follows.followingId })
         .from(follows)
         .where(eq(follows.followerId, userId));
-      
+
       query = query.where(
         or(
           eq(posts.authorId, userId),
@@ -257,7 +257,7 @@ export class DatabaseStorage implements IStorage {
         )
       );
     }
-    
+
     return query
       .where(eq(posts.isPrivate, false))
       .orderBy(desc(posts.createdAt))
@@ -290,19 +290,19 @@ export class DatabaseStorage implements IStorage {
   // Engagement operations
   async likePost(userId: string, postId: string): Promise<Like> {
     const [like] = await db.insert(likes).values({ userId, postId }).returning();
-    
+
     // Increment likes count
     await db
       .update(posts)
       .set({ likesCount: sql`${posts.likesCount} + 1` })
       .where(eq(posts.id, postId));
-    
+
     return like;
   }
 
   async unlikePost(userId: string, postId: string): Promise<void> {
     await db.delete(likes).where(and(eq(likes.userId, userId), eq(likes.postId, postId)));
-    
+
     // Decrement likes count
     await db
       .update(posts)
@@ -321,22 +321,22 @@ export class DatabaseStorage implements IStorage {
   // Comment operations
   async createComment(comment: InsertComment): Promise<Comment> {
     const [newComment] = await db.insert(comments).values(comment).returning();
-    
+
     // Increment comments count on post
     await db
       .update(posts)
       .set({ commentsCount: sql`${posts.commentsCount} + 1` })
       .where(eq(posts.id, comment.postId));
-    
+
     // Increment user's comments count
     await db
       .update(users)
       .set({ commentsCount: sql`${users.commentsCount} + 1` })
       .where(eq(users.id, comment.userId));
-    
+
     // Check auto verification
     await this.checkAutoVerification(comment.userId);
-    
+
     return newComment;
   }
 
@@ -400,29 +400,29 @@ export class DatabaseStorage implements IStorage {
       .from(comments)
       .where(eq(comments.id, reply.parentId))
       .limit(1);
-    
+
     const level = parentComment[0] ? (parentComment[0].level || 0) + 1 : 0;
-    
+
     const [newReply] = await db.insert(comments).values({
       ...reply,
       level: Math.min(level, 5) // Max 5 levels deep
     }).returning();
-    
+
     // Increment comments count on post
     await db
       .update(posts)
       .set({ commentsCount: sql`${posts.commentsCount} + 1` })
       .where(eq(posts.id, reply.postId));
-    
+
     // Increment user's comments count
     await db
       .update(users)
       .set({ commentsCount: sql`${users.commentsCount} + 1` })
       .where(eq(users.id, reply.userId));
-    
+
     // Check auto verification
     await this.checkAutoVerification(reply.userId);
-    
+
     return newReply;
   }
 
@@ -433,7 +433,7 @@ export class DatabaseStorage implements IStorage {
       .insert(commentLikes)
       .values({ userId, commentId })
       .onConflictDoNothing();
-    
+
     // Increment likes count
     await db
       .update(comments)
@@ -446,7 +446,7 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(commentLikes)
       .where(and(eq(commentLikes.userId, userId), eq(commentLikes.commentId, commentId)));
-    
+
     // Decrement likes count (prevent negative)
     await db
       .update(comments)
@@ -499,19 +499,19 @@ export class DatabaseStorage implements IStorage {
   // Repost operations
   async repostPost(userId: string, postId: string, comment?: string): Promise<Repost> {
     const [repost] = await db.insert(reposts).values({ userId, postId, comment }).returning();
-    
+
     // Increment reposts count
     await db
       .update(posts)
       .set({ repostsCount: sql`${posts.repostsCount} + 1` })
       .where(eq(posts.id, postId));
-    
+
     return repost;
   }
 
   async unrepost(userId: string, postId: string): Promise<void> {
     await db.delete(reposts).where(and(eq(reposts.userId, userId), eq(reposts.postId, postId)));
-    
+
     // Decrement reposts count
     await db
       .update(posts)
@@ -726,7 +726,7 @@ export class DatabaseStorage implements IStorage {
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const startOfWeek = new Date(today);
     startOfWeek.setDate(today.getDate() - today.getDay());
 
