@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import { apiRequest } from "@/lib/queryClient";
 import { getProfileImageUrl } from "@/lib/defaultImages";
 import Sidebar from "@/components/sidebar";
@@ -71,15 +72,30 @@ export default function Notifications() {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { isConnected, lastMessage } = useWebSocket();
   const [activeTab, setActiveTab] = useState("all");
 
-  // Fetch notifications
+  // Fetch notifications (no polling - WebSocket handles real-time updates)
   const { data: notifications = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/notifications"],
     queryFn: () => apiRequest("GET", "/api/notifications") as unknown as Promise<NotificationWithActor[]>,
     enabled: isAuthenticated,
-    refetchInterval: 30000, // Refetch every 30 seconds for real-time updates
+    // Remove refetchInterval - WebSocket handles real-time updates
   });
+
+  // Handle real-time WebSocket notifications
+  useEffect(() => {
+    if (lastMessage && lastMessage.type === 'notification') {
+      // Invalidate and refetch notifications when new notification arrives
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      
+      // Show toast for new notification
+      toast({
+        title: "New Notification",
+        description: "You have a new notification",
+      });
+    }
+  }, [lastMessage, queryClient, toast]);
 
   // Mark notification as read
   const markAsReadMutation = useMutation({
@@ -226,7 +242,12 @@ export default function Notifications() {
                 <Bell className="w-8 h-8 text-primary" />
                 <div>
                   <h1 className="text-3xl font-bold">Notifications</h1>
-                  <p className="text-muted-foreground">Stay updated with your latest activity</p>
+                  <p className="text-muted-foreground">
+                    Stay updated with your latest activity
+                    {isConnected && (
+                      <span className="text-green-500 ml-2">● Real-time</span>
+                    )}
+                  </p>
                 </div>
                 {unreadCount > 0 && (
                   <Badge variant="destructive" className="ml-2">

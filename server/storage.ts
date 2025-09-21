@@ -629,8 +629,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Notification operations
-  async createNotification(notification: Omit<Notification, 'id' | 'createdAt'>): Promise<Notification> {
+  async createNotification(notification: Omit<Notification, 'id' | 'createdAt'>, app?: any): Promise<Notification> {
     const [newNotification] = await db.insert(notifications).values(notification).returning();
+    
+    // Broadcast real-time notification if app instance is available
+    if (app && typeof app.broadcastNotification === 'function') {
+      app.broadcastNotification(notification.userId, newNotification);
+    }
+    
     return newNotification;
   }
 
