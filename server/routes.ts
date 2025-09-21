@@ -10,6 +10,7 @@ import fs from "fs";
 import bcrypt from "bcrypt";
 import session from "express-session";
 import MemoryStore from "memorystore";
+import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 import { insertPostSchema, insertCommentSchema } from "@shared/schema";
 import { getSpotifyClient } from "./spotifyClient";
@@ -33,19 +34,26 @@ const upload = multer({
 
 // Session middleware
 function getSession() {
+  // Require SESSION_SECRET - no fallback for security
+  if (!process.env.SESSION_SECRET) {
+    throw new Error('SESSION_SECRET environment variable is required for security');
+  }
+  
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
   const memoryStore = MemoryStore(session);
   const sessionStore = new memoryStore({
     checkPeriod: sessionTtl, // prune expired entries every 24h
   });
+  
   return session({
-    secret: process.env.SESSION_SECRET || 'your-secret-key',
+    secret: process.env.SESSION_SECRET,
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
       maxAge: sessionTtl,
     },
   });
@@ -72,9 +80,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }, 5000);
 
+  // Rate limiting
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10, // Limit each IP to 10 requests per windowMs for auth endpoints
+    message: { message: "Too many authentication attempts, please try again later" },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  const generalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 1000, // Limit each IP to 1000 requests per windowMs for general endpoints
+    message: { message: "Too many requests, please try again later" },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  const writeLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 30, // Limit each IP to 30 write requests per minute
+    message: { message: "Too many write requests, please slow down" },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
   // Session middleware
   app.set("trust proxy", 1);
   app.use(getSession());
+  
+  // Apply general rate limiting to all routes
+  app.use('/api', generalLimiter);
 
   // Ensure uploads directory exists
   const uploadsDir = path.join(process.cwd(), 'uploads');
@@ -88,8 +124,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   }, express.static(uploadsDir));
 
-  // Auth routes
-  app.post('/api/auth/register', async (req, res) => {
+  // Auth routes (with rate limiting)
+  app.post('/api/auth/register', authLimiter, async (req, res) => {
     try {
       const { email, password, displayName, username } = req.body;
 
@@ -147,7 +183,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/auth/login', async (req, res) => {
+  app.post('/api/auth/login', authLimiter, async (req, res) => {
     try {
       const { email, password } = req.body;
 
@@ -266,7 +302,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Post routes
-  app.post('/api/posts', requireAuth, async (req: any, res) => {
+  app.post('/api/posts', requireAuth, writeLimiter, async (req: any, res) => {
     try {
       const userId = req.session.userId;
       const postData = insertPostSchema.parse({
@@ -331,7 +367,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Like routes
-  app.post('/api/posts/:id/like', requireAuth, async (req: any, res) => {
+  app.post('/api/posts/:id/like', requireAuth, writeLimiter, async (req: any, res) => {
     try {
       const userId = req.session.userId;
       const { id: postId } = req.params;
@@ -363,7 +399,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Comment routes
-  app.post('/api/posts/:id/comments', requireAuth, async (req: any, res) => {
+  app.post('/api/posts/:id/comments', requireAuth, writeLimiter, async (req: any, res) => {
     try {
       const userId = req.session.userId;
       const { id: postId } = req.params;
@@ -394,7 +430,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/comments/:id/reply', requireAuth, async (req: any, res) => {
+  app.post('/api/comments/:id/reply', requireAuth, writeLimiter, async (req: any, res) => {
     try {
       const userId = req.session.userId;
       const { id: parentId } = req.params;
@@ -424,7 +460,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/comments/:id/like', requireAuth, async (req: any, res) => {
+  app.post('/api/comments/:id/like', requireAuth, writeLimiter, async (req: any, res) => {
     try {
       const userId = req.session.userId;
       const { id: commentId } = req.params;
@@ -445,7 +481,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Follow routes
-  app.post('/api/users/:id/follow', requireAuth, async (req: any, res) => {
+  app.post('/api/users/:id/follow', requireAuth, writeLimiter, async (req: any, res) => {
     try {
       const followerId = req.session.userId;
       const { id: followingId } = req.params;
@@ -481,7 +517,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Repost routes
-  app.post('/api/posts/:id/repost', requireAuth, async (req: any, res) => {
+  app.post('/api/posts/:id/repost', requireAuth, writeLimiter, async (req: any, res) => {
     try {
       const userId = req.session.userId;
       const { id: postId } = req.params;
@@ -496,7 +532,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Bookmark routes
-  app.post('/api/posts/:id/bookmark', requireAuth, async (req: any, res) => {
+  app.post('/api/posts/:id/bookmark', requireAuth, writeLimiter, async (req: any, res) => {
     try {
       const userId = req.session.userId;
       const { id: postId } = req.params;
@@ -688,7 +724,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Image upload route
-  app.post('/api/upload/images', requireAuth, upload.array('images', 4), async (req: any, res) => {
+  app.post('/api/upload/images', requireAuth, writeLimiter, upload.array('images', 4), async (req: any, res) => {
     try {
       if (!req.files || req.files.length === 0) {
         return res.status(400).json({ message: "No files uploaded" });
@@ -720,7 +756,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Profile picture upload route
-  app.post('/api/upload/profile-picture', requireAuth, upload.single('profilePicture'), async (req: any, res) => {
+  app.post('/api/upload/profile-picture', requireAuth, writeLimiter, upload.single('profilePicture'), async (req: any, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
@@ -752,7 +788,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Cover photo upload route
-  app.post('/api/upload/cover-photo', requireAuth, upload.single('coverPhoto'), async (req: any, res) => {
+  app.post('/api/upload/cover-photo', requireAuth, writeLimiter, upload.single('coverPhoto'), async (req: any, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
