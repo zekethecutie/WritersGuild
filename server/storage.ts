@@ -9,6 +9,8 @@ import {
   bookmarks,
   notifications,
   writingGoals,
+  conversations,
+  messages,
   type User,
   type UpsertUser,
   type InsertPost,
@@ -23,6 +25,10 @@ import {
   type Bookmark,
   type Notification,
   type WritingGoal,
+  type Conversation,
+  type InsertConversation,
+  type Message,
+  type InsertMessage,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, sql, count, exists, asc } from "drizzle-orm";
@@ -84,6 +90,15 @@ export interface IStorage {
   searchPosts(query: string, limit?: number): Promise<Post[]>;
   getTrendingPosts(limit?: number): Promise<Post[]>;
   getSuggestedUsers(userId: string, limit?: number): Promise<User[]>;
+
+  // Messaging operations
+  createConversation(participantOneId: string, participantTwoId: string): Promise<Conversation>;
+  getConversation(participantOneId: string, participantTwoId: string): Promise<Conversation | undefined>;
+  getUserConversations(userId: string): Promise<(Conversation & { otherParticipant: User; lastMessage?: Message })[]>;
+  sendMessage(conversationId: string, senderId: string, content: string, messageType?: string, attachmentUrls?: string[]): Promise<Message>;
+  getConversationMessages(conversationId: string, limit?: number, offset?: number): Promise<Message[]>;
+  markMessageAsRead(messageId: string): Promise<void>;
+  markConversationAsRead(conversationId: string, userId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -880,6 +895,144 @@ export class DatabaseStorage implements IStorage {
         .set({ isVerified: true, updatedAt: new Date() })
         .where(eq(users.id, userId));
     }
+  }
+
+  // Messaging implementation
+  async createConversation(participantOneId: string, participantTwoId: string): Promise<Conversation> {
+    // Ensure consistent ordering to prevent duplicate conversations
+    const [firstId, secondId] = [participantOneId, participantTwoId].sort();
+    
+    const [conversation] = await db
+      .insert(conversations)
+      .values({
+        participantOneId: firstId,
+        participantTwoId: secondId,
+      })
+      .returning();
+    return conversation;
+  }
+
+  async getConversation(participantOneId: string, participantTwoId: string): Promise<Conversation | undefined> {
+    // Ensure consistent ordering
+    const [firstId, secondId] = [participantOneId, participantTwoId].sort();
+    
+    const [conversation] = await db
+      .select()
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.participantOneId, firstId),
+          eq(conversations.participantTwoId, secondId)
+        )
+      );
+    return conversation;
+  }
+
+  async getUserConversations(userId: string): Promise<(Conversation & { otherParticipant: User; lastMessage?: Message })[]> {
+    const result = await db
+      .select({
+        id: conversations.id,
+        participantOneId: conversations.participantOneId,
+        participantTwoId: conversations.participantTwoId,
+        lastMessageId: conversations.lastMessageId,
+        lastMessageAt: conversations.lastMessageAt,
+        isArchived: conversations.isArchived,
+        createdAt: conversations.createdAt,
+        updatedAt: conversations.updatedAt,
+        otherParticipant: users,
+        lastMessage: messages,
+      })
+      .from(conversations)
+      .leftJoin(users, 
+        or(
+          and(eq(conversations.participantOneId, userId), eq(users.id, conversations.participantTwoId)),
+          and(eq(conversations.participantTwoId, userId), eq(users.id, conversations.participantOneId))
+        )
+      )
+      .leftJoin(messages, eq(messages.id, conversations.lastMessageId))
+      .where(
+        or(
+          eq(conversations.participantOneId, userId),
+          eq(conversations.participantTwoId, userId)
+        )
+      )
+      .orderBy(desc(conversations.lastMessageAt));
+
+    return result.map(row => ({
+      id: row.id,
+      participantOneId: row.participantOneId,
+      participantTwoId: row.participantTwoId,
+      lastMessageId: row.lastMessageId,
+      lastMessageAt: row.lastMessageAt,
+      isArchived: row.isArchived,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      otherParticipant: row.otherParticipant!,
+      lastMessage: row.lastMessage || undefined,
+    }));
+  }
+
+  async sendMessage(conversationId: string, senderId: string, content: string, messageType = "text", attachmentUrls: string[] = []): Promise<Message> {
+    const [message] = await db
+      .insert(messages)
+      .values({
+        conversationId,
+        senderId,
+        content,
+        messageType,
+        attachmentUrls: attachmentUrls.length > 0 ? attachmentUrls : null,
+      })
+      .returning();
+
+    // Update conversation's last message
+    await db
+      .update(conversations)
+      .set({
+        lastMessageId: message.id,
+        lastMessageAt: message.createdAt,
+        updatedAt: new Date(),
+      })
+      .where(eq(conversations.id, conversationId));
+
+    return message;
+  }
+
+  async getConversationMessages(conversationId: string, limit = 50, offset = 0): Promise<Message[]> {
+    return db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, conversationId))
+      .orderBy(desc(messages.createdAt))
+      .limit(limit)
+      .offset(offset);
+  }
+
+  async markMessageAsRead(messageId: string): Promise<void> {
+    await db
+      .update(messages)
+      .set({ 
+        isRead: true,
+        readAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(messages.id, messageId));
+  }
+
+  async markConversationAsRead(conversationId: string, userId: string): Promise<void> {
+    await db
+      .update(messages)
+      .set({ 
+        isRead: true,
+        readAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(messages.conversationId, conversationId),
+          sql`${messages.senderId} != ${userId}`, // Only mark messages not sent by the user
+          eq(messages.isRead, false)
+        )
+      );
   }
 }
 

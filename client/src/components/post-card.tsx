@@ -360,7 +360,7 @@ export default function PostCard({ post }: PostCardProps) {
           </div>
 
           {/* Post Content */}
-          {renderFormattedContent()}
+          {renderFormattedContent() as React.ReactNode}
 
           {/* Images */}
           {post.imageUrls && post.imageUrls.length > 0 && (

@@ -766,6 +766,136 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Messaging routes
+  app.get('/api/conversations', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const conversations = await storage.getUserConversations(userId);
+      res.json(conversations);
+    } catch (error) {
+      console.error("Error fetching conversations:", error);
+      res.status(500).json({ message: "Failed to fetch conversations" });
+    }
+  });
+
+  app.post('/api/conversations', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { participantId } = req.body;
+
+      if (!participantId) {
+        return res.status(400).json({ message: "Participant ID is required" });
+      }
+
+      if (userId === participantId) {
+        return res.status(400).json({ message: "Cannot create conversation with yourself" });
+      }
+
+      // Check if conversation already exists
+      let conversation = await storage.getConversation(userId, participantId);
+      
+      if (!conversation) {
+        conversation = await storage.createConversation(userId, participantId);
+      }
+
+      res.json(conversation);
+    } catch (error) {
+      console.error("Error creating conversation:", error);
+      res.status(500).json({ message: "Failed to create conversation" });
+    }
+  });
+
+  app.get('/api/conversations/:id/messages', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { id: conversationId } = req.params;
+      const { limit = 50, offset = 0 } = req.query;
+
+      // Verify user is part of the conversation
+      const conversation = await storage.getConversation(userId, userId); // This doesn't work correctly
+      // Instead, let's get the conversation by ID and verify participation
+      const conversations = await storage.getUserConversations(userId);
+      const userConversation = conversations.find(c => c.id === conversationId);
+      
+      if (!userConversation) {
+        return res.status(403).json({ message: "Access denied to this conversation" });
+      }
+
+      const messages = await storage.getConversationMessages(
+        conversationId, 
+        parseInt(limit as string), 
+        parseInt(offset as string)
+      );
+      
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+
+  app.post('/api/conversations/:id/messages', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { id: conversationId } = req.params;
+      const { content, messageType = "text", attachmentUrls = [] } = req.body;
+
+      if (!content || content.trim().length === 0) {
+        return res.status(400).json({ message: "Message content is required" });
+      }
+
+      // Verify user is part of the conversation
+      const conversations = await storage.getUserConversations(userId);
+      const userConversation = conversations.find(c => c.id === conversationId);
+      
+      if (!userConversation) {
+        return res.status(403).json({ message: "Access denied to this conversation" });
+      }
+
+      const message = await storage.sendMessage(
+        conversationId,
+        userId,
+        content.trim(),
+        messageType,
+        attachmentUrls
+      );
+
+      // Broadcast message to other participant
+      const otherParticipantId = userConversation.otherParticipant.id;
+      (app as any).broadcastMessage?.(otherParticipantId, {
+        ...message,
+        conversation: userConversation,
+        sender: { id: userId }
+      });
+
+      res.json(message);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  app.put('/api/conversations/:id/read', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { id: conversationId } = req.params;
+
+      // Verify user is part of the conversation
+      const conversations = await storage.getUserConversations(userId);
+      const userConversation = conversations.find(c => c.id === conversationId);
+      
+      if (!userConversation) {
+        return res.status(403).json({ message: "Access denied to this conversation" });
+      }
+
+      await storage.markConversationAsRead(conversationId, userId);
+      res.json({ message: "Conversation marked as read" });
+    } catch (error) {
+      console.error("Error marking conversation as read:", error);
+      res.status(500).json({ message: "Failed to mark conversation as read" });
+    }
+  });
+
   // Admin routes
   app.post('/api/admin/users/:id/admin', requireAuth, async (req: any, res) => {
     try {
@@ -884,6 +1014,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         client.send(JSON.stringify({
           type: 'notification',
           data: notification,
+        }));
+      }
+    });
+  };
+
+  // Function to broadcast messages
+  (app as any).broadcastMessage = (userId: string, message: any) => {
+    wss.clients.forEach((client) => {
+      if ((client as any).userId === userId && client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify({
+          type: 'new_message',
+          data: message,
         }));
       }
     });

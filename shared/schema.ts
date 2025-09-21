@@ -500,3 +500,70 @@ export type SeriesLike = typeof seriesLikes.$inferSelect;
 export type ChapterLike = typeof chapterLikes.$inferSelect;
 export type ReadingProgress = typeof readingProgress.$inferSelect;
 export type Leaderboard = typeof leaderboards.$inferSelect;
+
+// Conversations table for direct messaging
+export const conversations = pgTable("conversations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  participantOneId: uuid("participant_one_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  participantTwoId: uuid("participant_two_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  lastMessageId: uuid("last_message_id"),
+  lastMessageAt: timestamp("last_message_at").defaultNow(),
+  isArchived: boolean("is_archived").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  unique().on(table.participantOneId, table.participantTwoId),
+]);
+
+// Messages table for direct messaging
+export const messages = pgTable("messages", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  conversationId: uuid("conversation_id").notNull().references(() => conversations.id, { onDelete: "cascade" }),
+  senderId: uuid("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  messageType: varchar("message_type").notNull().default("text"), // text, image, file
+  attachmentUrls: text("attachment_urls").array(),
+  isRead: boolean("is_read").default(false),
+  readAt: timestamp("read_at"),
+  isEdited: boolean("is_edited").default(false),
+  editedAt: timestamp("edited_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Conversation relations
+export const conversationsRelations = relations(conversations, ({ many, one }) => ({
+  messages: many(messages),
+  participantOne: one(users, {
+    fields: [conversations.participantOneId],
+    references: [users.id],
+    relationName: "participantOne",
+  }),
+  participantTwo: one(users, {
+    fields: [conversations.participantTwoId],
+    references: [users.id],
+    relationName: "participantTwo",
+  }),
+  lastMessage: one(messages, {
+    fields: [conversations.lastMessageId],
+    references: [messages.id],
+  }),
+}));
+
+// Message relations
+export const messagesRelations = relations(messages, ({ one }) => ({
+  conversation: one(conversations, {
+    fields: [messages.conversationId],
+    references: [conversations.id],
+  }),
+  sender: one(users, {
+    fields: [messages.senderId],
+    references: [users.id],
+  }),
+}));
+
+// Add message types
+export type Conversation = typeof conversations.$inferSelect;
+export type InsertConversation = typeof conversations.$inferInsert;
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = typeof messages.$inferInsert;
