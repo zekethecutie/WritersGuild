@@ -1,3 +1,4 @@
+
 import {
   users,
   posts,
@@ -31,7 +32,7 @@ import {
   type InsertMessage,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, or, sql, count, exists, asc } from "drizzle-orm";
+import { eq, desc, and, or, sql, count, exists, asc, ne, isNotNull, gte, ilike } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
@@ -106,13 +107,15 @@ export class DatabaseStorage implements IStorage {
   async initializeAdminAccount(): Promise<void> {
     try {
       // Add a delay to ensure database is ready
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       // Test basic connection first
       try {
         await db.select().from(users).limit(1);
+        console.log("✅ Database connection successful");
       } catch (error: any) {
-        console.log("⏳ Database connection failed, skipping admin creation:", error.code || error.message);
+        console.log("⚠️ Database connection failed:", error.code || error.message);
+        console.log("💡 Please check your DATABASE_URL in the Secrets tool");
         return;
       }
 
@@ -157,7 +160,8 @@ export class DatabaseStorage implements IStorage {
       } else if (error.code === '23505') {
         console.log("✅ Admin account @itsicxrus already exists (duplicate key)");
       } else if (error.code === '28P01') {
-        console.log("⏳ Database authentication failed - please check DATABASE_URL in Secrets");
+        console.log("❌ Database authentication failed - please check DATABASE_URL in Secrets");
+        console.log("💡 Make sure to use your Supabase connection string with the correct password");
       } else {
         console.error("❌ Error creating admin account:", error.message);
       }
