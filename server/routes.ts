@@ -9,7 +9,7 @@ import path from "path";
 import fs from "fs";
 import bcrypt from "bcrypt";
 import session from "express-session";
-import connectPg from "connect-pg-simple";
+import MemoryStore from "memorystore";
 import { storage } from "./storage";
 import { insertPostSchema, insertCommentSchema } from "@shared/schema";
 import { getSpotifyClient } from "./spotifyClient";
@@ -34,12 +34,9 @@ const upload = multer({
 // Session middleware
 function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
-  const pgStore = connectPg(session);
-  const sessionStore = new pgStore({
-    conString: process.env.DATABASE_URL,
-    createTableIfMissing: false,
-    ttl: sessionTtl,
-    tableName: "sessions",
+  const memoryStore = MemoryStore(session);
+  const sessionStore = new memoryStore({
+    checkPeriod: sessionTtl, // prune expired entries every 24h
   });
   return session({
     secret: process.env.SESSION_SECRET || 'your-secret-key',
