@@ -75,12 +75,12 @@ export default function Notifications() {
   const { isConnected, lastMessage } = useWebSocket();
   const [activeTab, setActiveTab] = useState("all");
 
-  // Fetch notifications (no polling - WebSocket handles real-time updates)
+  // Fetch notifications with polling fallback when WebSocket is not connected
   const { data: notifications = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/notifications"],
     queryFn: () => apiRequest("GET", "/api/notifications") as unknown as Promise<NotificationWithActor[]>,
     enabled: isAuthenticated,
-    // Remove refetchInterval - WebSocket handles real-time updates
+    refetchInterval: isConnected ? false : 30000, // Fall back to polling when WebSocket disconnected
   });
 
   // Handle real-time WebSocket notifications

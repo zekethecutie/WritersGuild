@@ -32,14 +32,15 @@ const upload = multer({
   },
 });
 
-// Session middleware
-function getSession() {
+// Session middleware - single instance to reuse across HTTP and WebSocket
+const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
+
+function createSessionMiddleware() {
   // Require SESSION_SECRET - no fallback for security
   if (!process.env.SESSION_SECRET) {
     throw new Error('SESSION_SECRET environment variable is required for security');
   }
   
-  const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
   const memoryStore = MemoryStore(session);
   const sessionStore = new memoryStore({
     checkPeriod: sessionTtl, // prune expired entries every 24h
@@ -58,6 +59,9 @@ function getSession() {
     },
   });
 }
+
+// Create single session middleware instance to share
+const sessionMiddleware = createSessionMiddleware();
 
 // Auth middleware
 const requireAuth = (req: any, res: any, next: any) => {
@@ -107,7 +111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Session middleware
   app.set("trust proxy", 1);
-  app.use(getSession());
+  app.use(sessionMiddleware);
   
   // Apply general rate limiting to all routes
   app.use('/api', generalLimiter);
@@ -378,6 +382,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const like = await storage.likePost(userId, postId);
+      
+      // Get post to find the author for notification
+      const post = await storage.getPost(postId);
+      if (post && post.authorId !== userId) {
+        // Create and broadcast notification
+        const notification = await storage.createNotification({
+          userId: post.authorId,
+          type: 'like',
+          actorId: userId,
+          postId: postId,
+          isRead: false
+        });
+        
+        // Broadcast real-time notification
+        if (app && typeof app.broadcastNotification === 'function') {
+          app.broadcastNotification(post.authorId, notification);
+        }
+      }
+      
       res.json(like);
     } catch (error) {
       console.error("Error liking post:", error);
@@ -411,6 +434,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const comment = await storage.createComment(commentData);
+      
+      // Get post to find the author for notification
+      const post = await storage.getPost(postId);
+      if (post && post.authorId !== userId) {
+        // Create and broadcast notification
+        const notification = await storage.createNotification({
+          userId: post.authorId,
+          type: 'comment',
+          actorId: userId,
+          postId: postId,
+          isRead: false
+        });
+        
+        // Broadcast real-time notification
+        if (app && typeof app.broadcastNotification === 'function') {
+          app.broadcastNotification(post.authorId, notification);
+        }
+      }
+      
       res.json(comment);
     } catch (error) {
       console.error("Error creating comment:", error);
@@ -496,6 +538,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const follow = await storage.followUser(followerId, followingId);
+      
+      // Create and broadcast follow notification
+      const notification = await storage.createNotification({
+        userId: followingId,
+        type: 'follow',
+        actorId: followerId,
+        isRead: false
+      });
+      
+      // Broadcast real-time notification
+      if (app && typeof app.broadcastNotification === 'function') {
+        app.broadcastNotification(followingId, notification);
+      }
+      
       res.json(follow);
     } catch (error) {
       console.error("Error following user:", error);
@@ -524,6 +580,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { comment } = req.body;
 
       const repost = await storage.repostPost(userId, postId, comment);
+      
+      // Get post to find the author for notification
+      const post = await storage.getPost(postId);
+      if (post && post.authorId !== userId) {
+        // Create and broadcast notification
+        const notification = await storage.createNotification({
+          userId: post.authorId,
+          type: 'repost',
+          actorId: userId,
+          postId: postId,
+          isRead: false
+        });
+        
+        // Broadcast real-time notification
+        if (app && typeof app.broadcastNotification === 'function') {
+          app.broadcastNotification(post.authorId, notification);
+        }
+      }
+      
       res.json(repost);
     } catch (error) {
       console.error("Error reposting:", error);
@@ -1096,21 +1171,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create HTTP server
   const httpServer = createServer(app);
 
+  // WebSocket connection registry for broadcasting
+  const userConnections = new Map<string, Set<WebSocket>>();
+
   // WebSocket server for real-time features
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
   wss.on('connection', (ws: WebSocket, req) => {
     console.log('New WebSocket connection');
+    
+    // Authenticate user using the same session middleware
+    sessionMiddleware(req as any, {} as any, () => {
+      const userId = (req as any).session?.userId;
+      
+      if (userId) {
+        (ws as any).userId = userId;
+        (ws as any).authenticated = true;
+        console.log(`WebSocket authenticated for user: ${userId}`);
+        
+        // Add to user connections registry
+        if (!userConnections.has(userId)) {
+          userConnections.set(userId, new Set());
+        }
+        userConnections.get(userId)!.add(ws);
+        
+        // Send authentication success
+        ws.send(JSON.stringify({
+          type: 'auth_success',
+          userId: userId
+        }));
+      } else {
+        console.log('WebSocket connection rejected: not authenticated');
+        ws.close(4001, 'Authentication required');
+        return;
+      }
+    });
 
     ws.on('message', (message) => {
       try {
+        // Only process messages from authenticated connections
+        if (!(ws as any).authenticated) {
+          ws.close(4001, 'Not authenticated');
+          return;
+        }
+        
         const data = JSON.parse(message.toString());
 
         // Handle different types of real-time events
         switch (data.type) {
-          case 'subscribe_notifications':
-            // Store user connection for notifications
-            (ws as any).userId = data.userId;
+          case 'ping':
+            // Heartbeat to keep connection alive
+            ws.send(JSON.stringify({ type: 'pong' }));
             break;
 
           case 'typing_start':
@@ -1145,33 +1256,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
 
     ws.on('close', () => {
-      console.log('WebSocket connection closed');
+      const userId = (ws as any).userId;
+      console.log(`WebSocket connection closed for user: ${userId}`);
+      
+      // Remove from user connections registry
+      if (userId && userConnections.has(userId)) {
+        userConnections.get(userId)!.delete(ws);
+        if (userConnections.get(userId)!.size === 0) {
+          userConnections.delete(userId);
+        }
+      }
     });
   });
 
-  // Function to broadcast notifications
-  (app as any).broadcastNotification = (userId: string, notification: any) => {
-    wss.clients.forEach((client) => {
-      if ((client as any).userId === userId && client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify({
-          type: 'notification',
-          data: notification,
-        }));
-      }
-    });
+  // Decoupled notification broadcaster
+  const broadcastNotification = (userId: string, notification: any) => {
+    const connections = userConnections.get(userId);
+    if (connections) {
+      const message = JSON.stringify({
+        type: 'notification',
+        data: notification,
+      });
+      
+      connections.forEach((ws) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(message);
+        }
+      });
+    }
   };
 
-  // Function to broadcast messages
-  (app as any).broadcastMessage = (userId: string, message: any) => {
-    wss.clients.forEach((client) => {
-      if ((client as any).userId === userId && client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify({
-          type: 'new_message',
-          data: message,
-        }));
-      }
-    });
+  // Decoupled message broadcaster  
+  const broadcastMessage = (userId: string, message: any) => {
+    const connections = userConnections.get(userId);
+    if (connections) {
+      const payload = JSON.stringify({
+        type: 'new_message',
+        data: message,
+      });
+      
+      connections.forEach((ws) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(payload);
+        }
+      });
+    }
   };
+
+  // Expose broadcasters for use in API routes
+  (app as any).broadcastNotification = broadcastNotification;
+  (app as any).broadcastMessage = broadcastMessage;
 
   return httpServer;
 }

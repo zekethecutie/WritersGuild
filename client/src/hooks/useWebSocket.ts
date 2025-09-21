@@ -13,7 +13,9 @@ export function useWebSocket() {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 5;
+  const maxReconnectDelay = 30000; // Max 30 seconds between attempts
+  const [authError, setAuthError] = useState<string | null>(null);
+  const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
 
   const connect = useCallback(() => {
     if (!user?.id || wsRef.current?.readyState === WebSocket.OPEN) return;
@@ -26,34 +28,51 @@ export function useWebSocket() {
 
       wsRef.current.onopen = () => {
         console.log('WebSocket connected');
-        setIsConnected(true);
-        reconnectAttempts.current = 0;
-
-        // Subscribe to notifications for this user
-        if (wsRef.current && user?.id) {
-          wsRef.current.send(JSON.stringify({
-            type: 'subscribe_notifications',
-            userId: user.id
-          }));
-        }
+        // Wait for authentication before marking as connected
       };
 
       wsRef.current.onmessage = (event) => {
         try {
           const message: WebSocketMessage = JSON.parse(event.data);
-          setLastMessage(message);
+          
+          if (message.type === 'auth_success') {
+            setIsConnected(true);
+            setAuthError(null);
+            reconnectAttempts.current = 0;
+            console.log('WebSocket authenticated successfully');
+            
+            // Start heartbeat to keep connection alive
+            startHeartbeat();
+          } else if (message.type === 'pong') {
+            // Handle heartbeat response
+            console.log('Received heartbeat pong');
+          } else {
+            setLastMessage(message);
+          }
         } catch (error) {
           console.error('Failed to parse WebSocket message:', error);
         }
       };
 
-      wsRef.current.onclose = () => {
-        console.log('WebSocket disconnected');
+      wsRef.current.onclose = (event) => {
+        console.log(`WebSocket disconnected: ${event.code} ${event.reason}`);
         setIsConnected(false);
         
-        // Attempt to reconnect if we haven't exceeded max attempts
-        if (reconnectAttempts.current < maxReconnectAttempts) {
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
+        // Clear heartbeat on close
+        if (heartbeatRef.current) {
+          clearInterval(heartbeatRef.current);
+          heartbeatRef.current = null;
+        }
+        
+        if (event.code === 4001) {
+          setAuthError('Authentication required');
+        } else if (event.code === 4000) {
+          setAuthError('Authentication failed');
+        }
+        
+        // Always attempt to reconnect unless explicitly closed
+        if (event.code !== 1000) {
+          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), maxReconnectDelay);
           console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current + 1})`);
           
           reconnectTimeoutRef.current = setTimeout(() => {
@@ -65,6 +84,9 @@ export function useWebSocket() {
 
       wsRef.current.onerror = (error) => {
         console.error('WebSocket error:', error);
+        if (wsRef.current?.readyState === WebSocket.CLOSED) {
+          setAuthError('Connection failed');
+        }
       };
 
     } catch (error) {
@@ -72,10 +94,27 @@ export function useWebSocket() {
     }
   }, [user?.id]);
 
+  const startHeartbeat = useCallback(() => {
+    if (heartbeatRef.current) {
+      clearInterval(heartbeatRef.current);
+    }
+    
+    heartbeatRef.current = setInterval(() => {
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: 'ping' }));
+      }
+    }, 30000); // Send ping every 30 seconds
+  }, []);
+
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
+    }
+    
+    if (heartbeatRef.current) {
+      clearInterval(heartbeatRef.current);
+      heartbeatRef.current = null;
     }
     
     if (wsRef.current) {
@@ -118,6 +157,7 @@ export function useWebSocket() {
   return {
     isConnected,
     lastMessage,
+    authError,
     sendMessage,
     connect,
     disconnect
