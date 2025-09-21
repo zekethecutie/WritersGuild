@@ -13,21 +13,27 @@ if (!process.env.DATABASE_URL) {
 let connectionString = process.env.DATABASE_URL;
 
 // Handle the password in brackets for Supabase URLs
-if (connectionString.includes('[') && connectionString.includes(']')) {
+if (connectionString && connectionString.includes('[') && connectionString.includes(']')) {
   connectionString = connectionString.replace(/\[([^\]]+)\]/, '$1');
+}
+
+if (!connectionString) {
+  console.error("❌ DATABASE_URL not found in environment variables");
+  throw new Error("DATABASE_URL is required");
 }
 
 // Create postgres client with proper Supabase configuration
 const client = postgres(connectionString, {
-  ssl: 'require',
+  ssl: connectionString.includes('supabase.com') ? 'require' : false,
   max: 10,
   idle_timeout: 20,
   max_lifetime: 60 * 30,
-  connect_timeout: 60,
+  connect_timeout: 30,
   prepare: false,
   transform: undefined,
   types: {},
   onnotice: () => {},
+  onparameter: () => {},
 });
 
 export const db = drizzle(client, { schema });

@@ -9,18 +9,24 @@ if (!process.env.DATABASE_URL) {
 
 // Parse and fix the connection string for Supabase
 let connectionString = process.env.DATABASE_URL;
-if (connectionString.includes('[') && connectionString.includes(']')) {
+if (connectionString && connectionString.includes('[') && connectionString.includes(']')) {
   connectionString = connectionString.replace(/\[([^\]]+)\]/, '$1');
+}
+
+const dbConfig: any = {
+  url: connectionString,
+};
+
+// Only add SSL config for Supabase URLs
+if (connectionString && connectionString.includes('supabase.com')) {
+  dbConfig.ssl = 'require';
 }
 
 export default defineConfig({
   out: "./migrations",
   schema: "./shared/schema.ts",
   dialect: "postgresql",
-  dbCredentials: {
-    url: connectionString,
-    ssl: 'require',
-  },
+  dbCredentials: dbConfig,
   verbose: true,
   strict: true,
 });

@@ -16,8 +16,8 @@ import LandingPage from "@/pages/landing"; // Assuming LandingPage is the correc
 import { useLocation } from "wouter"; // Import useLocation to access the current path
 
 function Router() {
-  const { isAuthenticated, isLoading, user } = useAuth(); // Assuming useAuth also returns user
-  const [location] = useLocation(); // Get current location
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const [location] = useLocation();
 
   if (isLoading) {
     return (
@@ -25,11 +25,6 @@ function Router() {
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
       </div>
     );
-  }
-
-  // Show landing page only for the root path when not authenticated
-  if (!user && location.pathname === '/') {
-    return <LandingPage />;
   }
 
   return (

@@ -65,7 +65,7 @@ export default function PostComposer() {
 
       // Invalidate queries to refresh feed
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
-      
+
       toast({
         title: "Post published!",
         description: "Your post has been shared with the community.",
@@ -96,7 +96,7 @@ export default function PostComposer() {
     const validFiles = Array.from(files).filter(file => {
       const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
       const maxSize = 10 * 1024 * 1024; // 10MB
-      
+
       if (!validTypes.includes(file.type)) {
         toast({
           title: "Invalid file type",
@@ -105,7 +105,7 @@ export default function PostComposer() {
         });
         return false;
       }
-      
+
       if (file.size > maxSize) {
         toast({
           title: "File too large", 
@@ -114,7 +114,7 @@ export default function PostComposer() {
         });
         return false;
       }
-      
+
       return true;
     });
 
@@ -141,7 +141,7 @@ export default function PostComposer() {
 
       const data = await response.json();
       setSelectedImages(prev => [...prev, ...data.imageUrls]);
-      
+
       toast({
         title: "Images uploaded!",
         description: `${validFiles.length} image(s) added to your post.`,
@@ -226,6 +226,24 @@ export default function PostComposer() {
   };
 
   const PrivacyIcon = getPrivacyIcon();
+
+  // If user is not logged in, show a message and a sign-in button
+  if (!user) {
+    return (
+      <Card className="mb-6">
+        <CardContent className="p-6">
+          <div className="text-center">
+            <p className="text-muted-foreground mb-4">
+              Sign in to share your writing with the community
+            </p>
+            <Button onClick={() => window.location.href = '/'}>
+              Sign In
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="bg-card border-border">
@@ -455,7 +473,7 @@ export default function PostComposer() {
                     {content.length} characters
                   </span>
                 )}
-                
+
                 <Button
                   onClick={handleSubmit}
                   disabled={createPostMutation.isPending || !content.trim() || isUploadingImages}

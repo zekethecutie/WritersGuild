@@ -221,6 +221,24 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
             </form>
           </TabsContent>
         </Tabs>
+
+        <div className="mt-6 border-t pt-6">
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground mb-3">
+              Want to explore first?
+            </p>
+            <Button 
+              variant="outline" 
+              className="w-full" 
+              onClick={() => {
+                onOpenChange(false);
+                window.location.href = '/explore';
+              }}
+            >
+              Continue as Guest
+            </Button>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

@@ -15,9 +15,11 @@ import {
 } from "lucide-react";
 import { getProfileImageUrl } from "@/lib/defaultImages";
 import { Link, useLocation } from "wouter";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
 
 export default function Sidebar() {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [location] = useLocation();
 
   const navigationItems = [

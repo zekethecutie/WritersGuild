@@ -49,7 +49,7 @@ export default function Home() {
     getNextPageParam: (lastPage: any, pages) => {
       return lastPage.length === 20 ? pages.length * 20 : undefined;
     },
-    enabled: !!user,
+    enabled: !!user || !isAuthenticated, // Enable for guests as well
   });
 
   // Fetch trending posts
@@ -131,7 +131,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-      
+
       <div className="lg:ml-64 min-h-screen">
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -143,7 +143,7 @@ export default function Home() {
                   <h2 className="text-xl font-bold">Home</h2>
                   <p className="text-sm text-muted-foreground">Latest from your creative community</p>
                 </div>
-                
+
                 {/* Feed Tabs */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                   <TabsList className="w-full bg-transparent border-b border-border rounded-none">
@@ -173,8 +173,15 @@ export default function Home() {
                   <div className="p-6 text-center">
                     <h3 className="text-lg font-semibold mb-2">Share Your Writing</h3>
                     <p className="text-muted-foreground mb-4">Join Writers Guild to post your stories, poems, and creative works</p>
-                    <Button onClick={() => setShowAuthDialog(true)}>
+                    <Button onClick={() => setShowAuthDialog(true)} className="mr-2">
                       Create Account
+                    </Button>
+                    <Button variant="outline" onClick={() => setShowAuthDialog(true)}>
+                      Sign In
+                    </Button>
+                    {/* Guest Access Button */}
+                    <Button variant="ghost" onClick={() => { /* No-op for guest, as they are already viewing */ }} className="mt-4">
+                      Continue as Guest
                     </Button>
                   </div>
                 )}
@@ -221,7 +228,7 @@ export default function Home() {
                     <PostCard key={post.id} post={post as Post} />
                   ))
                 )}
-                
+
                 {/* Loading more indicator */}
                 {isFetchingNextPage && (
                   <div className="p-6 text-center">
@@ -398,9 +405,9 @@ export default function Home() {
           </div>
         </div>
       </div>
-      
+
       <MobileNav />
-      
+
       <AuthDialog 
         open={showAuthDialog} 
         onOpenChange={setShowAuthDialog}
