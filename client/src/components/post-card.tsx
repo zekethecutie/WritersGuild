@@ -204,7 +204,7 @@ export default function PostCard({ post }: PostCardProps) {
           )}
           <div className="poetry-container space-y-3 text-foreground/90">
             {displayContent.split('\n').map((line, index) => (
-              <p key={index} className="poetry-line">
+              <p key={index} className="poetry-line break-words overflow-hidden">
                 {line || <br />}
               </p>
             ))}
@@ -226,7 +226,7 @@ export default function PostCard({ post }: PostCardProps) {
           </p>
 
           <div className={`rounded-xl p-5 font-serif ${getPostTypeStyle()}`}>
-            <p className="italic text-foreground/90 leading-relaxed">
+            <p className="italic text-foreground/90 leading-relaxed break-words overflow-hidden">
               "{displayContent}"
             </p>
           </div>
@@ -236,7 +236,7 @@ export default function PostCard({ post }: PostCardProps) {
 
     return (
       <div className="mb-4">
-        <p className="text-base leading-relaxed whitespace-pre-wrap">
+        <p className="text-base leading-relaxed whitespace-pre-wrap break-words overflow-hidden">
           {displayContent}
         </p>
         {shouldExpand && (
@@ -267,7 +267,7 @@ export default function PostCard({ post }: PostCardProps) {
           className="w-12 h-12 rounded-full object-cover flex-shrink-0"
           data-testid="img-post-author-avatar"
         />
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 overflow-hidden">
           {/* Author Info */}
           <div className="flex items-center flex-wrap gap-2 mb-2">
             <div className="flex items-center space-x-2">
