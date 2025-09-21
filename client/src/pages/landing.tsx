@@ -51,6 +51,11 @@ export default function Landing() {
                 size="lg" 
                 className="border-primary text-primary hover:bg-primary/10 px-8 py-3 text-lg"
                 data-testid="button-learn-more"
+                onClick={() => {
+                  document.getElementById('features-section')?.scrollIntoView({ 
+                    behavior: 'smooth' 
+                  });
+                }}
               >
                 Learn More
               </Button>
@@ -60,7 +65,7 @@ export default function Landing() {
       </div>
 
       {/* Features Section */}
-      <div className="py-24 bg-card/50">
+      <div id="features-section" className="py-24 bg-card/50">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold mb-4 text-foreground">

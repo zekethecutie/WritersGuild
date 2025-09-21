@@ -16,20 +16,23 @@ import Bookmarks from "@/pages/bookmarks";
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
+    );
+  }
+
   return (
     <Switch>
-      {isLoading || !isAuthenticated ? (
-        <Route path="/" component={Landing} />
-      ) : (
-        <>
-          <Route path="/" component={Home} />
-          <Route path="/profile/:username?" component={Profile} />
-          <Route path="/explore" component={Explore} />
-          <Route path="/messages" component={Messages} />
-          <Route path="/notifications" component={Notifications} />
-          <Route path="/bookmarks" component={Bookmarks} />
-        </>
-      )}
+      <Route path="/" component={isAuthenticated ? Home : Landing} />
+      <Route path="/home" component={Home} />
+      <Route path="/profile/:username?" component={Profile} />
+      <Route path="/explore" component={Explore} />
+      <Route path="/messages" component={Messages} />
+      <Route path="/notifications" component={Notifications} />
+      <Route path="/bookmarks" component={Bookmarks} />
       <Route component={NotFound} />
     </Switch>
   );

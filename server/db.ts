@@ -11,10 +11,12 @@ if (!process.env.DATABASE_URL) {
 
 // Create postgres client with Supabase configuration
 const client = postgres(process.env.DATABASE_URL, {
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  ssl: { rejectUnauthorized: false },
   max: 10,
   idle_timeout: 20,
   max_lifetime: 60 * 30,
+  connect_timeout: 60,
+  prepare: false,
 });
 
 export const db = drizzle(client, { schema });

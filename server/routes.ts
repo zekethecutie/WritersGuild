@@ -1108,6 +1108,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Explore routes (public access)
+  app.get('/api/explore/trending-topics', async (req, res) => {
+    try {
+      const trendingTopics = await storage.getTrendingTopics();
+      res.json(trendingTopics);
+    } catch (error: any) {
+      console.error("Error fetching trending topics:", error);
+      if (error.code === '28P01' || error.code === 'ECONNREFUSED') {
+        return res.status(503).json({ message: "Service temporarily unavailable" });
+      }
+      res.status(500).json({ message: "Failed to fetch trending topics" });
+    }
+  });
+
+  app.get('/api/explore/popular', async (req, res) => {
+    try {
+      const popularPosts = await storage.getPopularPosts();
+      res.json(popularPosts);
+    } catch (error: any) {
+      console.error("Error fetching popular posts:", error);
+      if (error.code === '28P01' || error.code === 'ECONNREFUSED') {
+        return res.status(503).json({ message: "Service temporarily unavailable" });
+      }
+      res.status(500).json({ message: "Failed to fetch popular posts" });
+    }
+  });
+
   // User discovery and search routes
   app.get('/api/users/recommended', requireAuth, async (req: any, res) => {
     try {
@@ -1123,7 +1150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/users/trending', requireAuth, async (req: any, res) => {
+  app.get('/api/users/trending', async (req, res) => {
     try {
       const trendingUsers = await storage.getTrendingUsers();
       res.json(trendingUsers);

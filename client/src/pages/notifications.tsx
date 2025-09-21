@@ -222,7 +222,10 @@ export default function Notifications() {
         <div className="lg:ml-64 min-h-screen flex items-center justify-center">
           <div className="text-center">
             <h2 className="text-2xl font-bold mb-2">Sign in to view notifications</h2>
-            <p className="text-muted-foreground">You need to be logged in to see your notifications.</p>
+            <p className="text-muted-foreground mb-4">You need to be logged in to see your notifications.</p>
+            <Button onClick={() => window.location.href = '/'}>
+              Go to Home
+            </Button>
           </div>
         </div>
       </div>
