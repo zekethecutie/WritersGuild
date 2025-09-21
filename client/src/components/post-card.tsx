@@ -27,6 +27,7 @@ import {
   Trash2
 } from "lucide-react";
 import type { Post, User } from "@shared/schema";
+import { getProfileImageUrl } from "@/lib/defaultImages";
 
 interface PostCardProps {
   post: Post & {
@@ -49,11 +50,28 @@ export default function PostCard({ post }: PostCardProps) {
   const author = post.author || {
     id: post.authorId,
     username: `user${post.authorId.slice(-4)}`,
-    firstName: "Writer",
-    lastName: `${post.authorId.slice(-4)}`,
-    displayName: `User ${post.authorId.slice(-4)}`, // Added displayName
-    profileImageUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.authorId}`,
+    displayName: `User ${post.authorId.slice(-4)}`,
+    email: null,
+    password: null,
+    bio: null,
+    location: null,
+    website: null,
+    profileImageUrl: null,
+    coverImageUrl: null,
     isVerified: false,
+    isAdmin: false,
+    isSuperAdmin: false,
+    writingStreak: 0,
+    wordCountGoal: 500,
+    weeklyPostsGoal: 5,
+    genres: [],
+    postsCount: 0,
+    followersCount: 0,
+    followingCount: 0,
+    likesCount: 0,
+    commentsCount: 0,
+    createdAt: new Date(),
+    updatedAt: new Date()
   } as User;
 
   const likeMutation = useMutation({
@@ -262,8 +280,8 @@ export default function PostCard({ post }: PostCardProps) {
     >
       <div className="flex space-x-3">
         <img
-          src={author.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${author.username}`}
-          alt={`${author.firstName} ${author.lastName} profile`}
+          src={getProfileImageUrl(author.profileImageUrl)}
+          alt={`${author.displayName} profile`}
           className="w-12 h-12 rounded-full object-cover flex-shrink-0"
           data-testid="img-post-author-avatar"
         />
@@ -320,7 +338,7 @@ export default function PostCard({ post }: PostCardProps) {
               <span>·</span>
               <span className="flex items-center gap-1">
                 <Clock className="w-3 h-3" />
-                {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+                {formatDistanceToNow(new Date(post.createdAt || new Date()), { addSuffix: true })}
               </span>
               {post.postType !== "text" && (
                 <>
@@ -415,7 +433,7 @@ export default function PostCard({ post }: PostCardProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => repostMutation.mutate()}
+              onClick={() => repostMutation.mutate("")}
               disabled={repostMutation.isPending}
               className={`engagement-btn ${post.isReposted ? "text-green-400" : ""} hover:text-green-400 group`}
               data-testid="button-repost"
@@ -454,7 +472,7 @@ export default function PostCard({ post }: PostCardProps) {
 
             <SavePostImage postRef={postRef} postId={post.id} disabled={!user} />
 
-            {(user?.isAdmin || user?.isSuperAdmin) && (
+            {(user as any)?.isAdmin && (
               <Button
                 variant="ghost"
                 size="sm"
