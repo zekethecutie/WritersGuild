@@ -951,6 +951,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User discovery and search routes
+  app.get('/api/users/recommended', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const recommendedUsers = await storage.getRecommendedUsers(userId);
+      res.json(recommendedUsers);
+    } catch (error) {
+      console.error("Error fetching recommended users:", error);
+      res.status(500).json({ message: "Failed to fetch recommended users" });
+    }
+  });
+
+  app.get('/api/users/trending', requireAuth, async (req: any, res) => {
+    try {
+      const trendingUsers = await storage.getTrendingUsers();
+      res.json(trendingUsers);
+    } catch (error) {
+      console.error("Error fetching trending users:", error);
+      res.status(500).json({ message: "Failed to fetch trending users" });
+    }
+  });
+
+  app.get('/api/posts/popular', requireAuth, async (req: any, res) => {
+    try {
+      const popularPosts = await storage.getPopularPosts();
+      res.json(popularPosts);
+    } catch (error) {
+      console.error("Error fetching popular posts:", error);
+      res.status(500).json({ message: "Failed to fetch popular posts" });
+    }
+  });
+
+  app.get('/api/search', requireAuth, async (req: any, res) => {
+    try {
+      const { q: query } = req.query;
+      
+      if (!query || typeof query !== 'string') {
+        return res.status(400).json({ message: "Search query is required" });
+      }
+
+      const results = await storage.searchContent(query.trim());
+      res.json(results);
+    } catch (error) {
+      console.error("Error performing search:", error);
+      res.status(500).json({ message: "Failed to perform search" });
+    }
+  });
+
   // Create HTTP server
   const httpServer = createServer(app);
 

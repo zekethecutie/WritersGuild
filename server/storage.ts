@@ -1034,6 +1034,186 @@ export class DatabaseStorage implements IStorage {
         )
       );
   }
+
+  // User discovery and search methods
+  async getRecommendedUsers(userId: string): Promise<any[]> {
+    // Get users with similar genres or who are followed by people the user follows
+    const result = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        displayName: users.displayName,
+        bio: users.bio,
+        location: users.location,
+        profileImageUrl: users.profileImageUrl,
+        genres: users.genres,
+        postsCount: users.postsCount,
+        createdAt: users.createdAt,
+        followersCount: sql<number>`(
+          SELECT COUNT(*) FROM ${follows} 
+          WHERE ${follows.followingId} = ${users.id}
+        )`.as('followersCount'),
+        isFollowing: sql<boolean>`(
+          SELECT CASE WHEN COUNT(*) > 0 THEN true ELSE false END
+          FROM ${follows} 
+          WHERE ${follows.followerId} = ${userId} 
+          AND ${follows.followingId} = ${users.id}
+        )`.as('isFollowing'),
+      })
+      .from(users)
+      .where(
+        and(
+          ne(users.id, userId), // Exclude current user
+          isNotNull(users.genres), // Only users with genres
+        )
+      )
+      .orderBy(desc(users.postsCount))
+      .limit(10);
+
+    return result;
+  }
+
+  async getTrendingUsers(): Promise<any[]> {
+    // Users with highest engagement in the last 30 days
+    const result = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        displayName: users.displayName,
+        bio: users.bio,
+        location: users.location,
+        profileImageUrl: users.profileImageUrl,
+        genres: users.genres,
+        postsCount: users.postsCount,
+        createdAt: users.createdAt,
+        followersCount: sql<number>`(
+          SELECT COUNT(*) FROM ${follows} 
+          WHERE ${follows.followingId} = ${users.id}
+        )`.as('followersCount'),
+        recentActivity: sql<number>`(
+          SELECT COUNT(*) FROM ${posts} 
+          WHERE ${posts.authorId} = ${users.id} 
+          AND ${posts.createdAt} > NOW() - INTERVAL '30 days'
+        )`.as('recentActivity'),
+      })
+      .from(users)
+      .orderBy(
+        desc(sql`(
+          SELECT COUNT(*) FROM ${follows} 
+          WHERE ${follows.followingId} = ${users.id}
+        ) + (
+          SELECT COALESCE(SUM(${posts.likesCount}), 0) FROM ${posts} 
+          WHERE ${posts.authorId} = ${users.id} 
+          AND ${posts.createdAt} > NOW() - INTERVAL '30 days'
+        )`)
+      )
+      .limit(10);
+
+    return result;
+  }
+
+  async getPopularPosts(): Promise<any[]> {
+    // Posts with highest engagement in the last 7 days
+    const result = await db
+      .select({
+        id: posts.id,
+        content: posts.content,
+        postType: posts.postType,
+        genre: posts.genre,
+        likesCount: posts.likesCount,
+        commentsCount: posts.commentsCount,
+        repostsCount: posts.repostsCount,
+        viewsCount: posts.viewsCount,
+        createdAt: posts.createdAt,
+        author: {
+          id: users.id,
+          username: users.username,
+          displayName: users.displayName,
+          profileImageUrl: users.profileImageUrl,
+        },
+      })
+      .from(posts)
+      .innerJoin(users, eq(posts.authorId, users.id))
+      .where(
+        and(
+          eq(posts.isPrivate, false),
+          gte(posts.createdAt, sql`NOW() - INTERVAL '7 days'`)
+        )
+      )
+      .orderBy(
+        desc(sql`${posts.likesCount} + ${posts.commentsCount} + ${posts.repostsCount}`)
+      )
+      .limit(20);
+
+    return result;
+  }
+
+  async searchContent(query: string): Promise<{ users: any[]; posts: any[] }> {
+    const searchTerm = `%${query.toLowerCase()}%`;
+
+    // Search users
+    const users = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        displayName: users.displayName,
+        bio: users.bio,
+        location: users.location,
+        profileImageUrl: users.profileImageUrl,
+        genres: users.genres,
+        postsCount: users.postsCount,
+        createdAt: users.createdAt,
+        followersCount: sql<number>`(
+          SELECT COUNT(*) FROM ${follows} 
+          WHERE ${follows.followingId} = ${users.id}
+        )`.as('followersCount'),
+      })
+      .from(users)
+      .where(
+        or(
+          ilike(users.displayName, searchTerm),
+          ilike(users.username, searchTerm),
+          ilike(users.bio, searchTerm),
+        )
+      )
+      .orderBy(desc(users.postsCount))
+      .limit(20);
+
+    // Search posts
+    const posts = await db
+      .select({
+        id: posts.id,
+        content: posts.content,
+        postType: posts.postType,
+        genre: posts.genre,
+        likesCount: posts.likesCount,
+        commentsCount: posts.commentsCount,
+        repostsCount: posts.repostsCount,
+        viewsCount: posts.viewsCount,
+        createdAt: posts.createdAt,
+        author: {
+          id: users.id,
+          username: users.username,
+          displayName: users.displayName,
+          profileImageUrl: users.profileImageUrl,
+        },
+      })
+      .from(posts)
+      .innerJoin(users, eq(posts.authorId, users.id))
+      .where(
+        and(
+          eq(posts.isPrivate, false),
+          or(
+            ilike(posts.content, searchTerm),
+            ilike(posts.genre, searchTerm),
+          )
+        )
+      )
+      .orderBy(desc(posts.createdAt))
+      .limit(30);
+
+    return { users, posts };
+  }
 }
 
 export const storage = new DatabaseStorage();
