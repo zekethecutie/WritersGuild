@@ -89,8 +89,16 @@ export class DatabaseStorage implements IStorage {
   // Initialize hardcoded admin account
   async initializeAdminAccount(): Promise<void> {
     try {
-      // Add a small delay to ensure database is ready
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Add a delay to ensure database is ready
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      // Test basic connection first
+      try {
+        await db.select().from(users).limit(1);
+      } catch (error: any) {
+        console.log("⏳ Database connection failed, skipping admin creation:", error.code || error.message);
+        return;
+      }
 
       // Check if the admin account already exists
       let existingAdmin;
@@ -98,8 +106,8 @@ export class DatabaseStorage implements IStorage {
         existingAdmin = await this.getUserByUsername("itsicxrus");
       } catch (error: any) {
         // If column doesn't exist or database connection fails, database schema isn't ready
-        if (error.code === '42703' || error.code === '42P01' || error.code === '28P01') {
-          console.log("⏳ Database not ready yet (connection or schema issue), skipping admin creation");
+        if (error.code === '42703' || error.code === '42P01' || error.code === '28P01' || error.code === 'ECONNREFUSED') {
+          console.log("⏳ Database schema not ready yet, skipping admin creation");
           return;
         }
         console.log("Admin check failed, will attempt to create:", error.message);
