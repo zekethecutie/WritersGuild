@@ -24,10 +24,10 @@ if (!connectionString) {
 // Create postgres client with proper Supabase configuration
 const client = postgres(connectionString, {
   ssl: { rejectUnauthorized: false },
-  max: 10,
-  idle_timeout: 20,
-  max_lifetime: 60 * 30,
-  connect_timeout: 30,
+  max: 5,
+  idle_timeout: 10,
+  max_lifetime: 60 * 10,
+  connect_timeout: 10,
   prepare: false,
   transform: undefined,
   types: {},

@@ -13,20 +13,14 @@ if (connectionString && connectionString.includes('[') && connectionString.inclu
   connectionString = connectionString.replace(/\[([^\]]+)\]/, '$1');
 }
 
-const dbConfig: any = {
-  url: connectionString,
-};
-
-// Only add SSL config for Supabase URLs
-if (connectionString && connectionString.includes('supabase.com')) {
-  dbConfig.ssl = { rejectUnauthorized: false };
-}
-
 export default defineConfig({
   out: "./migrations",
   schema: "./shared/schema.ts",
   dialect: "postgresql",
-  dbCredentials: dbConfig,
+  dbCredentials: {
+    url: connectionString,
+    ssl: { rejectUnauthorized: false }
+  },
   verbose: true,
-  strict: true,
+  strict: false,
 });
