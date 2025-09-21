@@ -19,7 +19,7 @@ const dbConfig: any = {
 
 // Only add SSL config for Supabase URLs
 if (connectionString && connectionString.includes('supabase.com')) {
-  dbConfig.ssl = 'require';
+  dbConfig.ssl = { rejectUnauthorized: false };
 }
 
 export default defineConfig({

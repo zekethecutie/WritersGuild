@@ -1,4 +1,3 @@
-
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from "@shared/schema";
@@ -24,7 +23,7 @@ if (!connectionString) {
 
 // Create postgres client with proper Supabase configuration
 const client = postgres(connectionString, {
-  ssl: connectionString.includes('supabase.com') ? 'require' : false,
+  ssl: { rejectUnauthorized: false },
   max: 10,
   idle_timeout: 20,
   max_lifetime: 60 * 30,

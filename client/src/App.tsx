@@ -17,7 +17,7 @@ import { useLocation } from "wouter"; // Import useLocation to access the curren
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
-  const [location] = useLocation();
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -25,6 +25,11 @@ function Router() {
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
       </div>
     );
+  }
+
+  // Show landing page only for the root path when not authenticated
+  if (!isAuthenticated && location === '/') {
+    return <LandingPage />;
   }
 
   return (
