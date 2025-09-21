@@ -11,6 +11,7 @@ import Profile from "@/pages/profile";
 import Explore from "@/pages/explore";
 import Messages from "@/pages/messages";
 import Notifications from "@/pages/notifications";
+import Bookmarks from "@/pages/bookmarks";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -26,6 +27,7 @@ function Router() {
           <Route path="/explore" component={Explore} />
           <Route path="/messages" component={Messages} />
           <Route path="/notifications" component={Notifications} />
+          <Route path="/bookmarks" component={Bookmarks} />
         </>
       )}
       <Route component={NotFound} />

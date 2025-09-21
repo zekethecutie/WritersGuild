@@ -514,9 +514,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.session.userId;
       const bookmarks = await storage.getUserBookmarks(userId);
       res.json(bookmarks);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching bookmarks:", error);
+      if (error.code === '28P01' || error.code === 'ECONNREFUSED') {
+        return res.status(503).json({ message: "Service temporarily unavailable" });
+      }
       res.status(500).json({ message: "Failed to fetch bookmarks" });
+    }
+  });
+
+  app.delete('/api/posts/:id/bookmark', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { id: postId } = req.params;
+      await storage.removeBookmark(userId, postId);
+      res.json({ message: "Bookmark removed" });
+    } catch (error: any) {
+      console.error("Error removing bookmark:", error);
+      if (error.code === '28P01' || error.code === 'ECONNREFUSED') {
+        return res.status(503).json({ message: "Service temporarily unavailable" });
+      }
+      res.status(500).json({ message: "Failed to remove bookmark" });
+    }
+  });
+
+  app.delete('/api/bookmarks/clear', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      await storage.clearAllBookmarks(userId);
+      res.json({ message: "All bookmarks cleared" });
+    } catch (error: any) {
+      console.error("Error clearing bookmarks:", error);
+      if (error.code === '28P01' || error.code === 'ECONNREFUSED') {
+        return res.status(503).json({ message: "Service temporarily unavailable" });
+      }
+      res.status(500).json({ message: "Failed to clear bookmarks" });
     }
   });
 

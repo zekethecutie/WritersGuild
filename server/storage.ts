@@ -593,6 +593,16 @@ export class DatabaseStorage implements IStorage {
     );
   }
 
+  async removeBookmark(userId: string, postId: string): Promise<void> {
+    await db.delete(bookmarks).where(
+      and(eq(bookmarks.userId, userId), eq(bookmarks.postId, postId))
+    );
+  }
+
+  async clearAllBookmarks(userId: string): Promise<void> {
+    await db.delete(bookmarks).where(eq(bookmarks.userId, userId));
+  }
+
   async getUserBookmarks(userId: string): Promise<Post[]> {
     return db.select({
       id: posts.id,
