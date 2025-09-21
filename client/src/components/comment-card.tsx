@@ -10,6 +10,7 @@ import {
   Clock,
   MoreHorizontal
 } from "lucide-react";
+import { getProfileImageUrl } from "@/lib/defaultImages";
 import type { Comment, User } from "@shared/schema";
 
 interface CommentCardProps {
@@ -39,7 +40,7 @@ export default function CommentCard({
     bio: null,
     location: null,
     website: null,
-    profileImageUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.userId}`,
+    profileImageUrl: null,
     coverImageUrl: null,
     isVerified: false,
     isAdmin: false,
@@ -61,7 +62,7 @@ export default function CommentCard({
     <div className={`comment-level-${Math.min(level, 5)} py-3 ${level > 0 ? 'border-l-2 border-border pl-4 ml-4' : ''}`}>
       <div className="flex space-x-3">
         <img
-          src={author.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${author.username}`}
+          src={getProfileImageUrl(author.profileImageUrl)}
           alt={`${author.displayName} profile`}
           className="w-8 h-8 rounded-full object-cover flex-shrink-0"
         />

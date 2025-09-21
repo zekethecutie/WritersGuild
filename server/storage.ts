@@ -242,11 +242,6 @@ export class DatabaseStorage implements IStorage {
 
     if (userId) {
       // Get posts from followed users
-      const followingSubquery = db
-        .select({ followingId: follows.followingId })
-        .from(follows)
-        .where(eq(follows.followerId, userId));
-
       query = query.where(
         or(
           eq(posts.authorId, userId),
@@ -261,11 +256,13 @@ export class DatabaseStorage implements IStorage {
       );
     }
 
-    return await query
+    const result = await query
       .where(eq(posts.isPrivate, false))
       .orderBy(desc(posts.createdAt))
       .limit(limit)
       .offset(offset);
+
+    return result;
   }
 
   async getPostsByUser(userId: string, limit = 20, offset = 0): Promise<Post[]> {

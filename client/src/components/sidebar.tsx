@@ -12,6 +12,7 @@ import {
   Settings,
   MoreHorizontal
 } from "lucide-react";
+import { getProfileImageUrl } from "@/lib/defaultImages";
 import { Link, useLocation } from "wouter";
 
 export default function Sidebar() {
@@ -101,14 +102,14 @@ export default function Sidebar() {
         <div className="bg-secondary rounded-xl p-4">
           <div className="flex items-center space-x-3">
             <img
-              src={user?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.username}`}
+              src={getProfileImageUrl(user?.profileImageUrl)}
               alt="User profile"
               className="w-10 h-10 rounded-full object-cover"
               data-testid="img-sidebar-avatar"
             />
             <div className="flex-1 min-w-0">
               <p className="font-medium text-sm truncate">
-                {user?.firstName} {user?.lastName}
+                {user?.displayName || 'User'}
               </p>
               <p className="text-xs text-muted-foreground truncate">
                 @{user?.username}

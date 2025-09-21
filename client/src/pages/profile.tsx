@@ -25,6 +25,7 @@ import {
   Edit3,
   Camera
 } from "lucide-react";
+import { getProfileImageUrl, getCoverImageUrl } from "@/lib/defaultImages";
 import type { Post, User } from "@shared/schema";
 
 export default function Profile() {
@@ -240,13 +241,11 @@ export default function Profile() {
           <div className="relative">
             {/* Cover Image */}
             <div className="h-48 bg-gradient-to-br from-primary/20 via-background to-accent/20 relative">
-              {profileUser.coverImageUrl && (
-                <img 
-                  src={profileUser.coverImageUrl}
-                  alt="Cover"
-                  className="w-full h-full object-cover"
-                />
-              )}
+              <img 
+                src={getCoverImageUrl(profileUser.coverImageUrl)}
+                alt="Cover"
+                className="w-full h-full object-cover"
+              />
               {isOwnProfile && (
                 <label htmlFor="cover-photo-upload">
                   <Button 
@@ -276,8 +275,8 @@ export default function Profile() {
             <div className="absolute -bottom-16 left-6">
               <div className="relative">
                 <img 
-                  src={profileUser.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profileUser.username}`}
-                  alt={`${profileUser.firstName} ${profileUser.lastName}`}
+                  src={getProfileImageUrl(profileUser.profileImageUrl)}
+                  alt={profileUser.displayName}
                   className="w-32 h-32 rounded-full border-4 border-background object-cover"
                   data-testid="img-profile-avatar"
                 />
