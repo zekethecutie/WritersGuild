@@ -1,5 +1,5 @@
 
-const postgres = require('postgres');
+import postgres from 'postgres';
 
 async function testConnection() {
   console.log('🔍 Testing database connection...');
@@ -22,7 +22,7 @@ async function testConnection() {
     const result = await client`SELECT 1 as test`;
     console.log('✅ Database connection successful:', result);
     
-    // Test if sessions table exists
+    // Test if tables exist
     try {
       const tables = await client`
         SELECT table_name 
@@ -30,6 +30,10 @@ async function testConnection() {
         WHERE table_schema = 'public'
       `;
       console.log('📋 Available tables:', tables.map(t => t.table_name));
+      
+      if (tables.length === 0) {
+        console.log('⚠️  No tables found. You need to run: npm run db:push');
+      }
     } catch (error) {
       console.log('⚠️  Could not list tables:', error.message);
     }
