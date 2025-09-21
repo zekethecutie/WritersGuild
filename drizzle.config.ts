@@ -7,12 +7,19 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is required, ensure the database is provisioned");
 }
 
+// Parse and fix the connection string for Supabase
+let connectionString = process.env.DATABASE_URL;
+if (connectionString.includes('[') && connectionString.includes(']')) {
+  connectionString = connectionString.replace(/\[([^\]]+)\]/, '$1');
+}
+
 export default defineConfig({
   out: "./migrations",
   schema: "./shared/schema.ts",
   dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_URL,
+    url: connectionString,
+    ssl: 'require',
   },
   verbose: true,
   strict: true,

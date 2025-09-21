@@ -115,7 +115,11 @@ export class DatabaseStorage implements IStorage {
         console.log("✅ Database connection successful");
       } catch (error: any) {
         console.log("⚠️ Database connection failed:", error.code || error.message);
-        console.log("💡 Please check your DATABASE_URL in the Secrets tool");
+        if (error.code === '28P01') {
+          console.log("💡 Authentication failed - check your Supabase password in DATABASE_URL");
+        } else if (error.code === '42P01') {
+          console.log("💡 Tables don't exist yet - run: npm run db:push");
+        }
         return;
       }
 

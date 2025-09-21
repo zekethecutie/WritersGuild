@@ -9,14 +9,25 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-// Create postgres client with Supabase configuration
-const client = postgres(process.env.DATABASE_URL, {
-  ssl: { rejectUnauthorized: false },
+// Parse and fix the connection string for Supabase
+let connectionString = process.env.DATABASE_URL;
+
+// Handle the password in brackets for Supabase URLs
+if (connectionString.includes('[') && connectionString.includes(']')) {
+  connectionString = connectionString.replace(/\[([^\]]+)\]/, '$1');
+}
+
+// Create postgres client with proper Supabase configuration
+const client = postgres(connectionString, {
+  ssl: 'require',
   max: 10,
   idle_timeout: 20,
   max_lifetime: 60 * 30,
   connect_timeout: 60,
   prepare: false,
+  transform: undefined,
+  types: {},
+  onnotice: () => {},
 });
 
 export const db = drizzle(client, { schema });

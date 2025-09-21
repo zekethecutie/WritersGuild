@@ -12,16 +12,24 @@ import Explore from "@/pages/explore";
 import Messages from "@/pages/messages";
 import Notifications from "@/pages/notifications";
 import Bookmarks from "@/pages/bookmarks";
+import LandingPage from "@/pages/landing"; // Assuming LandingPage is the correct component name for the landing page.
+import { useLocation } from "wouter"; // Import useLocation to access the current path
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth(); // Assuming useAuth also returns user
+  const [location] = useLocation(); // Get current location
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-lg">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
       </div>
     );
+  }
+
+  // Show landing page only for the root path when not authenticated
+  if (!user && location.pathname === '/') {
+    return <LandingPage />;
   }
 
   return (
