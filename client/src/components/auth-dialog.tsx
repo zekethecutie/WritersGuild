@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import { Loader2 } from "lucide-react";
 interface AuthDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  onSuccess?: () => void;
 }
 
 export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
@@ -20,7 +21,7 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
   const { toast } = useToast();
 
   const [loginForm, setLoginForm] = useState({
-    identifier: "", // Changed from email to identifier for username or email
+    identifier: "", 
     password: "",
   });
 
@@ -37,7 +38,6 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
     setIsLoading(true);
 
     try {
-      // Assuming authService.login can now handle both email and username
       const result = await authService.login(loginForm.identifier, loginForm.password);
 
       if (result.success) {
@@ -45,7 +45,7 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
           title: "Welcome back!",
           description: "You've successfully logged in.",
         });
-        onSuccess();
+        onSuccess?.();
         onOpenChange(false);
       } else {
         toast({
@@ -92,7 +92,7 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
           title: "Welcome to Writers Guild!",
           description: "Your account has been created successfully.",
         });
-        onSuccess();
+        onSuccess?.();
         onOpenChange(false);
       } else {
         toast({
@@ -131,7 +131,7 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
                 <Label htmlFor="login-identifier">Username or Email</Label>
                 <Input
                   id="login-identifier"
-                  type="text" // Changed type to text
+                  type="text"
                   placeholder="Enter your username or email"
                   value={loginForm.identifier}
                   onChange={(e) => setLoginForm({ ...loginForm, identifier: e.target.value })}
@@ -219,219 +219,6 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
                 Create Account
               </Button>
             </form>
-          </TabsContent>
-        </Tabs>
-
-        <div className="mt-6 pt-4 border-t border-border">
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => {
-              onOpenChange(false);
-              window.location.href = '/explore';
-            }}
-          >
-            Continue as Guest
-          </Button>
-          <p className="text-xs text-muted-foreground mt-2 text-center">
-            Browse posts and profiles without an account
-          </p>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-
-interface AuthDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}
-
-export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    displayName: "",
-    username: "",
-  });
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({
-      ...prev,
-      [e.target.name]: e.target.value
-    }));
-  };
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-        }),
-      });
-
-      if (response.ok) {
-        window.location.reload();
-      } else {
-        console.error('Login failed');
-      }
-    } catch (error) {
-      console.error('Login error:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
-        window.location.reload();
-      } else {
-        console.error('Registration failed');
-      }
-    } catch (error) {
-      console.error('Registration error:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Welcome to Whisper Network</DialogTitle>
-        </DialogHeader>
-        
-        <Tabs defaultValue="login" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="login">Login</TabsTrigger>
-            <TabsTrigger value="register">Sign Up</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="login">
-            <Card>
-              <CardHeader>
-                <CardTitle>Login</CardTitle>
-                <CardDescription>
-                  Enter your credentials to access your account.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="space-y-1">
-                    <Label htmlFor="login-email">Email</Label>
-                    <Input
-                      id="login-email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="login-password">Password</Label>
-                    <Input
-                      id="login-password"
-                      name="password"
-                      type="password"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Signing in..." : "Sign In"}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="register">
-            <Card>
-              <CardHeader>
-                <CardTitle>Create Account</CardTitle>
-                <CardDescription>
-                  Join the Whisper Network community.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <form onSubmit={handleRegister} className="space-y-4">
-                  <div className="space-y-1">
-                    <Label htmlFor="register-displayName">Display Name</Label>
-                    <Input
-                      id="register-displayName"
-                      name="displayName"
-                      value={formData.displayName}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="register-username">Username</Label>
-                    <Input
-                      id="register-username"
-                      name="username"
-                      value={formData.username}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="register-email">Email</Label>
-                    <Input
-                      id="register-email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="register-password">Password</Label>
-                    <Input
-                      id="register-password"
-                      name="password"
-                      type="password"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Creating account..." : "Create Account"}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
           </TabsContent>
         </Tabs>
 
