@@ -133,14 +133,23 @@
   -webkit-text-fill-color: transparent;
   background-clip: text;
   color: transparent;
-  /* Fallback for unsupported browsers */
-  display: block;
+  display: inline-block;
   font-weight: bold;
 }
 
-/* Ensure text is visible on all devices */
+/* Ensure text is visible on all devices - better fallback */
 @supports not (-webkit-background-clip: text) {
   .gradient-text {
+    background: none !important;
+    color: hsl(var(--primary)) !important;
+    -webkit-text-fill-color: unset !important;
+  }
+}
+
+/* Firefox fallback */
+@-moz-document url-prefix() {
+  .gradient-text {
+    background: none;
     color: hsl(var(--primary));
     -webkit-text-fill-color: unset;
   }

@@ -24,8 +24,8 @@ export default function Landing() {
               </div>
             </div>
 
-            <h1 className="text-4xl sm:text-6xl font-bold mb-6 text-foreground">
-              <span className="gradient-text">Writers Guild</span>
+            <h1 className="text-4xl sm:text-6xl font-bold mb-6">
+              <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent font-bold">Writers Guild</span>
             </h1>
 
             <p className="text-xl sm:text-2xl text-muted-foreground mb-4 max-w-3xl mx-auto">
