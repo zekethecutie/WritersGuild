@@ -46,6 +46,7 @@ export default function PostComposer() {
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [isRichEditor, setIsRichEditor] = useState(false);
   const [showSpotify, setShowSpotify] = useState(false);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
 
   const createPostMutation = useMutation({
     mutationFn: async (postData: any) => {
@@ -91,21 +92,69 @@ export default function PostComposer() {
   });
 
   const handleImageUpload = async (files: FileList) => {
+    // Validate files
+    const validFiles = Array.from(files).filter(file => {
+      const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      
+      if (!validTypes.includes(file.type)) {
+        toast({
+          title: "Invalid file type",
+          description: `${file.name} is not a supported image format.`,
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      if (file.size > maxSize) {
+        toast({
+          title: "File too large", 
+          description: `${file.name} is larger than 10MB.`,
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      return true;
+    });
+
+    if (validFiles.length === 0) return;
+
     const formData = new FormData();
-    Array.from(files).forEach(file => {
+    validFiles.forEach(file => {
       formData.append('images', file);
     });
 
+    setIsUploadingImages(true);
     try {
-      const response = await apiRequest("POST", "/api/upload/images", formData);
+      // Use fetch directly for FormData uploads
+      const response = await fetch("/api/upload/images", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Upload failed: ${errorText}`);
+      }
+
       const data = await response.json();
       setSelectedImages(prev => [...prev, ...data.imageUrls]);
+      
+      toast({
+        title: "Images uploaded!",
+        description: `${validFiles.length} image(s) added to your post.`,
+      });
     } catch (error) {
+      console.error("Image upload error:", error);
       toast({
         title: "Upload failed",
         description: "Failed to upload images. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsUploadingImages(false);
     }
   };
 
@@ -114,6 +163,26 @@ export default function PostComposer() {
       toast({
         title: "Empty post",
         description: "Please write something before publishing.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate content length
+    if (content.length > 10000) {
+      toast({
+        title: "Post too long",
+        description: "Posts must be under 10,000 characters.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Don't allow posting while images are uploading
+    if (isUploadingImages) {
+      toast({
+        title: "Images uploading",
+        description: "Please wait for image uploads to complete.",
         variant: "destructive",
       });
       return;
@@ -319,7 +388,7 @@ export default function PostComposer() {
                 <input
                   type="file"
                   multiple
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
                   onChange={(e) => e.target.files && handleImageUpload(e.target.files)}
                   className="hidden"
                   id="image-upload"
@@ -328,11 +397,20 @@ export default function PostComposer() {
                   variant="ghost"
                   size="sm"
                   onClick={() => document.getElementById('image-upload')?.click()}
-                  className="p-2 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                  title="Add Images"
+                  disabled={isUploadingImages || selectedImages.length >= 4}
+                  className={`p-2 rounded-lg transition-colors ${
+                    isUploadingImages ? "text-blue-400 bg-blue-400/10" : 
+                    selectedImages.length >= 4 ? "text-muted-foreground/50 cursor-not-allowed" :
+                    "text-muted-foreground hover:text-primary hover:bg-primary/10"
+                  }`}
+                  title={isUploadingImages ? "Uploading..." : selectedImages.length >= 4 ? "Maximum 4 images" : "Add Images"}
                   data-testid="button-add-images"
                 >
-                  <ImageIcon className="w-5 h-5" />
+                  {isUploadingImages ? (
+                    <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <ImageIcon className="w-5 h-5" />
+                  )}
                 </Button>
 
                 <Button
@@ -380,7 +458,7 @@ export default function PostComposer() {
                 
                 <Button
                   onClick={handleSubmit}
-                  disabled={createPostMutation.isPending || !content.trim()}
+                  disabled={createPostMutation.isPending || !content.trim() || isUploadingImages}
                   className="bg-primary text-primary-foreground px-6 py-2 rounded-full font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
                   data-testid="button-publish"
                 >
