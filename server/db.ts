@@ -16,9 +16,12 @@ console.log("🔗 URL format:", process.env.DATABASE_URL.replace(/:[^:@]*@/, ':*
 // Create the postgres client for Supabase
 const client = postgres(process.env.DATABASE_URL, {
   ssl: 'require',
-  max: 1,
+  max: 5,
   idle_timeout: 20,
   max_lifetime: 60 * 30,
-  connect_timeout: 10
+  connect_timeout: 30,
+  connection: {
+    application_name: 'writers-guild'
+  }
 });
 export const db = drizzle(client, { schema });

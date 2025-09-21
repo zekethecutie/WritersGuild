@@ -99,16 +99,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if email is provided and user already exists
       if (email) {
-        const existingUser = await storage.getUserByEmail(email);
-        if (existingUser) {
-          return res.status(400).json({ message: "User already exists with this email" });
+        try {
+          const existingUser = await storage.getUserByEmail(email);
+          if (existingUser) {
+            return res.status(400).json({ message: "User already exists with this email" });
+          }
+        } catch (error: any) {
+          console.error("Database error checking email:", error.message);
+          if (error.code === '28P01' || error.code === 'ECONNREFUSED') {
+            return res.status(503).json({ message: "Database connection failed. Please try again later." });
+          }
         }
       }
 
       // Check if username is taken
-      const existingUsername = await storage.getUserByUsername(username);
-      if (existingUsername) {
-        return res.status(400).json({ message: "Username is already taken" });
+      try {
+        const existingUsername = await storage.getUserByUsername(username);
+        if (existingUsername) {
+          return res.status(400).json({ message: "Username is already taken" });
+        }
+      } catch (error: any) {
+        console.error("Database error checking username:", error.message);
+        if (error.code === '28P01' || error.code === 'ECONNREFUSED') {
+          return res.status(503).json({ message: "Database connection failed. Please try again later." });
+        }
       }
 
       // Hash password
@@ -150,7 +164,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           user = await storage.getUserByUsername(email);
         }
       } catch (error: any) {
-        console.error("Database error during login:", error);
+        console.error("Database error during login:", error.message);
+        if (error.code === '28P01' || error.code === 'ECONNREFUSED') {
+          return res.status(503).json({ message: "Database connection failed. Please try again later." });
+        }
         return res.status(500).json({ message: "Database error, please try again" });
       }
 

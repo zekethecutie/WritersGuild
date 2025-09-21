@@ -76,7 +76,7 @@ export class AuthService {
     }
   }
 
-  async login(email: string, password: string): Promise<{ success: boolean; user?: User; error?: string }> {
+  async login(identifier: string, password: string): Promise<{ success: boolean; user?: User; error?: string }> {
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -84,7 +84,7 @@ export class AuthService {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: identifier, password }),
       });
 
       const data = await response.json();

@@ -35,6 +35,7 @@ export interface IStorage {
   // User profile operations
   updateUserProfile(id: string, data: Partial<User>): Promise<User>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
 
   // Post operations
   createPost(post: InsertPost): Promise<Post>;
@@ -184,26 +185,20 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     try {
-      const [user] = await db.select().from(users).where(eq(users.username, username));
-      return user;
-    } catch (error: any) {
-      if (error.code === '42703') { // Column does not exist
-        console.log("Database schema not ready, running migration...");
-        return undefined;
-      }
+      const userList = await db.select().from(users).where(eq(users.username, username));
+      return userList[0];
+    } catch (error) {
+      console.error("Error fetching user by username:", error);
       throw error;
     }
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     try {
-      const [user] = await db.select().from(users).where(eq(users.email, email));
-      return user;
-    } catch (error: any) {
-      if (error.code === '42703') { // Column does not exist
-        console.log("Database schema not ready, running migration...");
-        return undefined;
-      }
+      const userList = await db.select().from(users).where(eq(users.email, email));
+      return userList[0];
+    } catch (error) {
+      console.error("Error fetching user by email:", error);
       throw error;
     }
   }
