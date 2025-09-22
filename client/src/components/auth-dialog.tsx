@@ -228,7 +228,11 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
             className="w-full"
             onClick={() => {
               onOpenChange(false);
-              window.location.href = '/explore';
+              // Use proper navigation
+              const currentPath = window.location.pathname;
+              if (currentPath === '/') {
+                window.location.pathname = '/explore';
+              }
             }}
           >
             Continue as Guest

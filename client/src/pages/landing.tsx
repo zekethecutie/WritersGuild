@@ -52,9 +52,15 @@ export default function Landing() {
                 className="border-primary text-primary hover:bg-primary/10 px-8 py-3 text-lg"
                 data-testid="button-learn-more"
                 onClick={() => {
-                  document.getElementById('features-section')?.scrollIntoView({ 
-                    behavior: 'smooth' 
-                  });
+                  const featuresSection = document.getElementById('features-section');
+                  if (featuresSection) {
+                    featuresSection.scrollIntoView({ 
+                      behavior: 'smooth' 
+                    });
+                  } else {
+                    // If features section doesn't exist, navigate to explore
+                    window.location.href = '/explore';
+                  }
                 }}
               >
                 Learn More

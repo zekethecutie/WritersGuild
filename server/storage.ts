@@ -1,4 +1,3 @@
-
 import {
   users,
   posts,
@@ -123,7 +122,7 @@ export class DatabaseStorage implements IStorage {
         return;
       }
 
-      // Check if the admin account already exists
+      // Check if admin account exists
       let existingAdmin;
       try {
         existingAdmin = await this.getUserByUsername("itsicxrus");
@@ -929,7 +928,7 @@ export class DatabaseStorage implements IStorage {
   async createConversation(participantOneId: string, participantTwoId: string): Promise<Conversation> {
     // Ensure consistent ordering to prevent duplicate conversations
     const [firstId, secondId] = [participantOneId, participantTwoId].sort();
-    
+
     const [conversation] = await db
       .insert(conversations)
       .values({
@@ -943,7 +942,7 @@ export class DatabaseStorage implements IStorage {
   async getConversation(participantOneId: string, participantTwoId: string): Promise<Conversation | undefined> {
     // Ensure consistent ordering
     const [firstId, secondId] = [participantOneId, participantTwoId].sort();
-    
+
     const [conversation] = await db
       .select()
       .from(conversations)

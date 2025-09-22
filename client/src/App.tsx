@@ -17,32 +17,27 @@ import { useLocation } from "wouter"; // Import useLocation to access the curren
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
-  const location = useLocation();
+  const [location] = useLocation();
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
       </div>
     );
   }
 
-  // Show landing page only for the root path when not authenticated
-  if (!isAuthenticated && location === '/') {
-    return <LandingPage />;
-  }
-
   return (
-    <Switch>
-      <Route path="/" component={isAuthenticated ? Home : Landing} />
-      <Route path="/home" component={Home} />
-      <Route path="/profile/:username?" component={Profile} />
-      <Route path="/explore" component={Explore} />
-      <Route path="/messages" component={Messages} />
-      <Route path="/notifications" component={Notifications} />
-      <Route path="/bookmarks" component={Bookmarks} />
-      <Route component={NotFound} />
-    </Switch>
+    <Routes>
+      <Route path="/" element={isAuthenticated ? <HomePage /> : <LandingPage />} />
+      <Route path="/explore" element={<ExplorePage />} />
+      <Route path="/search" element={isAuthenticated ? <SearchPage /> : <ExplorePage />} />
+      <Route path="/notifications" element={isAuthenticated ? <NotificationsPage /> : <Navigate to="/explore" replace />} />
+      <Route path="/messages" element={isAuthenticated ? <MessagesPage /> : <Navigate to="/explore" replace />} />
+      <Route path="/bookmarks" element={isAuthenticated ? <BookmarksPage /> : <Navigate to="/explore" replace />} />
+      <Route path="/profile/:username" element={<ProfilePage />} />
+      <Route path="*" element={<NotFoundPage />} />
+    </Routes>
   );
 }
 
