@@ -514,3 +514,567 @@ export default function Search() {
     </div>
   );
 }
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import Sidebar from "@/components/sidebar";
+import MobileNav from "@/components/mobile-nav";
+import PostCard from "@/components/post-card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
+import { 
+  Search, 
+  Filter, 
+  TrendingUp, 
+  Calendar,
+  MapPin,
+  User as UserIcon,
+  BookOpen,
+  Music,
+  Image as ImageIcon,
+  Heart,
+  MessageCircle,
+  Repeat2,
+  ChevronDown,
+  X
+} from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+
+interface SearchFilters {
+  type: 'all' | 'posts' | 'users' | 'topics';
+  timeRange: 'all' | 'today' | 'week' | 'month' | 'year';
+  sortBy: 'relevance' | 'recent' | 'popular' | 'engagement';
+  postType: 'all' | 'text' | 'poetry' | 'story' | 'challenge';
+  hasImages: boolean;
+  hasMusic: boolean;
+  verified: boolean;
+  minEngagement: number;
+}
+
+export default function SearchPage() {
+  const { user, isAuthenticated } = useAuth();
+  const { toast } = useToast();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<SearchFilters>({
+    type: 'all',
+    timeRange: 'all',
+    sortBy: 'relevance',
+    postType: 'all',
+    hasImages: false,
+    hasMusic: false,
+    verified: false,
+    minEngagement: 0
+  });
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Search results
+  const { data: searchResults, isLoading, error } = useQuery({
+    queryKey: ["/api/search", debouncedQuery, filters],
+    queryFn: async () => {
+      if (!debouncedQuery.trim()) return { posts: [], users: [], topics: [] };
+      
+      const params = new URLSearchParams({
+        q: debouncedQuery,
+        type: filters.type,
+        timeRange: filters.timeRange,
+        sortBy: filters.sortBy,
+        postType: filters.postType,
+        hasImages: filters.hasImages.toString(),
+        hasMusic: filters.hasMusic.toString(),
+        verified: filters.verified.toString(),
+        minEngagement: filters.minEngagement.toString()
+      });
+
+      const response = await fetch(`/api/search?${params}`, {
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('Search failed');
+      }
+
+      return response.json();
+    },
+    enabled: !!debouncedQuery.trim(),
+  });
+
+  // Trending searches
+  const { data: trendingSearches } = useQuery({
+    queryKey: ["/api/trending/searches"],
+    queryFn: () => fetch("/api/trending/searches").then(res => res.json()),
+  });
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) {
+      toast({
+        title: "Empty search",
+        description: "Please enter a search term",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const clearFilter = (filterKey: keyof SearchFilters) => {
+    setFilters(prev => ({
+      ...prev,
+      [filterKey]: filterKey === 'minEngagement' ? 0 : 
+                   typeof prev[filterKey] === 'boolean' ? false : 'all'
+    }));
+  };
+
+  const activeFiltersCount = Object.entries(filters).filter(([key, value]) => {
+    if (key === 'minEngagement') return value > 0;
+    if (typeof value === 'boolean') return value;
+    return value !== 'all';
+  }).length;
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Sidebar />
+      
+      <div className="lg:ml-64 min-h-screen">
+        <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b">
+          <div className="max-w-4xl mx-auto p-4">
+            <form onSubmit={handleSearch} className="space-y-4">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <Input
+                    placeholder="Search posts, users, topics..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 pr-4 py-3 text-lg"
+                  />
+                </div>
+                <Button 
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="flex items-center gap-2"
+                >
+                  <Filter className="w-4 h-4" />
+                  Filters
+                  {activeFiltersCount > 0 && (
+                    <Badge variant="destructive" className="ml-1">
+                      {activeFiltersCount}
+                    </Badge>
+                  )}
+                  <ChevronDown className={`w-4 h-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+                </Button>
+              </div>
+
+              {/* Advanced Filters */}
+              {showFilters && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Search Filters</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div>
+                        <label className="text-sm font-medium mb-2 block">Content Type</label>
+                        <Select value={filters.type} onValueChange={(value: any) => setFilters(prev => ({...prev, type: value}))}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Content</SelectItem>
+                            <SelectItem value="posts">Posts Only</SelectItem>
+                            <SelectItem value="users">Users Only</SelectItem>
+                            <SelectItem value="topics">Topics Only</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium mb-2 block">Time Range</label>
+                        <Select value={filters.timeRange} onValueChange={(value: any) => setFilters(prev => ({...prev, timeRange: value}))}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Time</SelectItem>
+                            <SelectItem value="today">Today</SelectItem>
+                            <SelectItem value="week">This Week</SelectItem>
+                            <SelectItem value="month">This Month</SelectItem>
+                            <SelectItem value="year">This Year</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium mb-2 block">Sort By</label>
+                        <Select value={filters.sortBy} onValueChange={(value: any) => setFilters(prev => ({...prev, sortBy: value}))}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="relevance">Most Relevant</SelectItem>
+                            <SelectItem value="recent">Most Recent</SelectItem>
+                            <SelectItem value="popular">Most Popular</SelectItem>
+                            <SelectItem value="engagement">Most Engagement</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium mb-2 block">Post Type</label>
+                        <Select value={filters.postType} onValueChange={(value: any) => setFilters(prev => ({...prev, postType: value}))}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Types</SelectItem>
+                            <SelectItem value="text">Text Posts</SelectItem>
+                            <SelectItem value="poetry">Poetry</SelectItem>
+                            <SelectItem value="story">Stories</SelectItem>
+                            <SelectItem value="challenge">Challenges</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="flex flex-wrap gap-4">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="hasImages"
+                          checked={filters.hasImages}
+                          onCheckedChange={(checked) => setFilters(prev => ({...prev, hasImages: !!checked}))}
+                        />
+                        <label htmlFor="hasImages" className="text-sm font-medium flex items-center gap-1">
+                          <ImageIcon className="w-4 h-4" />
+                          Has Images
+                        </label>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="hasMusic"
+                          checked={filters.hasMusic}
+                          onCheckedChange={(checked) => setFilters(prev => ({...prev, hasMusic: !!checked}))}
+                        />
+                        <label htmlFor="hasMusic" className="text-sm font-medium flex items-center gap-1">
+                          <Music className="w-4 h-4" />
+                          Has Music
+                        </label>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="verified"
+                          checked={filters.verified}
+                          onCheckedChange={(checked) => setFilters(prev => ({...prev, verified: !!checked}))}
+                        />
+                        <label htmlFor="verified" className="text-sm font-medium flex items-center gap-1">
+                          <Badge variant="secondary" className="h-4 w-4 p-0">✓</Badge>
+                          Verified Only
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Active Filters */}
+                    {activeFiltersCount > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        <span className="text-sm font-medium">Active filters:</span>
+                        {Object.entries(filters).map(([key, value]) => {
+                          if (key === 'minEngagement' && value > 0) {
+                            return (
+                              <Badge key={key} variant="secondary" className="flex items-center gap-1">
+                                Min {value} engagement
+                                <X className="w-3 h-3 cursor-pointer" onClick={() => clearFilter(key as keyof SearchFilters)} />
+                              </Badge>
+                            );
+                          }
+                          if (typeof value === 'boolean' && value) {
+                            return (
+                              <Badge key={key} variant="secondary" className="flex items-center gap-1">
+                                {key}
+                                <X className="w-3 h-3 cursor-pointer" onClick={() => clearFilter(key as keyof SearchFilters)} />
+                              </Badge>
+                            );
+                          }
+                          if (typeof value === 'string' && value !== 'all') {
+                            return (
+                              <Badge key={key} variant="secondary" className="flex items-center gap-1">
+                                {key}: {value}
+                                <X className="w-3 h-3 cursor-pointer" onClick={() => clearFilter(key as keyof SearchFilters)} />
+                              </Badge>
+                            );
+                          }
+                          return null;
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+            </form>
+          </div>
+        </div>
+
+        <div className="max-w-4xl mx-auto p-6">
+          {!debouncedQuery ? (
+            // Search suggestions when no query
+            <div className="space-y-8">
+              <div className="text-center py-12">
+                <Search className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+                <h2 className="text-2xl font-bold mb-2">Discover Amazing Content</h2>
+                <p className="text-muted-foreground">Search for posts, writers, topics, and more</p>
+              </div>
+
+              {/* Trending Searches */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5" />
+                    Trending Searches
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {(trendingSearches || [
+                      "poetry", "flash fiction", "writing tips", "love poems", 
+                      "short stories", "haiku", "fantasy", "romance"
+                    ]).map((term: string) => (
+                      <Button
+                        key={term}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSearchQuery(term)}
+                        className="text-sm"
+                      >
+                        {term}
+                      </Button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Quick Search Categories */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => setFilters(prev => ({...prev, type: 'posts', postType: 'poetry'}))}>
+                  <CardContent className="p-6 text-center">
+                    <BookOpen className="w-8 h-8 mx-auto mb-2 text-purple-500" />
+                    <h3 className="font-semibold">Poetry</h3>
+                    <p className="text-sm text-muted-foreground">Discover beautiful poems</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => setFilters(prev => ({...prev, type: 'posts', postType: 'story'}))}>
+                  <CardContent className="p-6 text-center">
+                    <BookOpen className="w-8 h-8 mx-auto mb-2 text-blue-500" />
+                    <h3 className="font-semibold">Stories</h3>
+                    <p className="text-sm text-muted-foreground">Read captivating tales</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => setFilters(prev => ({...prev, type: 'users', verified: true}))}>
+                  <CardContent className="p-6 text-center">
+                    <UserIcon className="w-8 h-8 mx-auto mb-2 text-green-500" />
+                    <h3 className="font-semibold">Verified Writers</h3>
+                    <p className="text-sm text-muted-foreground">Follow established authors</p>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          ) : isLoading ? (
+            // Loading state
+            <div className="space-y-6">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardContent className="p-6">
+                    <div className="flex items-start space-x-3">
+                      <div className="w-10 h-10 bg-muted rounded-full" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 bg-muted rounded w-1/4" />
+                        <div className="h-4 bg-muted rounded w-full" />
+                        <div className="h-4 bg-muted rounded w-3/4" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : error ? (
+            // Error state
+            <Card>
+              <CardContent className="p-12 text-center">
+                <h3 className="text-lg font-semibold mb-2">Search Error</h3>
+                <p className="text-muted-foreground">Failed to search. Please try again.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            // Search results
+            <Tabs defaultValue="all" className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="all">
+                  All ({(searchResults?.posts?.length || 0) + (searchResults?.users?.length || 0)})
+                </TabsTrigger>
+                <TabsTrigger value="posts">
+                  Posts ({searchResults?.posts?.length || 0})
+                </TabsTrigger>
+                <TabsTrigger value="users">
+                  Users ({searchResults?.users?.length || 0})
+                </TabsTrigger>
+                <TabsTrigger value="topics">
+                  Topics ({searchResults?.topics?.length || 0})
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="all" className="space-y-6 mt-6">
+                {/* Users Section */}
+                {searchResults?.users?.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Writers</h3>
+                    <div className="grid gap-4">
+                      {searchResults.users.slice(0, 3).map((user: any) => (
+                        <UserSearchResult key={user.id} user={user} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Posts Section */}
+                {searchResults?.posts?.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Posts</h3>
+                    <div className="space-y-4">
+                      {searchResults.posts.map((post: any) => (
+                        <PostCard key={post.id} post={post} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* No results */}
+                {(!searchResults?.posts?.length && !searchResults?.users?.length) && (
+                  <Card>
+                    <CardContent className="p-12 text-center">
+                      <Search className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                      <h3 className="text-lg font-semibold mb-2">No results found</h3>
+                      <p className="text-muted-foreground">Try adjusting your search terms or filters</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              <TabsContent value="posts" className="space-y-4 mt-6">
+                {searchResults?.posts?.length > 0 ? (
+                  searchResults.posts.map((post: any) => (
+                    <PostCard key={post.id} post={post} />
+                  ))
+                ) : (
+                  <Card>
+                    <CardContent className="p-12 text-center">
+                      <BookOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                      <h3 className="text-lg font-semibold mb-2">No posts found</h3>
+                      <p className="text-muted-foreground">Try different search terms</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              <TabsContent value="users" className="space-y-4 mt-6">
+                {searchResults?.users?.length > 0 ? (
+                  <div className="grid gap-4">
+                    {searchResults.users.map((user: any) => (
+                      <UserSearchResult key={user.id} user={user} />
+                    ))}
+                  </div>
+                ) : (
+                  <Card>
+                    <CardContent className="p-12 text-center">
+                      <UserIcon className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                      <h3 className="text-lg font-semibold mb-2">No users found</h3>
+                      <p className="text-muted-foreground">Try different search terms</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              <TabsContent value="topics" className="space-y-4 mt-6">
+                <Card>
+                  <CardContent className="p-12 text-center">
+                    <TrendingUp className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                    <h3 className="text-lg font-semibold mb-2">Topic search coming soon</h3>
+                    <p className="text-muted-foreground">We're working on advanced topic discovery</p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          )}
+        </div>
+      </div>
+      
+      <MobileNav />
+    </div>
+  );
+}
+
+function UserSearchResult({ user }: { user: any }) {
+  return (
+    <Card className="hover:border-primary/50 transition-colors">
+      <CardContent className="p-4">
+        <div className="flex items-center space-x-4">
+          <Avatar className="w-12 h-12">
+            <AvatarImage src={user.profileImageUrl} />
+            <AvatarFallback>
+              {user.displayName?.slice(0, 2).toUpperCase() || user.username?.slice(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-semibold truncate">{user.displayName}</h3>
+              {user.isVerified && (
+                <Badge variant="secondary" className="h-4 w-4 p-0">✓</Badge>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground mb-2">@{user.username}</p>
+            {user.bio && (
+              <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{user.bio}</p>
+            )}
+            <div className="flex items-center space-x-4 text-xs text-muted-foreground">
+              {user.location && (
+                <div className="flex items-center">
+                  <MapPin className="w-3 h-3 mr-1" />
+                  {user.location}
+                </div>
+              )}
+              <div className="flex items-center">
+                <Calendar className="w-3 h-3 mr-1" />
+                Joined {formatDistanceToNow(new Date(user.createdAt), { addSuffix: true })}
+              </div>
+              <div className="flex items-center">
+                <UserIcon className="w-3 h-3 mr-1" />
+                {user.followersCount || 0} followers
+              </div>
+            </div>
+          </div>
+          
+          <Button size="sm">View Profile</Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

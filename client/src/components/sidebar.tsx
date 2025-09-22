@@ -11,7 +11,8 @@ import {
   BarChart3,
   User,
   Settings,
-  MoreHorizontal
+  MoreHorizontal,
+  Cog // Added Cog icon for settings
 } from "lucide-react";
 import { getProfileImageUrl } from "@/lib/defaultImages";
 import { Link, useLocation } from "wouter";
@@ -22,15 +23,19 @@ export default function Sidebar() {
   const { user, isAuthenticated } = useAuth();
   const [location] = useLocation();
 
+  // Placeholder for unread count, will be fetched or managed elsewhere
+  const unreadCount = 3; 
+
   const navigationItems = [
     { icon: Home, label: "Home", path: "/", active: location === "/" },
     { icon: Compass, label: "Explore", path: "/explore", active: location === "/explore" },
-    { icon: Search, label: "Search", path: "/search", active: location === "/search" },
+    { icon: Search, label: "Search", path: "/search", active: location === "/search" }, // Added Search item
     { icon: MessageCircle, label: "Messages", path: "/messages", active: location === "/messages" },
-    { icon: Bell, label: "Notifications", path: "/notifications", active: location === "/notifications", badge: 3 },
+    { icon: Bell, label: "Notifications", path: "/notifications", active: location === "/notifications", badge: unreadCount },
     { icon: Bookmark, label: "Bookmarks", path: "/bookmarks", active: location === "/bookmarks" },
     { icon: BarChart3, label: "Analytics", path: "/analytics", active: location === "/analytics" },
     { icon: User, label: "Profile", path: `/profile/${user?.username || user?.id}`, active: location.startsWith("/profile") },
+    { icon: Cog, label: "Settings", path: "/settings", active: location === "/settings" }, // Added Settings item
   ];
 
   return (
@@ -80,16 +85,9 @@ export default function Sidebar() {
           Compose
         </Button>
 
-        {/* More Options */}
+        {/* More Options - Settings is now in the navigation menu */}
         <div className="space-y-2">
-          <Button 
-            variant="ghost" 
-            className="w-full justify-start px-4 py-3 rounded-xl"
-            data-testid="button-settings"
-          >
-            <Settings className="w-5 h-5 mr-3" />
-            Settings
-          </Button>
+          {/* Removed the standalone Settings button as it's now in the navigation */}
           <Button 
             variant="ghost" 
             className="w-full justify-start px-4 py-3 rounded-xl"

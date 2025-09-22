@@ -37,8 +37,8 @@ export default function Landing() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 text-lg"
                 onClick={() => setShowAuthDialog(true)}
                 data-testid="button-login"
@@ -46,16 +46,16 @@ export default function Landing() {
                 Enter the Guild
               </Button>
 
-              <Button 
-                variant="outline" 
-                size="lg" 
+              <Button
+                variant="outline"
+                size="lg"
                 className="border-primary text-primary hover:bg-primary/10 px-8 py-3 text-lg"
                 data-testid="button-learn-more"
                 onClick={() => {
                   const featuresSection = document.getElementById('features-section');
                   if (featuresSection) {
-                    featuresSection.scrollIntoView({ 
-                      behavior: 'smooth' 
+                    featuresSection.scrollIntoView({
+                      behavior: 'smooth'
                     });
                   } else {
                     // If features section doesn't exist, navigate to explore
@@ -165,12 +165,12 @@ export default function Landing() {
             Ready to Share Your <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Voice</span>?
           </h2>
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join thousands of writers who have found their home in the Writers Guild. 
+            Join thousands of writers who have found their home in the Writers Guild.
             Your story matters, and we're here to help you tell it beautifully.
           </p>
 
-          <Button 
-            size="lg" 
+          <Button
+            size="lg"
             className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 text-lg"
             onClick={() => setShowAuthDialog(true)}
             data-testid="button-join-guild"
@@ -198,8 +198,8 @@ export default function Landing() {
         </div>
       </footer>
 
-      <AuthDialog 
-        open={showAuthDialog} 
+      <AuthDialog
+        open={showAuthDialog}
         onOpenChange={setShowAuthDialog}
         onSuccess={handleAuthSuccess}
       />

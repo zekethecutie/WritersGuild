@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Route, Routes, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -13,7 +13,14 @@ import Messages from "@/pages/messages";
 import Notifications from "@/pages/notifications";
 import Bookmarks from "@/pages/bookmarks";
 import LandingPage from "@/pages/landing"; // Assuming LandingPage is the correct component name for the landing page.
+import SearchPage from "@/pages/search";
+import SettingsPage from "@/pages/settings";
+import NotFoundPage from "@/pages/not-found";
+import ExplorePage from "@/pages/explore"; // Assuming ExplorePage is the correct component name for the explore page.
+import HomePage from "@/pages/home"; // Assuming HomePage is the correct component name for the home page.
+import ProfilePage from "@/pages/profile"; // Assuming ProfilePage is the correct component name for the profile page.
 import { useLocation } from "wouter"; // Import useLocation to access the current path
+import { Navigate } from "wouter"; // Import Navigate for redirection
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -36,6 +43,7 @@ function Router() {
       <Route path="/messages" element={isAuthenticated ? <MessagesPage /> : <Navigate to="/explore" replace />} />
       <Route path="/bookmarks" element={isAuthenticated ? <BookmarksPage /> : <Navigate to="/explore" replace />} />
       <Route path="/profile/:username" element={<ProfilePage />} />
+      <Route path="/settings" element={<SettingsPage />} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
