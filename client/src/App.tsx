@@ -1,5 +1,5 @@
 
-import { Route, Routes, useLocation } from "wouter";
+import { Route, Router, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -16,7 +16,7 @@ import Bookmarks from "@/pages/bookmarks";
 import SearchPage from "@/pages/search";
 import SettingsPage from "@/pages/settings";
 
-function Router() {
+function AppRouter() {
   const { isAuthenticated, isLoading } = useAuth();
   const [location] = useLocation();
 
@@ -34,7 +34,7 @@ function Router() {
   }
 
   return (
-    <Routes>
+    <Router>
       <Route path="/" component={isAuthenticated ? Home : Landing} />
       <Route path="/explore" component={Explore} />
       <Route path="/search" component={isAuthenticated ? SearchPage : Explore} />
@@ -44,7 +44,7 @@ function Router() {
       <Route path="/profile/:username" component={Profile} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
-    </Routes>
+    </Router>
   );
 }
 
@@ -53,7 +53,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <Router />
+        <AppRouter />
       </TooltipProvider>
     </QueryClientProvider>
   );
