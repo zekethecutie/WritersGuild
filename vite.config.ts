@@ -34,6 +34,7 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: 3000,
+    allowedHosts: true, // Allow requests from any host (required for Replit proxy)
     hmr: {
       port: 3000,
       host: "0.0.0.0"

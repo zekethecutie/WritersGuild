@@ -8,18 +8,17 @@ import path from "path";
 import fs from "fs";
 import bcrypt from "bcrypt";
 import session from "express-session";
-import MemoryStore from "memorystore";
+import connectPgSimple from "connect-pg-simple";
 import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 import { insertPostSchema, insertCommentSchema } from "@shared/schema";
 import { getSpotifyClient } from "./spotifyClient";
 import spotifyRoutes from "./spotifyRoutes";
 import { eq, or } from "drizzle-orm";
-import { users } from "./db/schema";
 import { db } from "./db";
 import { Request, Response, NextFunction } from "express";
 import { generateId } from "./utils"; // Assuming generateId is defined elsewhere
-import * as schema from "./db/schema"; // Import schema for type safety
+import * as schema from "@shared/schema"; // Import unified schema
 
 // Configure multer for image uploads
 const upload = multer({
@@ -43,11 +42,15 @@ const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
 function createSessionMiddleware() {
   // Generate fallback secret for development
   const sessionSecret = process.env.SESSION_SECRET || 'dev-secret-writers-guild-' + Math.random().toString(36);
-
-  const memoryStore = MemoryStore(session);
-  const sessionStore = new memoryStore({
-    checkPeriod: sessionTtl, // prune expired entries every 24h
+  
+  const PgSession = connectPgSimple(session);
+  const sessionStore = new PgSession({
+    conString: process.env.DATABASE_URL,
+    tableName: 'sessions',
+    pruneSessionInterval: 60 * 60 * 24, // 24 hours
   });
+
+  const isProduction = process.env.NODE_ENV === 'production';
 
   return session({
     secret: sessionSecret,
@@ -56,7 +59,7 @@ function createSessionMiddleware() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: false, // Disable secure in development
+      secure: isProduction, // Secure cookies in production
       sameSite: 'lax',
       maxAge: sessionTtl,
     },
@@ -82,6 +85,25 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 function optionalAuth(req: Request, res: Response, next: NextFunction) {
   // Just add user info to request if available, don't block
   next();
+}
+
+// WebSocket connections by user ID
+const wsConnections = new Map<string, WebSocket[]>();
+
+function broadcastToUser(userId: string, data: any) {
+  const connections = wsConnections.get(userId) || [];
+  const message = JSON.stringify(data);
+  
+  // Remove closed connections and broadcast to active ones
+  const activeConnections = connections.filter(ws => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(message);
+      return true;
+    }
+    return false;
+  });
+  
+  wsConnections.set(userId, activeConnections);
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -199,10 +221,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);
-      const userId = generateId();
 
       const [newUser] = await db.insert(schema.users).values({
-        id: userId,
         username,
         email,
         password: hashedPassword,
@@ -416,6 +436,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isRead: false,
           data: {}
         });
+
+        // Broadcast real-time notification
+        if ((app as any).broadcastNotification) {
+          (app as any).broadcastNotification(post.authorId, notification);
+        }
       }
 
       res.json(like);
@@ -464,6 +489,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isRead: false,
           data: {}
         });
+
+        // Broadcast real-time notification
+        if ((app as any).broadcastNotification) {
+          (app as any).broadcastNotification(post.authorId, notification);
+        }
       }
 
       res.json(comment);
@@ -552,17 +582,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const follow = await storage.followUser(followerId, followingId);
 
-      // Create and broadcast follow notification
+      // Create follow notification
       const notification = await storage.createNotification({
         userId: followingId,
         type: 'follow',
         actorId: followerId,
-        isRead: false
+        postId: null,
+        isRead: false,
+        data: {}
       });
 
       // Broadcast real-time notification
-      if (app && typeof app.broadcastNotification === 'function') {
-        app.broadcastNotification(followingId, notification);
+      if ((app as any).broadcastNotification) {
+        (app as any).broadcastNotification(followingId, notification);
       }
 
       res.json(follow);
@@ -597,18 +629,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get post to find the author for notification
       const post = await storage.getPost(postId);
       if (post && post.authorId !== userId) {
-        // Create and broadcast notification
+        // Create repost notification
         const notification = await storage.createNotification({
           userId: post.authorId,
           type: 'repost',
           actorId: userId,
           postId: postId,
-          isRead: false
+          isRead: false,
+          data: {}
         });
 
         // Broadcast real-time notification
-        if (app && typeof app.broadcastNotification === 'function') {
-          app.broadcastNotification(post.authorId, notification);
+        if ((app as any).broadcastNotification) {
+          (app as any).broadcastNotification(post.authorId, notification);
         }
       }
 
@@ -921,7 +954,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const spotify = await getSpotifyClient();
-      const results = await spotify.search(query as string, [type as any], 'US', parseInt(limit as string, 10));
+      const searchLimit = Math.min(50, Math.max(1, parseInt(limit as string, 10)) || 20) as any;
+      const results = await spotify.search(query as string, [type as any], 'US', searchLimit);
       res.json(results);
     } catch (error) {
       console.error("Error searching Spotify:", error);

@@ -443,9 +443,6 @@ export const insertPostSchema = createInsertSchema(posts, {
     }).optional()
   }).optional(),
   isPrivate: z.boolean().default(false),
-  collaborators: z.array(z.string()).optional(),
-  seriesId: z.string().optional(),
-  chapterNumber: z.number().optional(),
 });
 
 export const insertCommentSchema = createInsertSchema(comments).omit({
