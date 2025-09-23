@@ -37,14 +37,16 @@ import { getProfileImageUrl } from "@/lib/defaultImages";
 
 interface PostModalProps {
   trigger?: React.ReactNode;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
-export default function PostModal({ trigger }: PostModalProps) {
+export default function PostModal({ trigger, isOpen, onClose }: PostModalProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(isOpen || false);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [postType, setPostType] = useState<"text" | "poetry" | "story" | "challenge">("text");
@@ -72,6 +74,7 @@ export default function PostModal({ trigger }: PostModalProps) {
       setIsRichEditor(false);
       setShowSpotify(false);
       setOpen(false);
+      onClose?.();
 
       // Invalidate queries to refresh feed
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
@@ -240,7 +243,7 @@ export default function PostModal({ trigger }: PostModalProps) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={isOpen !== undefined ? isOpen : open} onOpenChange={isOpen !== undefined ? onClose : setOpen}>
       <DialogTrigger asChild>
         {trigger || (
           <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90">

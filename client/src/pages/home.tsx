@@ -171,10 +171,10 @@ export default function Home() {
                 {isAuthenticated ? (
                   <Button 
                     onClick={() => setShowPostModal(true)}
-                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
                     size="lg"
                   >
-                    ✍️ Share your writing...
+                    ✍️ Make a Post
                   </Button>
                 ) : (
                   <div className="p-2 text-center">
