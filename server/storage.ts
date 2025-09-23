@@ -33,6 +33,9 @@ import {
 import { db } from "./db";
 import { eq, desc, and, or, sql, count, exists, asc, ne, isNotNull, gte, ilike } from "drizzle-orm";
 
+// Define the series table schema (assuming it's defined elsewhere, but adding for context if not)
+// import { series } from "@shared/schema";
+
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
@@ -99,9 +102,69 @@ export interface IStorage {
   getConversationMessages(conversationId: string, limit?: number, offset?: number): Promise<Message[]>;
   markMessageAsRead(messageId: string): Promise<void>;
   markConversationAsRead(conversationId: string, userId: string): Promise<void>;
+
+  // Series and collaboration operations
+  createSeries(data: any): Promise<any>; // Assuming 'any' for Series type for now
+  getSeries(id: string): Promise<any | undefined>;
+  getSeriesByUser(userId: string): Promise<any[]>;
+  updateSeries(id: string, data: Partial<any>): Promise<any>;
+  deleteSeries(id: string): Promise<void>;
+  getPostsInSeries(seriesId: string): Promise<Post[]>;
+  addCollaboratorToPost(postId: string, userId: string): Promise<void>;
+  removeCollaboratorFromPost(postId: string, userId: string): Promise<void>;
+  getPostCollaborators(postId: string): Promise<User[]>;
 }
 
 export class DatabaseStorage implements IStorage {
+  constructor() {
+    this.initializeDatabase();
+  }
+
+  private async initializeDatabase() {
+    try {
+      // Test the database connection
+      await db.select().from(users).limit(1);
+      console.log("✅ Database connection successful");
+
+      // Run collaboration features migration
+      await this.runCollaborationMigration();
+    } catch (error) {
+      console.error("❌ Database connection failed:", error);
+      throw error;
+    }
+  }
+
+  private async runCollaborationMigration() {
+    try {
+      // Create series table if it doesn't exist
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS "series" (
+          "id" text PRIMARY KEY,
+          "title" text NOT NULL,
+          "description" text,
+          "author_id" text NOT NULL,
+          "cover_image_url" text,
+          "genre" text,
+          "tags" text[],
+          "is_completed" boolean DEFAULT false,
+          "total_chapters" integer DEFAULT 0,
+          "followers_count" integer DEFAULT 0,
+          "created_at" timestamp DEFAULT now(),
+          "updated_at" timestamp DEFAULT now()
+        )
+      `);
+
+      // Add new columns to posts table
+      await db.execute(sql`ALTER TABLE "posts" ADD COLUMN IF NOT EXISTS "collaborators" text[]`);
+      await db.execute(sql`ALTER TABLE "posts" ADD COLUMN IF NOT EXISTS "series_id" text`);
+      await db.execute(sql`ALTER TABLE "posts" ADD COLUMN IF NOT EXISTS "chapter_number" integer`);
+
+      console.log("✅ Collaboration features migration completed");
+    } catch (error) {
+      console.log("Migration already applied or error:", error);
+    }
+  }
+
   // Initialize hardcoded admin account
   async initializeAdminAccount(): Promise<void> {
     try {
@@ -240,17 +303,57 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Post operations
-  async createPost(post: InsertPost): Promise<Post> {
-    const [newPost] = await db.insert(posts).values(post).returning();
+  async createPost(data: any): Promise<Post> {
+    // If this is a series/novel post, handle series creation/update
+    if ((data.postType === "series" || data.postType === "novel") && data.seriesTitle) {
+      // Check if series exists for this author
+      let existingSeries = await db.select()
+        .from(series) // Assuming 'series' is imported from "@shared/schema"
+        .where(and(
+          eq(series.authorId, data.authorId),
+          eq(series.title, data.seriesTitle)
+        ))
+        .then(rows => rows[0]);
+
+      if (!existingSeries) {
+        // Create new series
+        existingSeries = await db.insert(series).values({
+          title: data.seriesTitle,
+          authorId: data.authorId,
+          genre: data.genre,
+        }).returning().then(rows => rows[0]);
+      }
+
+      data.seriesId = existingSeries.id;
+
+      // Update series chapter count
+      await db.update(series)
+        .set({
+          totalChapters: sql`${series.totalChapters} + 1`,
+          updatedAt: new Date()
+        })
+        .where(eq(series.id, existingSeries.id));
+    }
+
+    // Handle collaborators
+    if (data.collaborators && data.collaborators.length > 0) {
+      // Ensure collaborators are stored as an array of user IDs
+      data.collaborators = data.collaborators.map((collab: any) => typeof collab === 'string' ? collab : collab.id);
+    } else {
+      // Ensure collaborators is an empty array if not provided
+      data.collaborators = [];
+    }
+
+    const [newPost] = await db.insert(posts).values(data).returning();
 
     // Increment user's posts count
     await db
       .update(users)
       .set({ postsCount: sql`${users.postsCount} + 1` })
-      .where(eq(users.id, post.authorId));
+      .where(eq(users.id, data.authorId));
 
     // Check auto verification
-    await this.checkAutoVerification(post.authorId);
+    await this.checkAutoVerification(data.authorId);
 
     return newPost;
   }
@@ -284,6 +387,9 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(posts.createdAt))
       .limit(limit)
       .offset(offset);
+
+    // TODO: Implement image resizing/fitting logic here or in the frontend
+    // For now, assume image URLs are directly usable.
 
     return result;
   }
@@ -743,16 +849,16 @@ export class DatabaseStorage implements IStorage {
       genre: posts.genre,
       count: sql<number>`count(*)::int`,
     })
-    .from(posts)
-    .where(
-      and(
-        eq(posts.isPrivate, false),
-        sql`${posts.createdAt} >= NOW() - INTERVAL '7 days'`
+      .from(posts)
+      .where(
+        and(
+          eq(posts.isPrivate, false),
+          sql`${posts.createdAt} >= NOW() - INTERVAL '7 days'`
+        )
       )
-    )
-    .groupBy(posts.genre)
-    .orderBy(sql`count(*) DESC`)
-    .limit(10);
+      .groupBy(posts.genre)
+      .orderBy(sql`count(*) DESC`)
+      .limit(10);
 
     // Format the results to match the expected structure
     return topicData.map((item, index) => ({
@@ -763,36 +869,36 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async getUserStats(userId: string): Promise<{ 
-    followersCount: number; 
-    followingCount: number; 
-    postsCount: number; 
-    likesReceived: number; 
+  async getUserStats(userId: string): Promise<{
+    followersCount: number;
+    followingCount: number;
+    postsCount: number;
+    likesReceived: number;
   }> {
-    const [followersResult] = await db.select({ 
-      count: sql<number>`count(*)::int` 
+    const [followersResult] = await db.select({
+      count: sql<number>`count(*)::int`
     })
-    .from(follows)
-    .where(eq(follows.followingId, userId));
+      .from(follows)
+      .where(eq(follows.followingId, userId));
 
-    const [followingResult] = await db.select({ 
-      count: sql<number>`count(*)::int` 
+    const [followingResult] = await db.select({
+      count: sql<number>`count(*)::int`
     })
-    .from(follows)
-    .where(eq(follows.followerId, userId));
+      .from(follows)
+      .where(eq(follows.followerId, userId));
 
-    const [postsResult] = await db.select({ 
-      count: sql<number>`count(*)::int` 
+    const [postsResult] = await db.select({
+      count: sql<number>`count(*)::int`
     })
-    .from(posts)
-    .where(eq(posts.authorId, userId));
+      .from(posts)
+      .where(eq(posts.authorId, userId));
 
-    const [likesResult] = await db.select({ 
-      count: sql<number>`count(*)::int` 
+    const [likesResult] = await db.select({
+      count: sql<number>`count(*)::int`
     })
-    .from(likes)
-    .innerJoin(posts, eq(likes.postId, posts.id))
-    .where(eq(posts.authorId, userId));
+      .from(likes)
+      .innerJoin(posts, eq(likes.postId, posts.id))
+      .where(eq(posts.authorId, userId));
 
     return {
       followersCount: followersResult?.count || 0,
@@ -829,16 +935,16 @@ export class DatabaseStorage implements IStorage {
       );
 
     // Get this week's posts
-    const [weeklyPosts] = await db.select({ 
-      count: sql<number>`count(*)::int` 
+    const [weeklyPosts] = await db.select({
+      count: sql<number>`count(*)::int`
     })
-    .from(posts)
-    .where(
-      and(
-        eq(posts.authorId, userId),
-        sql`${posts.createdAt} >= ${startOfWeek}`
-      )
-    );
+      .from(posts)
+      .where(
+        and(
+          eq(posts.authorId, userId),
+          sql`${posts.createdAt} >= ${startOfWeek}`
+        )
+      );
 
     const dailyWordGoal = user.wordCountGoal || 500;
     const weeklyPostGoal = user.weeklyPostsGoal || 5;
@@ -970,7 +1076,7 @@ export class DatabaseStorage implements IStorage {
         lastMessage: messages,
       })
       .from(conversations)
-      .leftJoin(users, 
+      .leftJoin(users,
         or(
           and(eq(conversations.participantOneId, userId), eq(users.id, conversations.participantTwoId)),
           and(eq(conversations.participantTwoId, userId), eq(users.id, conversations.participantOneId))
@@ -1037,7 +1143,7 @@ export class DatabaseStorage implements IStorage {
   async markMessageAsRead(messageId: string): Promise<void> {
     await db
       .update(messages)
-      .set({ 
+      .set({
         isRead: true,
         readAt: new Date(),
         updatedAt: new Date(),
@@ -1048,7 +1154,7 @@ export class DatabaseStorage implements IStorage {
   async markConversationAsRead(conversationId: string, userId: string): Promise<void> {
     await db
       .update(messages)
-      .set({ 
+      .set({
         isRead: true,
         readAt: new Date(),
         updatedAt: new Date(),
@@ -1077,13 +1183,13 @@ export class DatabaseStorage implements IStorage {
         postsCount: users.postsCount,
         createdAt: users.createdAt,
         followersCount: sql<number>`(
-          SELECT COUNT(*) FROM ${follows} 
+          SELECT COUNT(*) FROM ${follows}
           WHERE ${follows.followingId} = ${users.id}
         )`.as('followersCount'),
         isFollowing: sql<boolean>`(
           SELECT CASE WHEN COUNT(*) > 0 THEN true ELSE false END
-          FROM ${follows} 
-          WHERE ${follows.followerId} = ${userId} 
+          FROM ${follows}
+          WHERE ${follows.followerId} = ${userId}
           AND ${follows.followingId} = ${users.id}
         )`.as('isFollowing'),
       })
@@ -1114,23 +1220,23 @@ export class DatabaseStorage implements IStorage {
         postsCount: users.postsCount,
         createdAt: users.createdAt,
         followersCount: sql<number>`(
-          SELECT COUNT(*) FROM ${follows} 
+          SELECT COUNT(*) FROM ${follows}
           WHERE ${follows.followingId} = ${users.id}
         )`.as('followersCount'),
         recentActivity: sql<number>`(
-          SELECT COUNT(*) FROM ${posts} 
-          WHERE ${posts.authorId} = ${users.id} 
+          SELECT COUNT(*) FROM ${posts}
+          WHERE ${posts.authorId} = ${users.id}
           AND ${posts.createdAt} > NOW() - INTERVAL '30 days'
         )`.as('recentActivity'),
       })
       .from(users)
       .orderBy(
         desc(sql`(
-          SELECT COUNT(*) FROM ${follows} 
+          SELECT COUNT(*) FROM ${follows}
           WHERE ${follows.followingId} = ${users.id}
         ) + (
-          SELECT COALESCE(SUM(${posts.likesCount}), 0) FROM ${posts} 
-          WHERE ${posts.authorId} = ${users.id} 
+          SELECT COALESCE(SUM(${posts.likesCount}), 0) FROM ${posts}
+          WHERE ${posts.authorId} = ${users.id}
           AND ${posts.createdAt} > NOW() - INTERVAL '30 days'
         )`)
       )
@@ -1191,7 +1297,7 @@ export class DatabaseStorage implements IStorage {
         postsCount: users.postsCount,
         createdAt: users.createdAt,
         followersCount: sql<number>`(
-          SELECT COUNT(*) FROM ${follows} 
+          SELECT COUNT(*) FROM ${follows}
           WHERE ${follows.followingId} = ${users.id}
         )`.as('followersCount'),
       })
@@ -1240,6 +1346,86 @@ export class DatabaseStorage implements IStorage {
       .limit(30);
 
     return { users, posts };
+  }
+
+  // Series and collaboration operations
+  async createSeries(data: any): Promise<any> { // Use specific Series type if available
+    const [seriesData] = await db.insert(series).values(data).returning();
+    return seriesData;
+  }
+
+  async getSeries(id: string): Promise<any | undefined> { // Use specific Series type if available
+    const [seriesData] = await db.select().from(series).where(eq(series.id, id));
+    return seriesData;
+  }
+
+  async getSeriesByUser(userId: string): Promise<any[]> { // Use specific Series type if available
+    return db.select().from(series).where(eq(series.authorId, userId));
+  }
+
+  async updateSeries(id: string, data: Partial<any>): Promise<any> { // Use specific Series type if available
+    const [seriesData] = await db
+      .update(series)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(series.id, id))
+      .returning();
+    return seriesData;
+  }
+
+  async deleteSeries(id: string): Promise<void> {
+    await db.delete(series).where(eq(series.id, id));
+    // Optionally, delete all posts associated with the series
+    await db.delete(posts).where(eq(posts.seriesId, id));
+  }
+
+  async getPostsInSeries(seriesId: string): Promise<Post[]> {
+    return db.select()
+      .from(posts)
+      .where(eq(posts.seriesId, seriesId))
+      .orderBy(asc(posts.chapterNumber));
+  }
+
+  async addCollaboratorToPost(postId: string, userId: string): Promise<void> {
+    // Check if post exists and user is the author or already a collaborator
+    const post = await this.getPost(postId);
+    if (!post) throw new Error("Post not found");
+
+    if (post.authorId === userId || (post.collaborators && post.collaborators.includes(userId))) {
+      return; // Already an author or collaborator
+    }
+
+    // Add user to collaborators array
+    await db.update(posts)
+      .set({ collaborators: sql`${posts.collaborators} || ${userId}::text` })
+      .where(eq(posts.id, postId));
+  }
+
+  async removeCollaboratorFromPost(postId: string, userId: string): Promise<void> {
+    // Check if post exists and user is the author or a collaborator
+    const post = await this.getPost(postId);
+    if (!post) throw new Error("Post not found");
+
+    if (post.authorId === userId) {
+      throw new Error("Author cannot be removed as a collaborator.");
+    }
+
+    // Remove user from collaborators array
+    await db.update(posts)
+      .set({ collaborators: sql`array_remove(${posts.collaborators}, ${userId}::text)` })
+      .where(eq(posts.id, postId));
+  }
+
+  async getPostCollaborators(postId: string): Promise<User[]> {
+    const post = await this.getPost(postId);
+    if (!post || !post.collaborators || post.collaborators.length === 0) {
+      return [];
+    }
+
+    return db.select()
+      .from(users)
+      .where(
+        sql`${users.id} = ANY(${post.collaborators}::text[])`
+      );
   }
 }
 

@@ -65,7 +65,7 @@ const sessionMiddleware = createSessionMiddleware();
 
 // Auth middleware
 const requireAuth = (req: any, res: any, next: any) => {
-  if (!req.session.userId) {
+  if (!req.session || !req.session.userId) {
     return res.status(401).json({ message: "Unauthorized" });
   }
   next();
@@ -261,11 +261,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  app.get('/api/auth/user', requireAuth, async (req: any, res) => {
+  app.get('/api/auth/user', async (req: any, res) => {
     try {
+      if (!req.session || !req.session.userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
       const userId = req.session.userId;
       const user = await storage.getUser(userId);
       if (!user) {
+        req.session.destroy(() => {});
         return res.status(401).json({ message: "User not found" });
       }
       res.json({ ...user, password: undefined });

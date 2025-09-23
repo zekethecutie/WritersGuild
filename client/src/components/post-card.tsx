@@ -345,19 +345,53 @@ export default function PostCard({ post }: PostCardProps) {
                   <div className={`w-2 h-2 rounded-full ${
                     post.postType === "poetry" ? "bg-purple-400" :
                     post.postType === "story" ? "bg-blue-400" :
-                    post.postType === "challenge" ? "bg-green-400" : "bg-muted-foreground"
+                    post.postType === "challenge" ? "bg-green-400" :
+                    post.postType === "series" ? "bg-orange-400" :
+                    post.postType === "novel" ? "bg-pink-400" : "bg-muted-foreground"
                   }`} />
                   <span className={`text-xs font-medium ${
                     post.postType === "poetry" ? "text-purple-400" :
                     post.postType === "story" ? "text-blue-400" :
-                    post.postType === "challenge" ? "text-green-400" : "text-muted-foreground"
+                    post.postType === "challenge" ? "text-green-400" :
+                    post.postType === "series" ? "text-orange-400" :
+                    post.postType === "novel" ? "text-pink-400" : "text-muted-foreground"
                   }`}>
                     {post.postType.charAt(0).toUpperCase() + post.postType.slice(1)}
+                    {(post as any).chapterNumber && ` - Ch. ${(post as any).chapterNumber}`}
                   </span>
                 </>
               )}
             </div>
+
+            {/* Collaborators */}
+            {(post as any).collaborators && (post as any).collaborators.length > 0 && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                <Users className="w-3 h-3" />
+                <span>with</span>
+                {(post as any).collaborators.map((collaborator: string, index: number) => (
+                  <span key={collaborator} className="text-primary hover:underline cursor-pointer">
+                    @{collaborator}
+                    {index < (post as any).collaborators.length - 1 && ", "}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
+
+          {/* Series/Novel Info */}
+          {(post.postType === "series" || post.postType === "novel") && (post as any).seriesTitle && (
+            <div className="mb-3">
+              <div className="flex items-center gap-2 text-sm">
+                <BookOpen className="w-4 h-4 text-primary" />
+                <span className="font-medium text-primary">{(post as any).seriesTitle}</span>
+                {(post as any).chapterNumber && (
+                  <Badge variant="outline" className="text-xs">
+                    Chapter {(post as any).chapterNumber}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Post Content */}
           {renderFormattedContent() as React.ReactNode}

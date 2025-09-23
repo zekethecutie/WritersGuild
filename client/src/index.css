@@ -97,6 +97,96 @@
   /* Ensure text visibility */
   h1, h2, h3, h4, h5, h6 {
     @apply text-foreground;
+
+/* Image Gallery Improvements */
+.image-gallery img {
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.image-gallery img:hover {
+  transform: scale(1.02);
+}
+
+/* Ensure proper aspect ratios for different image counts */
+.grid-cols-1 img {
+  max-height: 600px;
+  object-fit: contain;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+}
+
+.grid-cols-2 img {
+  height: 200px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+/* Special handling for 3-image layout */
+.grid-cols-2 .row-span-2 img {
+  height: 404px; /* 2 * 200px + gap */
+}
+
+/* Post type styling improvements */
+.post-type-poetry {
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.1) 0%, rgba(147, 51, 234, 0.05) 100%);
+  border-left: 3px solid rgb(147, 51, 234);
+}
+
+.post-type-story {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
+  border-left: 3px solid rgb(59, 130, 246);
+}
+
+.post-type-series {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.1) 0%, rgba(249, 115, 22, 0.05) 100%);
+  border-left: 3px solid rgb(249, 115, 22);
+}
+
+.post-type-novel {
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.1) 0%, rgba(236, 72, 153, 0.05) 100%);
+  border-left: 3px solid rgb(236, 72, 153);
+}
+
+/* Collaboration badges */
+.collaboration-badge {
+  background: linear-gradient(45deg, rgb(59, 130, 246), rgb(147, 51, 234));
+  color: white;
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+/* Series info styling */
+.series-info {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+/* Enhanced post composer styling */
+.post-composer-toolbar {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 12px;
+}
+
+.collaborator-search {
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
   }
 
   p, span, div {

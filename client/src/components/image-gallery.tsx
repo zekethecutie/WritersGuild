@@ -16,20 +16,49 @@ export default function ImageGallery({
   maxHeight = 300 
 }: ImageGalleryProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [imageDimensions, setImageDimensions] = useState<{[key: string]: {width: number, height: number}}>({});
 
   if (!images || images.length === 0) return null;
+
+  const handleImageLoad = (src: string, img: HTMLImageElement) => {
+    setImageDimensions(prev => ({
+      ...prev,
+      [src]: { width: img.naturalWidth, height: img.naturalHeight }
+    }));
+  };
 
   const getGridClass = () => {
     switch (images.length) {
       case 1:
-        return "image-gallery single";
+        return "grid grid-cols-1 gap-2 rounded-xl overflow-hidden";
       case 2:
-        return "image-gallery double";
+        return "grid grid-cols-2 gap-2 rounded-xl overflow-hidden";
       case 3:
-        return "image-gallery triple";
+        return "grid grid-cols-2 gap-2 rounded-xl overflow-hidden";
       default:
-        return "image-gallery quad";
+        return "grid grid-cols-2 gap-2 rounded-xl overflow-hidden";
     }
+  };
+
+  const getImageStyle = (index: number, src: string) => {
+    const dimensions = imageDimensions[src];
+    if (!dimensions) return {};
+
+    if (images.length === 1) {
+      // Single image: maintain aspect ratio with max constraints
+      const aspectRatio = dimensions.width / dimensions.height;
+      if (aspectRatio > 1.5) {
+        return { maxHeight: '400px', width: '100%', objectFit: 'contain' as const };
+      } else {
+        return { maxHeight: '600px', width: '100%', objectFit: 'contain' as const };
+      }
+    }
+
+    if (images.length === 3 && index === 0) {
+      return { gridRowSpan: 2, height: '300px', objectFit: 'cover' as const };
+    }
+
+    return { height: images.length > 2 ? '145px' : '200px', objectFit: 'cover' as const };
   };
 
   const handleImageClick = (image: string) => {
@@ -40,20 +69,24 @@ export default function ImageGallery({
     <>
       <div className={`${getGridClass()} ${className}`} data-testid="image-gallery">
         {images.slice(0, 4).map((image, index) => (
-          <div key={index} className="relative group">
+          <div 
+            key={index} 
+            className={`relative group ${images.length === 3 && index === 0 ? 'row-span-2' : ''}`}
+          >
             <img
               src={image}
               alt={`Gallery image ${index + 1}`}
-              className="w-full h-full object-cover cursor-pointer transition-opacity hover:opacity-90"
-              style={{ maxHeight: images.length === 1 ? maxHeight : 200 }}
+              className="w-full cursor-pointer transition-opacity hover:opacity-90 rounded-lg"
+              style={getImageStyle(index, image)}
               onClick={() => handleImageClick(image)}
+              onLoad={(e) => handleImageLoad(image, e.currentTarget)}
               data-testid={`gallery-image-${index}`}
             />
             
             {/* Show count overlay for 4+ images on last image */}
             {index === 3 && images.length > 4 && (
               <div 
-                className="absolute inset-0 bg-black/60 flex items-center justify-center cursor-pointer"
+                className="absolute inset-0 bg-black/60 flex items-center justify-center cursor-pointer rounded-lg"
                 onClick={() => handleImageClick(image)}
               >
                 <span className="text-white text-xl font-bold">
