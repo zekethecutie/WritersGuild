@@ -115,7 +115,7 @@ export class DatabaseStorage implements IStorage {
       } catch (error: any) {
         console.log("⚠️ Database connection failed:", error.code || error.message);
         if (error.code === '28P01') {
-          console.log("💡 Authentication failed - check your Supabase password in DATABASE_URL");
+          console.log("💡 Authentication failed - check your DATABASE_URL in Secrets");
         } else if (error.code === '42P01') {
           console.log("💡 Tables don't exist yet - run: npm run db:push");
         }
@@ -260,32 +260,42 @@ export class DatabaseStorage implements IStorage {
     return post;
   }
 
-  async getPosts(limit = 20, offset = 0, userId?: string): Promise<Post[]> {
-    let query = db.select().from(posts);
-
-    if (userId) {
-      // Get posts from followed users
-      query = query.where(
-        or(
-          eq(posts.authorId, userId),
-          exists(
-            db.select().from(follows)
-              .where(and(
-                eq(follows.followerId, userId),
-                eq(follows.followingId, posts.authorId)
-              ))
-          )
-        )
-      );
-    }
-
-    const result = await query
-      .where(eq(posts.isPrivate, false))
+  async getPosts(limit: number = 20, offset: number = 0, userId?: string): Promise<(Post & { author?: User; isLiked?: boolean; isBookmarked?: boolean; isReposted?: boolean })[]> {
+    const postsQuery = db
+      .select({
+        post: posts,
+        author: users,
+        isLiked: userId ? sql<boolean>`EXISTS (
+          SELECT 1 FROM ${likes} 
+          WHERE ${likes.userId} = ${userId} 
+          AND ${likes.postId} = ${posts.id}
+        )` : sql<boolean>`false`,
+        isBookmarked: userId ? sql<boolean>`EXISTS (
+          SELECT 1 FROM ${bookmarks} 
+          WHERE ${bookmarks.userId} = ${userId} 
+          AND ${bookmarks.postId} = ${posts.id}
+        )` : sql<boolean>`false`,
+        isReposted: userId ? sql<boolean>`EXISTS (
+          SELECT 1 FROM ${reposts} 
+          WHERE ${reposts.userId} = ${userId} 
+          AND ${reposts.postId} = ${posts.id}
+        )` : sql<boolean>`false`,
+      })
+      .from(posts)
+      .leftJoin(users, eq(posts.authorId, users.id))
       .orderBy(desc(posts.createdAt))
       .limit(limit)
       .offset(offset);
 
-    return result;
+    const results = await postsQuery;
+
+    return results.map(row => ({
+      ...row.post,
+      author: row.author || undefined,
+      isLiked: row.isLiked,
+      isBookmarked: row.isBookmarked,
+      isReposted: row.isReposted,
+    }));
   }
 
   async getPostsByUser(userId: string, limit = 20, offset = 0): Promise<Post[]> {
@@ -398,7 +408,7 @@ export class DatabaseStorage implements IStorage {
       .from(commentLikes)
       .where(and(
         eq(commentLikes.userId, userId),
-        sql`${commentLikes.commentId} = ANY(ARRAY[${commentIds.join(',')}]::uuid[])`
+        sql`${commentLikes.commentId} = ANY(ARRAY[${commentIds.join(',')}])`
       ));
 
     const likedCommentIds = new Set(userLikes.map(like => like.commentId));
@@ -714,12 +724,44 @@ export class DatabaseStorage implements IStorage {
       .limit(limit);
   }
 
-  async getTrendingPosts(limit = 20): Promise<Post[]> {
-    return db.select()
+  async getTrendingPosts(limit: number = 20, userId?: string): Promise<(Post & { author?: User; isLiked?: boolean; isBookmarked?: boolean; isReposted?: boolean })[]> {
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const trendingPosts = await db
+      .select({
+        post: posts,
+        author: users,
+        isLiked: userId ? sql<boolean>`EXISTS (
+          SELECT 1 FROM ${likes} 
+          WHERE ${likes.userId} = ${userId} 
+          AND ${likes.postId} = ${posts.id}
+        )` : sql<boolean>`false`,
+        isBookmarked: userId ? sql<boolean>`EXISTS (
+          SELECT 1 FROM ${bookmarks} 
+          WHERE ${bookmarks.userId} = ${userId} 
+          AND ${bookmarks.postId} = ${posts.id}
+        )` : sql<boolean>`false`,
+        isReposted: userId ? sql<boolean>`EXISTS (
+          SELECT 1 FROM ${reposts} 
+          WHERE ${reposts.userId} = ${userId} 
+          AND ${reposts.postId} = ${posts.id}
+        )` : sql<boolean>`false`,
+      })
       .from(posts)
-      .where(eq(posts.isPrivate, false))
-      .orderBy(desc(sql`${posts.likesCount} + ${posts.commentsCount} + ${posts.repostsCount}`))
+      .leftJoin(users, eq(posts.authorId, users.id))
+      .where(gte(posts.createdAt, oneDayAgo))
+      .orderBy(
+        desc(sql`${posts.likesCount} + ${posts.commentsCount} + ${posts.repostsCount}`)
+      )
       .limit(limit);
+
+    return trendingPosts.map(row => ({
+      ...row.post,
+      author: row.author || undefined,
+      isLiked: row.isLiked,
+      isBookmarked: row.isBookmarked,
+      isReposted: row.isReposted,
+    }));
   }
 
   async getSuggestedUsers(userId: string, limit = 5): Promise<User[]> {
@@ -728,7 +770,7 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .where(
         and(
-          sql`${users.id}::text != ${userId}`,
+          ne(users.id, userId), // Exclude current user
           sql`${users.id}::text NOT IN (
             SELECT following_id FROM follows WHERE follower_id = ${userId}
           )`

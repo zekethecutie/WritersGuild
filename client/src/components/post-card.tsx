@@ -110,13 +110,14 @@ export default function PostCard({ post }: PostCardProps) {
     mutationFn: async (comment?: string) => {
       return apiRequest("POST", `/api/posts/${post.id}/repost`, { comment });
     },
-    onSuccess: () => {
+    onSuccess: (response: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/trending/posts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/trending/topics"] });
+      
       toast({
-        title: "Reposted!",
-        description: "Post has been shared to your profile.",
+        title: response.reposted ? "Reposted!" : "Repost removed",
+        description: response.reposted ? "Post has been shared to your profile." : "Repost has been removed.",
       });
     },
     onError: (error: Error) => {
@@ -143,11 +144,14 @@ export default function PostCard({ post }: PostCardProps) {
     mutationFn: async () => {
       return apiRequest("POST", `/api/posts/${post.id}/bookmark`);
     },
-    onSuccess: () => {
+    onSuccess: (response: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/bookmarks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/trending/posts"] });
+      
       toast({
-        title: "Bookmarked!",
-        description: "Post saved to your bookmarks.",
+        title: response.bookmarked ? "Bookmarked!" : "Bookmark removed",
+        description: response.bookmarked ? "Post saved to your bookmarks." : "Post removed from bookmarks.",
       });
     },
     onError: (error: Error) => {
@@ -408,11 +412,11 @@ export default function PostCard({ post }: PostCardProps) {
               size="sm"
               onClick={() => likeMutation.mutate()}
               disabled={likeMutation.isPending}
-              className={`engagement-btn ${post.isLiked ? "liked" : ""} hover:text-red-400 group`}
+              className={`engagement-btn ${post.isLiked ? "text-red-400" : ""} hover:text-red-400 group`}
               data-testid="button-like-post"
             >
               <div className="p-2 rounded-full group-hover:bg-red-400/10 transition-colors">
-                <Heart className={`w-5 h-5 ${post.isLiked ? "fill-current" : ""}`} />
+                <Heart className={`w-5 h-5 ${post.isLiked ? "fill-current text-red-400" : ""}`} />
               </div>
               <span className="text-sm">{post.likesCount || 0}</span>
             </Button>
@@ -439,7 +443,7 @@ export default function PostCard({ post }: PostCardProps) {
               data-testid="button-repost"
             >
               <div className="p-2 rounded-full group-hover:bg-green-400/10 transition-colors">
-                <Repeat2 className="w-5 h-5" />
+                <Repeat2 className={`w-5 h-5 ${post.isReposted ? "text-green-400" : ""}`} />
               </div>
               <span className="text-sm">{post.repostsCount || 0}</span>
             </Button>
@@ -464,7 +468,7 @@ export default function PostCard({ post }: PostCardProps) {
               data-testid="button-bookmark-post"
             >
               <div className="p-2 rounded-full group-hover:bg-yellow-400/10 transition-colors">
-                <Bookmark className={`w-5 h-5 ${post.isBookmarked ? "fill-current" : ""}`} />
+                <Bookmark className={`w-5 h-5 ${post.isBookmarked ? "fill-current text-yellow-400" : ""}`} />
               </div>
             </Button>
 

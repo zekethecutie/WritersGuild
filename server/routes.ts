@@ -322,13 +322,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/posts', async (req, res) => {
+  app.get('/api/posts', async (req: any, res) => {
     try {
-      const { limit = 20, offset = 0, userId } = req.query;
+      const { limit = 20, offset = 0 } = req.query;
+      const userId = req.session?.userId; // Get current user ID from session
       const posts = await storage.getPosts(
         parseInt(limit as string),
         parseInt(offset as string),
-        userId as string
+        userId
       );
       res.json(posts);
     } catch (error) {
@@ -579,27 +580,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id: postId } = req.params;
       const { comment } = req.body;
 
-      const repost = await storage.repostPost(userId, postId, comment);
+      // Check if already reposted
+      const isReposted = await storage.hasUserReposted(userId, postId);
       
-      // Get post to find the author for notification
-      const post = await storage.getPost(postId);
-      if (post && post.authorId !== userId) {
-        // Create and broadcast notification
-        const notification = await storage.createNotification({
-          userId: post.authorId,
-          type: 'repost',
-          actorId: userId,
-          postId: postId,
-          isRead: false
-        });
+      if (isReposted) {
+        await storage.unrepost(userId, postId);
+        res.json({ reposted: false, message: "Repost removed" });
+      } else {
+        const repost = await storage.repostPost(userId, postId, comment);
         
-        // Broadcast real-time notification
-        if (app && typeof app.broadcastNotification === 'function') {
-          app.broadcastNotification(post.authorId, notification);
+        // Get post to find the author for notification
+        const post = await storage.getPost(postId);
+        if (post && post.authorId !== userId) {
+          // Create and broadcast notification
+          const notification = await storage.createNotification({
+            userId: post.authorId,
+            type: 'repost',
+            actorId: userId,
+            postId: postId,
+            isRead: false
+          });
+          
+          // Broadcast real-time notification
+          if (app && typeof app.broadcastNotification === 'function') {
+            app.broadcastNotification(post.authorId, notification);
+          }
         }
+        
+        res.json({ reposted: true, repost });
       }
-      
-      res.json(repost);
     } catch (error) {
       console.error("Error reposting:", error);
       res.status(500).json({ message: "Failed to repost" });
@@ -612,8 +621,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.session.userId;
       const { id: postId } = req.params;
 
-      const bookmark = await storage.bookmarkPost(userId, postId);
-      res.json(bookmark);
+      // Check if already bookmarked
+      const isBookmarked = await storage.isPostBookmarked(userId, postId);
+      
+      if (isBookmarked) {
+        await storage.removeBookmark(userId, postId);
+        res.json({ bookmarked: false, message: "Bookmark removed" });
+      } else {
+        const bookmark = await storage.bookmarkPost(userId, postId);
+        res.json({ bookmarked: true, bookmark });
+      }
     } catch (error) {
       console.error("Error bookmarking post:", error);
       res.status(500).json({ message: "Failed to bookmark post" });
@@ -695,10 +712,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Trending and discovery routes
-  app.get('/api/trending/posts', async (req, res) => {
+  app.get('/api/trending/posts', async (req: any, res) => {
     try {
       const { limit = 20 } = req.query;
-      const posts = await storage.getTrendingPosts(parseInt(limit as string));
+      const userId = req.session?.userId;
+      const posts = await storage.getTrendingPosts(parseInt(limit as string), userId);
       res.json(posts);
     } catch (error) {
       console.error("Error fetching trending posts:", error);
