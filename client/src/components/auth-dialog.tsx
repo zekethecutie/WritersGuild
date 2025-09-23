@@ -33,6 +33,8 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
     username: "",
   });
 
+  const [isLoading, setIsLoading] = useState(false);
+
   // Helper function to close the dialog
   const onClose = () => {
     onOpenChange(false);
@@ -52,6 +54,7 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
     }
 
     setError(null);
+    setIsLoading(true);
 
     try {
       await login.mutateAsync({
@@ -74,6 +77,8 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
         variant: "destructive",
       });
       setError(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -89,6 +94,7 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
     }
 
     setError(null);
+    setIsLoading(true);
 
     try {
       await register.mutateAsync({
@@ -113,6 +119,8 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
         variant: "destructive",
       });
       setError(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -156,8 +164,8 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
 
               {error && <p className="text-red-500 text-sm">{error}</p>}
 
-              <Button type="submit" className="w-full" disabled={login.isPending}>
-                {login.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button type="submit" className="w-full" disabled={login.isPending || isLoading}>
+                {(login.isPending || isLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Login
               </Button>
             </form>
@@ -222,8 +230,8 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
 
               {error && <p className="text-red-500 text-sm">{error}</p>}
 
-              <Button type="submit" className="w-full" disabled={register.isPending}>
-                {register.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button type="submit" className="w-full" disabled={register.isPending || isLoading}>
+                {(register.isPending || isLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Create Account
               </Button>
             </form>

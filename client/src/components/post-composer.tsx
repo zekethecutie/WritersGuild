@@ -37,6 +37,9 @@ import {
   FileText
 } from "lucide-react";
 
+// Mock useMobile hook for demonstration purposes
+const useMobile = () => [false]; 
+
 export default function PostComposer() {
   const { user } = useAuth();
   const { toast } = useToast();

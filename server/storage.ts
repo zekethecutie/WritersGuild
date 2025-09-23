@@ -30,7 +30,7 @@ import {
   type Message,
   type InsertMessage,
 } from "@shared/schema";
-import { db } from "./db";
+import { db, series } from "./db";
 import { eq, desc, and, or, sql, count, exists, asc, ne, isNotNull, gte, ilike } from "drizzle-orm";
 
 // Define the series table schema (assuming it's defined elsewhere, but adding for context if not)
@@ -194,7 +194,15 @@ export class DatabaseStorage implements IStorage {
         });
         console.log("✅ Admin account created: @itsicxrus with password: admin123");
       } else {
-        console.log("✅ Admin account @itsicxrus already exists");
+        // Update existing admin password if needed
+        const bcrypt = await import("bcrypt");
+        const adminPassword = "admin123";
+        const hashedPassword = await bcrypt.hash(adminPassword, 10);
+        
+        await db.update(users)
+          .set({ password: hashedPassword })
+          .where(eq(users.username, "itsicxrus"));
+        console.log("✅ Admin account @itsicxrus password updated");
       }
     } catch (error: any) {
       console.log("⚠️ Admin account initialization skipped:", error.message);
