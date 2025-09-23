@@ -49,7 +49,7 @@ integrations = ["javascript_log_in_with_replit:1.0.0", "spotify:1.0.0", "javascr
 expertMode = true
 
 [workflows]
-runButton = "Project"
+runButton = "Clean Start"
 
 [[workflows.workflow]]
 name = "Start Server"
@@ -98,3 +98,12 @@ waitForPort = 5000
 
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow]]
+name = "Clean Start"
+author = 46683549
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
