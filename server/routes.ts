@@ -1259,13 +1259,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     noServer: true
   });
 
-  // Handle WebSocket upgrade on the HTTP server
+  // Handle WebSocket upgrade on the HTTP server with proper session handling
   httpServer.on('upgrade', (request, socket, head) => {
     const pathname = new URL(request.url!, `http://${request.headers.host}`).pathname;
     
     if (pathname === '/ws') {
-      wss.handleUpgrade(request, socket, head, (ws) => {
-        wss.emit('connection', ws, request);
+      // Parse session before upgrade
+      sessionMiddleware(request as any, {} as any, () => {
+        wss.handleUpgrade(request, socket, head, (ws) => {
+          wss.emit('connection', ws, request);
+        });
       });
     } else {
       socket.destroy();
@@ -1275,32 +1278,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   wss.on('connection', (ws: WebSocket, req) => {
     console.log('New WebSocket connection');
 
-    // Authenticate user using the same session middleware
-    sessionMiddleware(req as any, {} as any, () => {
-      const userId = (req as any).session?.userId;
+    const userId = (req as any).session?.userId;
 
-      if (userId) {
-        (ws as any).userId = userId;
-        (ws as any).authenticated = true;
-        console.log(`WebSocket authenticated for user: ${userId}`);
+    if (userId) {
+      (ws as any).userId = userId;
+      (ws as any).authenticated = true;
+      console.log(`WebSocket authenticated for user: ${userId}`);
 
-        // Add to user connections registry
-        if (!userConnections.has(userId)) {
-          userConnections.set(userId, new Set());
-        }
-        userConnections.get(userId)!.add(ws);
-
-        // Send authentication success
-        ws.send(JSON.stringify({
-          type: 'auth_success',
-          userId: userId
-        }));
-      } else {
-        console.log('WebSocket connection rejected: not authenticated');
-        ws.close(4001, 'Authentication required');
-        return;
+      // Add to user connections registry
+      if (!userConnections.has(userId)) {
+        userConnections.set(userId, new Set());
       }
-    });
+      userConnections.get(userId)!.add(ws);
+
+      // Send authentication success
+      ws.send(JSON.stringify({
+        type: 'auth_success',
+        userId: userId
+      }));
+    } else {
+      console.log('WebSocket connection rejected: not authenticated');
+      ws.close(4001, 'Authentication required');
+      return;
+    }
 
     ws.on('message', (message) => {
       try {
