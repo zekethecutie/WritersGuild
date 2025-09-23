@@ -29,7 +29,7 @@ export const useAuth = () => {
         }
 
         const data = await response.json();
-        return data.user;
+        return data;
       } catch (error) {
         console.error('Auth check error:', error);
         return null;
@@ -41,13 +41,13 @@ export const useAuth = () => {
 
   const login = useMutation({
     mutationFn: async ({ username, password }: { username: string; password: string }) => {
-      const response = await fetch('/api/auth/signin', {
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ email: username, password }),
       });
 
       if (!response.ok) {
@@ -71,7 +71,7 @@ export const useAuth = () => {
       email?: string;
       displayName?: string;
     }) => {
-      const response = await fetch('/api/auth/signup', {
+      const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -87,14 +87,15 @@ export const useAuth = () => {
 
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.setQueryData(['user'], data.user);
       queryClient.invalidateQueries({ queryKey: ['user'] });
     },
   });
 
   const logout = useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/auth/signout', {
+      const response = await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include'
       });

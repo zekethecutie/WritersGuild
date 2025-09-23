@@ -12,8 +12,13 @@ declare module 'express-session' {
 const app = express();
 
 // Session configuration
+// Ensure session secret is available
+if (!process.env.SESSION_SECRET) {
+  process.env.SESSION_SECRET = 'dev-secret-key-change-in-production-' + Math.random().toString(36);
+}
+
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'fallback-secret-key-for-development',
+  secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: {

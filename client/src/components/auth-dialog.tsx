@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -19,9 +18,10 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
   const { toast } = useToast();
+  const [error, setError] = useState<string | null>(null); // State for error messages
 
   const [loginForm, setLoginForm] = useState({
-    identifier: "", 
+    identifier: "",
     password: "",
   });
 
@@ -33,9 +33,26 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
     username: "",
   });
 
+  // Helper function to close the dialog
+  const onClose = () => {
+    onOpenChange(false);
+    // Reset forms and error on close
+    setLoginForm({ identifier: "", password: "" });
+    setRegisterForm({ email: "", password: "", confirmPassword: "", displayName: "", username: "" });
+    setError(null);
+    setIsLoading(false);
+  };
+
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!loginForm.identifier || !loginForm.password) {
+      setError('Please fill in all fields');
+      return;
+    }
+
     setIsLoading(true);
+    setError(null);
 
     try {
       const result = await authService.login(loginForm.identifier, loginForm.password);
@@ -46,20 +63,23 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
           description: "You've successfully logged in.",
         });
         onSuccess?.();
-        onOpenChange(false);
+        onClose();
       } else {
         toast({
           title: "Login failed",
           description: result.error,
           variant: "destructive",
         });
+        setError(result.error); // Set error message from API response
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Login error:', error);
       toast({
         title: "Login failed",
         description: "An unexpected error occurred.",
         variant: "destructive",
       });
+      setError('Login failed'); // Set a generic error message
     } finally {
       setIsLoading(false);
     }
@@ -67,17 +87,17 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    if (!registerForm.username || !registerForm.password || !registerForm.displayName) {
+      setError('Please fill in all required fields');
+      return;
+    }
     if (registerForm.password !== registerForm.confirmPassword) {
-      toast({
-        title: "Passwords don't match",
-        description: "Please make sure your passwords match.",
-        variant: "destructive",
-      });
+      setError("Passwords don't match");
       return;
     }
 
     setIsLoading(true);
+    setError(null);
 
     try {
       const result = await authService.register({
@@ -93,20 +113,23 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
           description: "Your account has been created successfully.",
         });
         onSuccess?.();
-        onOpenChange(false);
+        onClose();
       } else {
         toast({
           title: "Registration failed",
           description: result.error,
           variant: "destructive",
         });
+        setError(result.error); // Set error message from API response
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Registration error:', error);
       toast({
         title: "Registration failed",
         description: "An unexpected error occurred.",
         variant: "destructive",
       });
+      setError('Registration failed'); // Set a generic error message
     } finally {
       setIsLoading(false);
     }
@@ -149,6 +172,8 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
                   required
                 />
               </div>
+
+              {error && <p className="text-red-500 text-sm">{error}</p>}
 
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -213,6 +238,8 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
                   required
                 />
               </div>
+
+              {error && <p className="text-red-500 text-sm">{error}</p>}
 
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

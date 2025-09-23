@@ -108,9 +108,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     legacyHeaders: false,
   });
 
-  // Session middleware
+  // Trust proxy for session cookies
   app.set("trust proxy", 1);
-  app.use(sessionMiddleware);
 
   // Apply general rate limiting to all routes
   app.use('/api', generalLimiter);
@@ -126,6 +125,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     next();
   }, express.static(uploadsDir));
+
+  // Test route to create admin user with known password
+  app.post('/api/create-test-user', async (req, res) => {
+    try {
+      const hashedPassword = await bcrypt.hash('admin123', 10);
+      
+      const user = await storage.createUser({
+        email: 'test@example.com',
+        password: hashedPassword,
+        displayName: 'Test Admin',
+        username: 'testadmin',
+      });
+
+      res.json({ message: 'Test user created', user: { ...user, password: undefined } });
+    } catch (error) {
+      console.error("Test user creation error:", error);
+      res.status(500).json({ message: "Failed to create test user" });
+    }
+  });
 
   // Auth routes (with rate limiting)
   app.post('/api/auth/register', authLimiter, async (req, res) => {
