@@ -8,12 +8,13 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import Profile from "@/pages/profile";
-import Explore from "@/pages/explore";
-import Messages from "@/pages/messages";
-import Notifications from "@/pages/notifications";
-import Bookmarks from "@/pages/bookmarks";
-import SearchPage from "@/pages/search";
-import SettingsPage from "@/pages/settings";
+import Explore from "./pages/explore";
+import Series from "./pages/series";
+import Messages from "./pages/messages";
+import Notifications from "./pages/notifications";
+import Bookmarks from "./pages/bookmarks";
+import SearchPage from "./pages/search";
+import SettingsPage from "./pages/settings";
 
 function AppRouter() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -36,6 +37,8 @@ function AppRouter() {
     <Router>
       <Route path="/" component={isAuthenticated ? Home : Landing} />
       <Route path="/explore" component={Explore} />
+      <Route path="/series" component={Series} />
+      <Route path="/messages" component={Messages} />
       <Route path="/search" component={isAuthenticated ? SearchPage : Explore} />
       <Route path="/notifications" component={isAuthenticated ? Notifications : Explore} />
       <Route path="/messages" component={isAuthenticated ? Messages : Explore} />

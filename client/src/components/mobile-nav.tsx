@@ -8,7 +8,8 @@ import {
   Bell,
   User,
   PlusCircle,
-  Feather
+  Feather,
+  BookOpen
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 
@@ -28,6 +29,12 @@ export default function MobileNav() {
       label: "Explore", 
       path: "/explore", 
       active: location === "/explore" 
+    },
+    { 
+      icon: BookOpen, 
+      label: "Stories", 
+      path: "/series", 
+      active: location === "/series" 
     },
     { 
       icon: PlusCircle, 

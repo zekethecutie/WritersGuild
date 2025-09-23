@@ -114,7 +114,7 @@ export default function PostCard({ post }: PostCardProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/trending/posts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/trending/topics"] });
-      
+
       toast({
         title: response.reposted ? "Reposted!" : "Repost removed",
         description: response.reposted ? "Post has been shared to your profile." : "Repost has been removed.",
@@ -148,7 +148,7 @@ export default function PostCard({ post }: PostCardProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/bookmarks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/trending/posts"] });
-      
+
       toast({
         title: response.bookmarked ? "Bookmarked!" : "Bookmark removed",
         description: response.bookmarked ? "Post saved to your bookmarks." : "Post removed from bookmarks.",
@@ -305,6 +305,8 @@ export default function PostCard({ post }: PostCardProps) {
     );
   };
 
+  if (!post || !post.author) return null;
+
   return (
     <article
       ref={postRef}
@@ -329,6 +331,13 @@ export default function PostCard({ post }: PostCardProps) {
               <span className="text-muted-foreground text-sm" data-testid="text-author-username">
                 @{author.username}
               </span>
+              {author.isVerified && (
+                <div className="flex items-center gap-1">
+                  <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+                    <CheckCircle className="w-3 h-3 text-white fill-current" />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Badges */}
@@ -352,16 +361,6 @@ export default function PostCard({ post }: PostCardProps) {
                   </div>
                   <Badge variant="outline" className="text-xs bg-red-500/10 text-red-600 border-red-500/30 font-semibold">
                     Admin
-                  </Badge>
-                </div>
-              )}
-              {author.isVerified && (
-                <div className="flex items-center gap-1">
-                  <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
-                    <CheckCircle className="w-3 h-3 text-white fill-current" />
-                  </div>
-                  <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/30 font-semibold">
-                    Verified
                   </Badge>
                 </div>
               )}
@@ -558,7 +557,7 @@ export default function PostCard({ post }: PostCardProps) {
           </div>
         </div>
       </div>
-      
+
       {/* Comments Section */}
       {showComments && (
         <div className="border-t border-border mt-4 pt-4">

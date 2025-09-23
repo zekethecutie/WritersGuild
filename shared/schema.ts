@@ -460,14 +460,20 @@ export const upsertUserSchema = insertUserSchema.extend({
   id: z.string().optional(),
 });
 
-export const insertPostSchema = createInsertSchema(posts).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-  likesCount: true,
-  commentsCount: true,
-  repostsCount: true,
-  viewsCount: true,
+export const insertPostSchema = createInsertSchema(posts, {
+  title: z.string().optional().refine(val => !val || val.length <= 255, "Title must be less than 255 characters"),
+  content: z.string().min(1, "Content is required").max(1000, "Content must be less than 1000 characters"),
+  imageUrls: z.array(z.string()).optional(),
+  spotifyTrack: z.object({
+    id: z.string(),
+    name: z.string(),
+    artist: z.string(),
+    preview_url: z.string().optional(),
+    external_urls: z.object({
+      spotify: z.string()
+    }).optional()
+  }).optional(),
+  genre: z.string().optional(),
 });
 
 export const insertCommentSchema = createInsertSchema(comments).omit({

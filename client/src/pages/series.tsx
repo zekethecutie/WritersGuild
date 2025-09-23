@@ -148,14 +148,17 @@ export default function SeriesPage() {
       <div className="lg:ml-64 min-h-screen">
         <div className="max-w-7xl mx-auto px-4 py-6">
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <BookOpen className="w-8 h-8 text-primary" />
-              <div>
-                <h1 className="text-3xl font-bold">Stories & Series</h1>
-                <p className="text-muted-foreground">Discover amazing stories from our community</p>
-              </div>
+          <div className="text-center mb-8">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <BookOpen className="w-12 h-12 text-primary" />
             </div>
+            <h1 className="text-4xl font-bold mb-2">Writers Guild Stories</h1>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              Discover captivating novels, series, and short stories from our talented community of writers
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between mb-6">
 
             {isAuthenticated && (
               <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
