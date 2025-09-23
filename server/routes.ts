@@ -42,7 +42,7 @@ const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
 function createSessionMiddleware() {
   // Generate fallback secret for development
   const sessionSecret = process.env.SESSION_SECRET || 'dev-secret-writers-guild-' + Math.random().toString(36);
-  
+
   const PgSession = connectPgSimple(session);
   const sessionStore = new PgSession({
     conString: process.env.DATABASE_URL,
@@ -93,7 +93,7 @@ const wsConnections = new Map<string, WebSocket[]>();
 function broadcastToUser(userId: string, data: any) {
   const connections = wsConnections.get(userId) || [];
   const message = JSON.stringify(data);
-  
+
   // Remove closed connections and broadcast to active ones
   const activeConnections = connections.filter(ws => {
     if (ws.readyState === WebSocket.OPEN) {
@@ -102,7 +102,7 @@ function broadcastToUser(userId: string, data: any) {
     }
     return false;
   });
-  
+
   wsConnections.set(userId, activeConnections);
 }
 
@@ -1254,10 +1254,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // WebSocket connection registry for broadcasting
   const userConnections = new Map<string, Set<WebSocket>>();
 
-  // WebSocket server for real-time features
+  // WebSocket server for real-time features - attach to existing HTTP server
   const wss = new WebSocketServer({ 
-    server: httpServer, 
-    path: '/ws'
+    server: httpServer,
+    path: '/ws',
+    noServer: false
   });
 
   wss.on('connection', (ws: WebSocket, req) => {

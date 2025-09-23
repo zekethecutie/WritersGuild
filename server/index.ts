@@ -80,6 +80,9 @@ app.use((req, res, next) => {
       log(`Port ${port} is busy, trying ${port + 1}...`);
       httpServer.listen(port + 1, "0.0.0.0", () => {
         log(`serving on port ${port + 1}`);
+      }).on('error', (err2: any) => {
+        log(`Both ports ${port} and ${port + 1} are busy. Killing processes and retrying...`);
+        process.exit(1);
       });
     } else {
       throw err;
