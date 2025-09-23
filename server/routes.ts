@@ -1255,7 +1255,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const userConnections = new Map<string, Set<WebSocket>>();
 
   // WebSocket server for real-time features
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  const wss = new WebSocketServer({ 
+    server: httpServer, 
+    path: '/ws',
+    port: undefined // Don't bind to a separate port, use the HTTP server
+  });
 
   wss.on('connection', (ws: WebSocket, req) => {
     console.log('New WebSocket connection');
