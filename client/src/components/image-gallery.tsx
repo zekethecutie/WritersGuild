@@ -10,7 +10,7 @@ interface ImageGalleryProps {
   className?: string;
 }
 
-export function ImageGallery({ images, className }: ImageGalleryProps) {
+export default function ImageGallery({ images, className }: ImageGalleryProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
 

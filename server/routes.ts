@@ -18,6 +18,8 @@ import { eq, or } from "drizzle-orm";
 import { users } from "./db/schema";
 import { db } from "./db";
 import { Request, Response, NextFunction } from "express";
+import { generateId } from "./utils"; // Assuming generateId is defined elsewhere
+import * as schema from "./db/schema"; // Import schema for type safety
 
 // Configure multer for image uploads
 const upload = multer({
@@ -166,116 +168,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Auth routes (with rate limiting)
-  app.post('/api/auth/register', authLimiter, async (req, res) => {
+  // Auth routes
+  app.post("/api/register", async (req, res) => {
     try {
-      const { email, password, displayName, username } = req.body;
+      const { username, email, password, displayName } = req.body;
 
-      if (!displayName || !username || !password) {
-        return res.status(400).json({ message: "Display name, username, and password are required" });
+      if (!username || !email || !password) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      // Validate input
+      if (username.length < 3 || username.length > 30) {
+        return res.status(400).json({ error: "Username must be 3-30 characters long" });
       }
 
       if (password.length < 6) {
-        return res.status(400).json({ message: "Password must be at least 6 characters long" });
+        return res.status(400).json({ error: "Password must be at least 6 characters long" });
       }
 
-      // Check if email is provided and user already exists
-      if (email) {
-        const existingUser = await storage.getUserByEmail(email);
-        if (existingUser) {
-          return res.status(400).json({ message: "User already exists with this email" });
-        }
+      // Check if user already exists
+      const existingUser = await db.select().from(schema.users).where(
+        or(
+          eq(schema.users.username, username),
+          eq(schema.users.email, email)
+        )
+      ).limit(1);
+
+      if (existingUser.length > 0) {
+        return res.status(400).json({ error: "User already exists" });
       }
 
-      // Check if username is taken
-      const existingUsername = await storage.getUserByUsername(username);
-      if (existingUsername) {
-        return res.status(400).json({ message: "Username is already taken" });
-      }
-
-      // Hash password
       const hashedPassword = await bcrypt.hash(password, 10);
+      const userId = generateId();
 
-      // Create user
-      const user = await storage.createUser({
-        email: email || undefined,
-        password: hashedPassword,
-        displayName,
+      const [newUser] = await db.insert(schema.users).values({
+        id: userId,
         username,
-      });
+        email,
+        password: hashedPassword,
+        displayName: displayName || username,
+      }).returning();
+
+      const { password: _, ...userWithoutPassword } = newUser;
 
       // Set session
-      req.session.userId = user.id;
+      req.session.userId = newUser.id;
+      req.session.username = newUser.username;
 
-      // Save session explicitly
-      await new Promise<void>((resolve, reject) => {
-        req.session.save((err) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      });
-
-      console.log(`✅ User registered successfully: ${user.username} (${user.id})`);
-      res.json({ user: { ...user, password: undefined } });
-    } catch (error: any) {
+      console.log("User registered successfully:", username);
+      res.json({ user: userWithoutPassword });
+    } catch (error) {
       console.error("Registration error:", error);
-      res.status(500).json({ message: "Failed to create account", error: error.message });
+      res.status(500).json({ error: "Internal server error" });
     }
   });
 
-  app.post('/api/auth/login', authLimiter, async (req, res) => {
+  app.post("/api/login", async (req, res) => {
     try {
-      const { email, password } = req.body;
+      const { username, password } = req.body;
 
-      if (!email || !password) {
-        return res.status(400).json({ message: "Email/username and password are required" });
+      if (!username || !password) {
+        return res.status(400).json({ error: "Missing username or password" });
       }
 
-      // Find user by email or username
-      let user = null;
-      if (email.includes('@')) {
-        user = await storage.getUserByEmail(email);
-      } else {
-        user = await storage.getUserByUsername(email);
+      console.log("Login attempt for:", username);
+
+      // Find user by username or email
+      const [user] = await db.select().from(schema.users).where(
+        or(
+          eq(schema.users.username, username),
+          eq(schema.users.email, username)
+        )
+      ).limit(1);
+
+      if (!user || !user.password) {
+        console.log("User not found:", username);
+        return res.status(401).json({ error: "Invalid credentials" });
       }
 
-      if (!user) {
-        console.log(`Login attempt failed: user not found for "${email}"`);
-        return res.status(401).json({ message: "Invalid username/email or password" });
+      const validPassword = await bcrypt.compare(password, user.password);
+      if (!validPassword) {
+        console.log("Invalid password for:", username);
+        return res.status(401).json({ error: "Invalid credentials" });
       }
 
-      if (!user.password) {
-        console.log(`Login attempt failed: no password set for user "${email}"`);
-        return res.status(401).json({ message: "Invalid username/email or password" });
-      }
-
-      // Check password
-      const isValid = await bcrypt.compare(password, user.password);
-      if (!isValid) {
-        console.log(`Login attempt failed: invalid password for user "${email}"`);
-        return res.status(401).json({ message: "Invalid username/email or password" });
-      }
+      const { password: _, ...userWithoutPassword } = user;
 
       // Set session
       req.session.userId = user.id;
+      req.session.username = user.username;
 
-      // Save session explicitly
-      await new Promise<void>((resolve, reject) => {
-        req.session.save((err) => {
-          if (err) {
-            console.error("Session save error:", err);
-            reject(err);
-          } else {
-            resolve();
-          }
-        });
-      });
-
-      console.log(`✅ User logged in successfully: ${user.username} (${user.id})`);
-      res.json({ user: { ...user, password: undefined } });
-    } catch (error: any) {
+      console.log("Login successful for:", username);
+      res.json({ user: userWithoutPassword });
+    } catch (error) {
       console.error("Login error:", error);
-      res.status(500).json({ message: "Failed to login. Please try again.", error: error.message });
+      res.status(500).json({ error: "Internal server error" });
     }
   });
 

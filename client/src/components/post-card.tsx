@@ -24,7 +24,9 @@ import {
   Eye,
   Crown,
   CheckCircle,
-  Trash2
+  Trash2,
+  Users,
+  BookOpen
 } from "lucide-react";
 import type { Post, User } from "@shared/schema";
 import { getProfileImageUrl } from "@/lib/defaultImages";
