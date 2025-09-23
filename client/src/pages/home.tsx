@@ -21,6 +21,7 @@ export default function Home() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("for-you");
   const [showAuthDialog, setShowAuthDialog] = useState(false);
+  const [showPostModal, setShowPostModal] = useState(false); // State for controlling the Post Modal
 
   // Show login prompt if not authenticated but don't force redirect
   useEffect(() => {
@@ -168,7 +169,13 @@ export default function Home() {
               {/* Post Modal or Auth Prompt */}
               <div className="border-b border-border p-4">
                 {isAuthenticated ? (
-                  <PostModal />
+                  <Button 
+                    onClick={() => setShowPostModal(true)}
+                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                    size="lg"
+                  >
+                    ✍️ Share your writing...
+                  </Button>
                 ) : (
                   <div className="p-2 text-center">
                     <h3 className="text-lg font-semibold mb-2">Share Your Writing</h3>
@@ -408,11 +415,21 @@ export default function Home() {
 
       <MobileNav />
 
-      <AuthDialog 
-        open={showAuthDialog} 
-        onOpenChange={setShowAuthDialog}
-        onSuccess={() => window.location.reload()}
-      />
+      {/* Post Modal */}
+      {showPostModal && (
+        <PostModal 
+          isOpen={showPostModal} 
+          onClose={() => setShowPostModal(false)} 
+        />
+      )}
+
+      {/* Auth Dialog */}
+      {showAuthDialog && (
+        <AuthDialog 
+          isOpen={showAuthDialog} 
+          onClose={() => setShowAuthDialog(false)} 
+        />
+      )}
     </div>
   );
 }

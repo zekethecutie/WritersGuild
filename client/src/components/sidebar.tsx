@@ -1,5 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
 import { 
   Feather,
   Home,
@@ -23,19 +24,25 @@ export default function Sidebar() {
   const { user, isAuthenticated } = useAuth();
   const [location] = useLocation();
 
-  // Placeholder for unread count, will be fetched or managed elsewhere
-  const unreadCount = 3; 
+  // Fetch real notification count
+  const { data: notifications } = useQuery({
+    queryKey: ["/api/notifications"],
+    queryFn: () => fetch("/api/notifications", { credentials: "include" }).then(res => res.json()),
+    enabled: isAuthenticated,
+  });
+
+  const unreadCount = notifications?.filter((n: any) => !n.isRead).length || 0; 
 
   const navigationItems = [
     { icon: Home, label: "Home", path: "/", active: location === "/" },
     { icon: Compass, label: "Explore", path: "/explore", active: location === "/explore" },
-    { icon: Search, label: "Search", path: "/search", active: location === "/search" }, // Added Search item
+    { icon: Search, label: "Search", path: "/search", active: location === "/search" },
     { icon: MessageCircle, label: "Messages", path: "/messages", active: location === "/messages" },
-    { icon: Bell, label: "Notifications", path: "/notifications", active: location === "/notifications", badge: unreadCount },
+    { icon: Bell, label: "Notifications", path: "/notifications", active: location === "/notifications", badge: unreadCount > 0 ? unreadCount : undefined },
     { icon: Bookmark, label: "Bookmarks", path: "/bookmarks", active: location === "/bookmarks" },
     { icon: BarChart3, label: "Analytics", path: "/analytics", active: location === "/analytics" },
     { icon: User, label: "Profile", path: `/profile/${user?.username || user?.id}`, active: location.startsWith("/profile") },
-    { icon: Cog, label: "Settings", path: "/settings", active: location === "/settings" }, // Added Settings item
+    { icon: Cog, label: "Settings", path: "/settings", active: location === "/settings" },
   ];
 
   return (

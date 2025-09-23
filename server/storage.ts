@@ -11,6 +11,9 @@ import {
   writingGoals,
   conversations,
   messages,
+  series,
+  chapters,
+  seriesFollowers,
   type User,
   type UpsertUser,
   type InsertPost,
@@ -1408,6 +1411,132 @@ export class DatabaseStorage implements IStorage {
       .limit(30);
 
     return { users, posts };
+  }
+
+  // Series management methods
+  async createSeries(seriesData: any): Promise<any> {
+    const [newSeries] = await db.insert(series).values(seriesData).returning();
+    return newSeries;
+  }
+
+  async getPublicSeries(limit = 20, offset = 0, genre?: string): Promise<any[]> {
+    let query = db
+      .select({
+        id: series.id,
+        title: series.title,
+        description: series.description,
+        genre: series.genre,
+        tags: series.tags,
+        coverImageUrl: series.coverImageUrl,
+        isCompleted: series.isCompleted,
+        chaptersCount: series.chaptersCount,
+        followersCount: series.followersCount,
+        likesCount: series.likesCount,
+        viewsCount: series.viewsCount,
+        createdAt: series.createdAt,
+        author: {
+          id: users.id,
+          username: users.username,
+          displayName: users.displayName,
+          profileImageUrl: users.profileImageUrl,
+        },
+      })
+      .from(series)
+      .innerJoin(users, eq(series.authorId, users.id))
+      .where(eq(series.isPrivate, false));
+
+    if (genre) {
+      query = query.where(and(eq(series.isPrivate, false), eq(series.genre, genre)));
+    }
+
+    return query
+      .orderBy(desc(series.createdAt))
+      .limit(limit)
+      .offset(offset);
+  }
+
+  async getSeriesById(seriesId: string): Promise<any> {
+    const [result] = await db
+      .select({
+        id: series.id,
+        authorId: series.authorId,
+        title: series.title,
+        description: series.description,
+        genre: series.genre,
+        tags: series.tags,
+        coverImageUrl: series.coverImageUrl,
+        isCompleted: series.isCompleted,
+        isPrivate: series.isPrivate,
+        chaptersCount: series.chaptersCount,
+        followersCount: series.followersCount,
+        likesCount: series.likesCount,
+        viewsCount: series.viewsCount,
+        createdAt: series.createdAt,
+        updatedAt: series.updatedAt,
+        author: {
+          id: users.id,
+          username: users.username,
+          displayName: users.displayName,
+          profileImageUrl: users.profileImageUrl,
+        },
+      })
+      .from(series)
+      .innerJoin(users, eq(series.authorId, users.id))
+      .where(eq(series.id, seriesId));
+
+    return result;
+  }
+
+  async createChapter(chapterData: any): Promise<any> {
+    const [newChapter] = await db.insert(chapters).values(chapterData).returning();
+
+    // Update series chapters count
+    await db
+      .update(series)
+      .set({ chaptersCount: sql`${series.chaptersCount} + 1` })
+      .where(eq(series.id, chapterData.seriesId));
+
+    return newChapter;
+  }
+
+  async getSeriesChapters(seriesId: string): Promise<any[]> {
+    return db
+      .select()
+      .from(chapters)
+      .where(eq(chapters.seriesId, seriesId))
+      .orderBy(asc(chapters.chapterNumber));
+  }
+
+  async followSeries(userId: string, seriesId: string): Promise<any> {
+    const [follow] = await db.insert(seriesFollowers).values({ userId, seriesId }).returning();
+
+    // Update series followers count
+    await db
+      .update(series)
+      .set({ followersCount: sql`${series.followersCount} + 1` })
+      .where(eq(series.id, seriesId));
+
+    return follow;
+  }
+
+  async unfollowSeries(userId: string, seriesId: string): Promise<void> {
+    await db.delete(seriesFollowers).where(
+      and(eq(seriesFollowers.userId, userId), eq(seriesFollowers.seriesId, seriesId))
+    );
+
+    // Update series followers count
+    await db
+      .update(series)
+      .set({ followersCount: sql`${series.followersCount} - 1` })
+      .where(eq(series.id, seriesId));
+  }
+
+  async isFollowingSeries(userId: string, seriesId: string): Promise<boolean> {
+    const [follow] = await db
+      .select()
+      .from(seriesFollowers)
+      .where(and(eq(seriesFollowers.userId, userId), eq(seriesFollowers.seriesId, seriesId)));
+    return !!follow;
   }
 }
 

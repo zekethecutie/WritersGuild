@@ -1164,6 +1164,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Series routes
+  app.post('/api/series', requireAuth, writeLimiter, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { title, description, genre, tags, coverImageUrl } = req.body;
+
+      if (!title || !description) {
+        return res.status(400).json({ message: "Title and description are required" });
+      }
+
+      const series = await storage.createSeries({
+        authorId: userId,
+        title,
+        description,
+        genre,
+        tags: tags || [],
+        coverImageUrl
+      });
+
+      res.json(series);
+    } catch (error) {
+      console.error("Error creating series:", error);
+      res.status(500).json({ message: "Failed to create series" });
+    }
+  });
+
+  app.get('/api/series', async (req, res) => {
+    try {
+      const { limit = 20, offset = 0, genre } = req.query;
+      const series = await storage.getPublicSeries(
+        parseInt(limit as string),
+        parseInt(offset as string),
+        genre as string
+      );
+      res.json(series);
+    } catch (error) {
+      console.error("Error fetching series:", error);
+      res.status(500).json({ message: "Failed to fetch series" });
+    }
+  });
+
+  app.get('/api/series/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const series = await storage.getSeriesById(id);
+      
+      if (!series) {
+        return res.status(404).json({ message: "Series not found" });
+      }
+
+      res.json(series);
+    } catch (error) {
+      console.error("Error fetching series:", error);
+      res.status(500).json({ message: "Failed to fetch series" });
+    }
+  });
+
+  app.post('/api/series/:id/chapters', requireAuth, writeLimiter, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { id: seriesId } = req.params;
+      const { title, content, chapterNumber } = req.body;
+
+      // Verify user owns the series
+      const series = await storage.getSeriesById(seriesId);
+      if (!series || series.authorId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const chapter = await storage.createChapter({
+        seriesId,
+        title,
+        content,
+        chapterNumber,
+        wordCount: content.split(/\s+/).length
+      });
+
+      res.json(chapter);
+    } catch (error) {
+      console.error("Error creating chapter:", error);
+      res.status(500).json({ message: "Failed to create chapter" });
+    }
+  });
+
+  app.get('/api/series/:id/chapters', async (req, res) => {
+    try {
+      const { id: seriesId } = req.params;
+      const chapters = await storage.getSeriesChapters(seriesId);
+      res.json(chapters);
+    } catch (error) {
+      console.error("Error fetching chapters:", error);
+      res.status(500).json({ message: "Failed to fetch chapters" });
+    }
+  });
+
+  app.post('/api/series/:id/follow', requireAuth, writeLimiter, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { id: seriesId } = req.params;
+
+      const isFollowing = await storage.isFollowingSeries(userId, seriesId);
+      
+      if (isFollowing) {
+        await storage.unfollowSeries(userId, seriesId);
+        res.json({ following: false, message: "Unfollowed series" });
+      } else {
+        await storage.followSeries(userId, seriesId);
+        res.json({ following: true, message: "Following series" });
+      }
+    } catch (error) {
+      console.error("Error toggling series follow:", error);
+      res.status(500).json({ message: "Failed to update series follow status" });
+    }
+  });
+
   // Explore routes (public access)
   app.get('/api/explore/trending-topics', async (req, res) => {
     try {
