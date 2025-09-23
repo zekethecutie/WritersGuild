@@ -48,9 +48,9 @@ export default function PostCard({ post }: PostCardProps) {
 
   // Use author data from post or fallback for display
   const author = post.author || {
-    id: post.authorId,
-    username: `user${post.authorId.slice(-4)}`,
-    displayName: `User ${post.authorId.slice(-4)}`,
+    id: post.authorId || 'unknown',
+    username: `user${(post.authorId || 'unknown').slice(-4)}`,
+    displayName: `User ${(post.authorId || 'unknown').slice(-4)}`,
     email: null,
     password: null,
     bio: null,

@@ -224,8 +224,8 @@ export default function Home() {
                     </Button>
                   </div>
                 ) : (
-                  allPosts.map((post: any) => (
-                    <PostCard key={post.id} post={post as Post} />
+                  allPosts.map((post: any, index: number) => (
+                    <PostCard key={`${post.id}-${index}`} post={post as Post} />
                   ))
                 )}
 

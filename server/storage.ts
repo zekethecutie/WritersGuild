@@ -263,8 +263,45 @@ export class DatabaseStorage implements IStorage {
   async getPosts(limit: number = 20, offset: number = 0, userId?: string): Promise<(Post & { author?: User; isLiked?: boolean; isBookmarked?: boolean; isReposted?: boolean })[]> {
     const postsQuery = db
       .select({
-        post: posts,
-        author: users,
+        id: posts.id,
+        authorId: posts.authorId,
+        content: posts.content,
+        formattedContent: posts.formattedContent,
+        postType: posts.postType,
+        genre: posts.genre,
+        spotifyTrackId: posts.spotifyTrackId,
+        spotifyTrackData: posts.spotifyTrackData,
+        imageUrls: posts.imageUrls,
+        isPrivate: posts.isPrivate,
+        likesCount: posts.likesCount,
+        commentsCount: posts.commentsCount,
+        repostsCount: posts.repostsCount,
+        viewsCount: posts.viewsCount,
+        createdAt: posts.createdAt,
+        updatedAt: posts.updatedAt,
+        author: {
+          id: users.id,
+          username: users.username,
+          displayName: users.displayName,
+          email: users.email,
+          password: users.password,
+          bio: users.bio,
+          location: users.location,
+          website: users.website,
+          profileImageUrl: users.profileImageUrl,
+          coverImageUrl: users.coverImageUrl,
+          genres: users.genres,
+          writingStreak: users.writingStreak,
+          wordCountGoal: users.wordCountGoal,
+          weeklyPostsGoal: users.weeklyPostsGoal,
+          isVerified: users.isVerified,
+          isAdmin: users.isAdmin,
+          isSuperAdmin: users.isSuperAdmin,
+          postsCount: users.postsCount,
+          commentsCount: users.commentsCount,
+          createdAt: users.createdAt,
+          updatedAt: users.updatedAt
+        },
         isLiked: userId ? sql<boolean>`EXISTS (
           SELECT 1 FROM ${likes} 
           WHERE ${likes.userId} = ${userId} 
@@ -290,7 +327,22 @@ export class DatabaseStorage implements IStorage {
     const results = await postsQuery;
 
     return results.map(row => ({
-      ...row.post,
+      id: row.id,
+      authorId: row.authorId,
+      content: row.content,
+      formattedContent: row.formattedContent,
+      postType: row.postType,
+      genre: row.genre,
+      spotifyTrackId: row.spotifyTrackId,
+      spotifyTrackData: row.spotifyTrackData,
+      imageUrls: row.imageUrls,
+      isPrivate: row.isPrivate,
+      likesCount: row.likesCount,
+      commentsCount: row.commentsCount,
+      repostsCount: row.repostsCount,
+      viewsCount: row.viewsCount,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
       author: row.author || undefined,
       isLiked: row.isLiked,
       isBookmarked: row.isBookmarked,
@@ -745,8 +797,45 @@ export class DatabaseStorage implements IStorage {
 
     const trendingPosts = await db
       .select({
-        post: posts,
-        author: users,
+        id: posts.id,
+        authorId: posts.authorId,
+        content: posts.content,
+        formattedContent: posts.formattedContent,
+        postType: posts.postType,
+        genre: posts.genre,
+        spotifyTrackId: posts.spotifyTrackId,
+        spotifyTrackData: posts.spotifyTrackData,
+        imageUrls: posts.imageUrls,
+        isPrivate: posts.isPrivate,
+        likesCount: posts.likesCount,
+        commentsCount: posts.commentsCount,
+        repostsCount: posts.repostsCount,
+        viewsCount: posts.viewsCount,
+        createdAt: posts.createdAt,
+        updatedAt: posts.updatedAt,
+        author: {
+          id: users.id,
+          username: users.username,
+          displayName: users.displayName,
+          email: users.email,
+          password: users.password,
+          bio: users.bio,
+          location: users.location,
+          website: users.website,
+          profileImageUrl: users.profileImageUrl,
+          coverImageUrl: users.coverImageUrl,
+          genres: users.genres,
+          writingStreak: users.writingStreak,
+          wordCountGoal: users.wordCountGoal,
+          weeklyPostsGoal: users.weeklyPostsGoal,
+          isVerified: users.isVerified,
+          isAdmin: users.isAdmin,
+          isSuperAdmin: users.isSuperAdmin,
+          postsCount: users.postsCount,
+          commentsCount: users.commentsCount,
+          createdAt: users.createdAt,
+          updatedAt: users.updatedAt
+        },
         isLiked: userId ? sql<boolean>`EXISTS (
           SELECT 1 FROM ${likes} 
           WHERE ${likes.userId} = ${userId} 
@@ -772,7 +861,22 @@ export class DatabaseStorage implements IStorage {
       .limit(limit);
 
     return trendingPosts.map(row => ({
-      ...row.post,
+      id: row.id,
+      authorId: row.authorId,
+      content: row.content,
+      formattedContent: row.formattedContent,
+      postType: row.postType,
+      genre: row.genre,
+      spotifyTrackId: row.spotifyTrackId,
+      spotifyTrackData: row.spotifyTrackData,
+      imageUrls: row.imageUrls,
+      isPrivate: row.isPrivate,
+      likesCount: row.likesCount,
+      commentsCount: row.commentsCount,
+      repostsCount: row.repostsCount,
+      viewsCount: row.viewsCount,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
       author: row.author || undefined,
       isLiked: row.isLiked,
       isBookmarked: row.isBookmarked,
@@ -787,7 +891,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           ne(users.id, userId), // Exclude current user
-          sql`${users.id}::text NOT IN (
+          sql`${users.id} NOT IN (
             SELECT following_id FROM follows WHERE follower_id = ${userId}
           )`
         )
@@ -882,7 +986,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(writingGoals.userId, userId),
-          sql`DATE(${writingGoals.date}) = DATE(${today})`
+          sql`DATE(${writingGoals.date}) = ${today.toISOString().split('T')[0]}`
         )
       );
 
@@ -894,7 +998,7 @@ export class DatabaseStorage implements IStorage {
     .where(
       and(
         eq(posts.authorId, userId),
-        sql`${posts.createdAt} >= ${startOfWeek}`
+        sql`${posts.createdAt} >= ${startOfWeek.toISOString()}`
       )
     );
 
