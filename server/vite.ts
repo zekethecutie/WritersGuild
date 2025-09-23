@@ -1,7 +1,7 @@
 import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
-import { createServer as createViteServer, createLogger } from "vite";
+import { createServer as createViteServer, createLogger, ViteDevServer } from "vite";
 import { type Server } from "http";
 import viteConfig from "../vite.config";
 import { nanoid } from "nanoid";
@@ -19,60 +19,37 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
-export async function setupVite(app: Express, server: Server) {
-  const serverOptions = {
-    middlewareMode: true,
-    hmr: { server },
-    allowedHosts: true as const,
-  };
-
-  const vite = await createViteServer({
-    ...viteConfig,
-    configFile: false,
-    customLogger: {
-      ...viteLogger,
-      error: (msg, options) => {
-        viteLogger.error(msg, options);
-        process.exit(1);
+export async function setupVite(app: Express, server: any) {
+  try {
+    const vite = await createViteServer({
+      server: {
+        middlewareMode: true,
+        hmr: {
+          port: 3000,
+          host: "0.0.0.0"
+        }
       },
-    },
-    server: {
-      middlewareMode: true,
-      host: '0.0.0.0',
-      allowedHosts: true,
-      hmr: {
-        port: parseInt(process.env.PORT || '5000', 10),
-        host: '0.0.0.0',
-      },
-    },
-    appType: "custom",
-  });
+      appType: "spa",
+      configFile: path.resolve(import.meta.dirname, "..", "vite.config.ts"),
+    });
 
-  app.use(vite.middlewares);
-  app.use("*", async (req, res, next) => {
-    const url = req.originalUrl;
+    app.use(vite.ssrFixStacktrace);
+    app.use(vite.middlewares);
 
-    try {
-      const clientTemplate = path.resolve(
-        import.meta.dirname,
-        "..",
-        "client",
-        "index.html",
-      );
+    // Enhanced WebSocket handling
+    server.on("upgrade", (request: any, socket: any, head: any) => {
+      if (request.url && request.url.includes("vite-hmr")) {
+        vite.ws.handleUpgrade(request, socket, head);
+      } else {
+        socket.destroy();
+      }
+    });
 
-      // always reload the index.html file from disk incase it changes
-      let template = await fs.promises.readFile(clientTemplate, "utf-8");
-      template = template.replace(
-        `src="/src/main.tsx"`,
-        `src="/src/main.tsx?v=${nanoid()}"`,
-      );
-      const page = await vite.transformIndexHtml(url, template);
-      res.status(200).set({ "Content-Type": "text/html" }).end(page);
-    } catch (e) {
-      vite.ssrFixStacktrace(e as Error);
-      next(e);
-    }
-  });
+    log("✅ Vite dev server configured");
+  } catch (error) {
+    log(`❌ Vite setup failed: ${error}`);
+    throw error;
+  }
 }
 
 export function serveStatic(app: Express) {
