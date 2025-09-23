@@ -363,6 +363,15 @@ export default function PostCard({ post }: PostCardProps) {
             </div>
           </div>
 
+          {/* Post Title */}
+          {post.title && (
+            <div className="mb-3">
+              <h2 className="text-xl font-bold leading-tight text-foreground">
+                {post.title}
+              </h2>
+            </div>
+          )}
+
           {/* Post Content */}
           {renderFormattedContent() as React.ReactNode}
 

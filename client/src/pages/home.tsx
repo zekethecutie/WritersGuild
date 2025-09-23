@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import Sidebar from "@/components/sidebar";
-import PostComposer from "@/components/post-composer";
+import PostModal from "@/components/post-modal";
 import PostCard from "@/components/post-card";
 import MobileNav from "@/components/mobile-nav";
 import { Card, CardContent } from "@/components/ui/card";
@@ -165,12 +165,12 @@ export default function Home() {
                 </Tabs>
               </div>
 
-              {/* Post Composer or Auth Prompt */}
-              <div className="border-b border-border">
+              {/* Post Modal or Auth Prompt */}
+              <div className="border-b border-border p-4">
                 {isAuthenticated ? (
-                  <PostComposer />
+                  <PostModal />
                 ) : (
-                  <div className="p-6 text-center">
+                  <div className="p-2 text-center">
                     <h3 className="text-lg font-semibold mb-2">Share Your Writing</h3>
                     <p className="text-muted-foreground mb-4">Join Writers Guild to post your stories, poems, and creative works</p>
                     <Button onClick={() => setShowAuthDialog(true)} className="mr-2">

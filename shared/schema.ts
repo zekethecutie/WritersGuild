@@ -55,6 +55,7 @@ export const users = pgTable("users", {
 export const posts = pgTable("posts", {
   id: uuid("id").defaultRandom().primaryKey(),
   authorId: uuid("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 255 }),
   content: text("content").notNull(),
   formattedContent: jsonb("formatted_content"), // Rich text formatting data
   postType: varchar("post_type").notNull().default("text"), // text, poetry, story, challenge

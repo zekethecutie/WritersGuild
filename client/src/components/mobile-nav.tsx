@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
+import PostModal from "@/components/post-modal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -68,9 +69,13 @@ export default function MobileNav() {
                 data-testid={`mobile-nav-${item.label.toLowerCase()}`}
               >
                 {item.isCompose ? (
-                  <div className="bg-primary w-8 h-8 rounded-full flex items-center justify-center mb-1">
-                    <Feather className="w-4 h-4 text-primary-foreground" />
-                  </div>
+                  <PostModal 
+                    trigger={
+                      <div className="bg-primary w-8 h-8 rounded-full flex items-center justify-center mb-1">
+                        <Feather className="w-4 h-4 text-primary-foreground" />
+                      </div>
+                    }
+                  />
                 ) : (
                   <div className="relative">
                     <item.icon className="w-6 h-6 mb-1" />
