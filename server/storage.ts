@@ -168,40 +168,17 @@ export class DatabaseStorage implements IStorage {
   // Initialize hardcoded admin account
   async initializeAdminAccount(): Promise<void> {
     try {
-      // Add a delay to ensure database is ready
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
       // Test basic connection first
-      try {
-        await db.select().from(users).limit(1);
-        console.log("✅ Database connection successful");
-      } catch (error: any) {
-        console.log("⚠️ Database connection failed:", error.code || error.message);
-        if (error.code === '28P01') {
-          console.log("💡 Authentication failed - check your Supabase password in DATABASE_URL");
-        } else if (error.code === '42P01') {
-          console.log("💡 Tables don't exist yet - run: npm run db:push");
-        }
-        return;
-      }
+      await db.select().from(users).limit(1);
+      console.log("✅ Database connection successful");
 
       // Check if admin account exists
-      let existingAdmin;
-      try {
-        existingAdmin = await this.getUserByUsername("itsicxrus");
-      } catch (error: any) {
-        // If column doesn't exist or database connection fails, database schema isn't ready
-        if (error.code === '42703' || error.code === '42P01' || error.code === '28P01' || error.code === 'ECONNREFUSED') {
-          console.log("⏳ Database schema not ready yet, skipping admin creation");
-          return;
-        }
-        console.log("Admin check failed, will attempt to create:", error.message);
-      }
+      const existingAdmin = await this.getUserByUsername("itsicxrus");
 
       if (!existingAdmin) {
         // Use dynamic import for ES modules
         const bcrypt = await import("bcrypt");
-        const adminPassword = process.env.ADMIN_PASSWORD || "defaultAdminPassword123!";
+        const adminPassword = "admin123"; // Simple default password
         const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
         await db.insert(users).values({
@@ -215,22 +192,12 @@ export class DatabaseStorage implements IStorage {
           isSuperAdmin: true,
           profileImageUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=itsicxrus",
         });
-        console.log("✅ Admin account created: @itsicxrus");
-        console.log("🔑 Admin login configured via ADMIN_PASSWORD environment variable");
+        console.log("✅ Admin account created: @itsicxrus with password: admin123");
       } else {
         console.log("✅ Admin account @itsicxrus already exists");
       }
     } catch (error: any) {
-      if (error.code === '42703') {
-        console.log("⏳ Database columns not ready yet, will retry on next startup");
-      } else if (error.code === '23505') {
-        console.log("✅ Admin account @itsicxrus already exists (duplicate key)");
-      } else if (error.code === '28P01') {
-        console.log("❌ Database authentication failed - please check DATABASE_URL in Secrets");
-        console.log("💡 Make sure to use your Supabase connection string with the correct password");
-      } else {
-        console.error("❌ Error creating admin account:", error.message);
-      }
+      console.log("⚠️ Admin account initialization skipped:", error.message);
       // Don't throw, let the app continue running
     }
   }

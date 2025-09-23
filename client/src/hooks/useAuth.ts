@@ -25,7 +25,8 @@ export const useAuth = () => {
         }
 
         if (!response.ok) {
-          throw new Error('Failed to fetch user');
+          console.error('Auth response not ok:', response.status, response.statusText);
+          return null;
         }
 
         const data = await response.json();
@@ -35,7 +36,7 @@ export const useAuth = () => {
         return null;
       }
     },
-    retry: false,
+    retry: 1,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 

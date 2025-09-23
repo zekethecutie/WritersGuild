@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { authService } from "@/lib/auth";
+import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 
 interface AuthDialogProps {
@@ -15,10 +15,10 @@ interface AuthDialogProps {
 }
 
 export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
-  const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
   const { toast } = useToast();
-  const [error, setError] = useState<string | null>(null); // State for error messages
+  const [error, setError] = useState<string | null>(null);
+  const { login, register } = useAuth();
 
   const [loginForm, setLoginForm] = useState({
     identifier: "",
@@ -51,37 +51,29 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
       return;
     }
 
-    setIsLoading(true);
     setError(null);
 
     try {
-      const result = await authService.login(loginForm.identifier, loginForm.password);
+      await login.mutateAsync({
+        username: loginForm.identifier,
+        password: loginForm.password,
+      });
 
-      if (result.success) {
-        toast({
-          title: "Welcome back!",
-          description: "You've successfully logged in.",
-        });
-        onSuccess?.();
-        onClose();
-      } else {
-        toast({
-          title: "Login failed",
-          description: result.error,
-          variant: "destructive",
-        });
-        setError(result.error); // Set error message from API response
-      }
+      toast({
+        title: "Welcome back!",
+        description: "You've successfully logged in.",
+      });
+      onSuccess?.();
+      onClose();
     } catch (error: any) {
       console.error('Login error:', error);
+      const errorMessage = error.message || 'Login failed';
       toast({
         title: "Login failed",
-        description: "An unexpected error occurred.",
+        description: errorMessage,
         variant: "destructive",
       });
-      setError('Login failed'); // Set a generic error message
-    } finally {
-      setIsLoading(false);
+      setError(errorMessage);
     }
   };
 
@@ -96,42 +88,31 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
       return;
     }
 
-    setIsLoading(true);
     setError(null);
 
     try {
-      const result = await authService.register({
+      await register.mutateAsync({
         email: registerForm.email || undefined,
         password: registerForm.password,
         displayName: registerForm.displayName,
         username: registerForm.username,
       });
 
-      if (result.success) {
-        toast({
-          title: "Welcome to Writers Guild!",
-          description: "Your account has been created successfully.",
-        });
-        onSuccess?.();
-        onClose();
-      } else {
-        toast({
-          title: "Registration failed",
-          description: result.error,
-          variant: "destructive",
-        });
-        setError(result.error); // Set error message from API response
-      }
+      toast({
+        title: "Welcome to Writers Guild!",
+        description: "Your account has been created successfully.",
+      });
+      onSuccess?.();
+      onClose();
     } catch (error: any) {
       console.error('Registration error:', error);
+      const errorMessage = error.message || 'Registration failed';
       toast({
         title: "Registration failed",
-        description: "An unexpected error occurred.",
+        description: errorMessage,
         variant: "destructive",
       });
-      setError('Registration failed'); // Set a generic error message
-    } finally {
-      setIsLoading(false);
+      setError(errorMessage);
     }
   };
 
@@ -175,8 +156,8 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
 
               {error && <p className="text-red-500 text-sm">{error}</p>}
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button type="submit" className="w-full" disabled={login.isPending}>
+                {login.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Login
               </Button>
             </form>
@@ -241,8 +222,8 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
 
               {error && <p className="text-red-500 text-sm">{error}</p>}
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button type="submit" className="w-full" disabled={register.isPending}>
+                {register.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Create Account
               </Button>
             </form>

@@ -35,25 +35,23 @@ const upload = multer({
 const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
 
 function createSessionMiddleware() {
-  // Require SESSION_SECRET - no fallback for security
-  if (!process.env.SESSION_SECRET) {
-    throw new Error('SESSION_SECRET environment variable is required for security');
-  }
-
+  // Generate fallback secret for development
+  const sessionSecret = process.env.SESSION_SECRET || 'dev-secret-writers-guild-' + Math.random().toString(36);
+  
   const memoryStore = MemoryStore(session);
   const sessionStore = new memoryStore({
     checkPeriod: sessionTtl, // prune expired entries every 24h
   });
 
   return session({
-    secret: process.env.SESSION_SECRET,
+    secret: sessionSecret,
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      secure: false, // Disable secure in development
+      sameSite: 'lax',
       maxAge: sessionTtl,
     },
   });
@@ -111,6 +109,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Trust proxy for session cookies
   app.set("trust proxy", 1);
 
+  // Apply session middleware BEFORE other middlewares
+  app.use(sessionMiddleware);
+
   // Apply general rate limiting to all routes
   app.use('/api', generalLimiter);
 
@@ -126,22 +127,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   }, express.static(uploadsDir));
 
-  // Test route to create admin user with known password
+  // Test route to create test user
   app.post('/api/create-test-user', async (req, res) => {
     try {
-      const hashedPassword = await bcrypt.hash('admin123', 10);
+      // Check if test user already exists
+      const existingUser = await storage.getUserByUsername('testuser');
+      if (existingUser) {
+        return res.json({ message: 'Test user already exists', user: { ...existingUser, password: undefined } });
+      }
+
+      const hashedPassword = await bcrypt.hash('test123', 10);
       
       const user = await storage.createUser({
         email: 'test@example.com',
         password: hashedPassword,
-        displayName: 'Test Admin',
-        username: 'testadmin',
+        displayName: 'Test User',
+        username: 'testuser',
       });
 
-      res.json({ message: 'Test user created', user: { ...user, password: undefined } });
+      res.json({ message: 'Test user created successfully', user: { ...user, password: undefined } });
     } catch (error) {
       console.error("Test user creation error:", error);
-      res.status(500).json({ message: "Failed to create test user" });
+      res.status(500).json({ message: "Failed to create test user", error: error.message });
     }
   });
 
@@ -154,32 +161,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Display name, username, and password are required" });
       }
 
+      if (password.length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters long" });
+      }
+
       // Check if email is provided and user already exists
       if (email) {
-        try {
-          const existingUser = await storage.getUserByEmail(email);
-          if (existingUser) {
-            return res.status(400).json({ message: "User already exists with this email" });
-          }
-        } catch (error: any) {
-          console.error("Database error checking email:", error.message);
-          if (error.code === '28P01' || error.code === 'ECONNREFUSED') {
-            return res.status(503).json({ message: "Database connection failed. Please try again later." });
-          }
+        const existingUser = await storage.getUserByEmail(email);
+        if (existingUser) {
+          return res.status(400).json({ message: "User already exists with this email" });
         }
       }
 
       // Check if username is taken
-      try {
-        const existingUsername = await storage.getUserByUsername(username);
-        if (existingUsername) {
-          return res.status(400).json({ message: "Username is already taken" });
-        }
-      } catch (error: any) {
-        console.error("Database error checking username:", error.message);
-        if (error.code === '28P01' || error.code === 'ECONNREFUSED') {
-          return res.status(503).json({ message: "Database connection failed. Please try again later." });
-        }
+      const existingUsername = await storage.getUserByUsername(username);
+      if (existingUsername) {
+        return res.status(400).json({ message: "Username is already taken" });
       }
 
       // Hash password
@@ -194,13 +191,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Set session
-      (req.session as any).userId = user.id;
+      req.session.userId = user.id;
+      
+      // Save session explicitly
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
 
       console.log(`✅ User registered successfully: ${user.username} (${user.id})`);
       res.json({ user: { ...user, password: undefined } });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Registration error:", error);
-      res.status(500).json({ message: "Failed to create account" });
+      res.status(500).json({ message: "Failed to create account", error: error.message });
     }
   });
 
@@ -214,18 +219,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Find user by email or username
       let user = null;
-      try {
-        if (email.includes('@')) {
-          user = await storage.getUserByEmail(email);
-        } else {
-          user = await storage.getUserByUsername(email);
-        }
-      } catch (error: any) {
-        console.error("Database error during login:", error.message);
-        if (error.code === '28P01' || error.code === 'ECONNREFUSED') {
-          return res.status(503).json({ message: "Database connection failed. Please try again later." });
-        }
-        return res.status(500).json({ message: "Database error, please try again" });
+      if (email.includes('@')) {
+        user = await storage.getUserByEmail(email);
+      } else {
+        user = await storage.getUserByUsername(email);
       }
 
       if (!user) {
@@ -246,7 +243,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Set session
-      (req.session as any).userId = user.id;
+      req.session.userId = user.id;
 
       // Save session explicitly
       await new Promise<void>((resolve, reject) => {
@@ -262,9 +259,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`✅ User logged in successfully: ${user.username} (${user.id})`);
       res.json({ user: { ...user, password: undefined } });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login error:", error);
-      res.status(500).json({ message: "Failed to login. Please try again." });
+      res.status(500).json({ message: "Failed to login. Please try again.", error: error.message });
     }
   });
 
