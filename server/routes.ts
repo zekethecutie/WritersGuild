@@ -1257,8 +1257,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // WebSocket server for real-time features
   const wss = new WebSocketServer({ 
     server: httpServer, 
-    path: '/ws',
-    port: undefined // Don't bind to a separate port, use the HTTP server
+    path: '/ws'
   });
 
   wss.on('connection', (ws: WebSocket, req) => {
