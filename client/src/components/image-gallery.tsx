@@ -44,8 +44,13 @@ export default function ImageGallery({
             <img
               src={image}
               alt={`Gallery image ${index + 1}`}
-              className="w-full h-full object-cover cursor-pointer transition-opacity hover:opacity-90"
-              style={{ maxHeight: images.length === 1 ? maxHeight : 200 }}
+              className={`w-full cursor-pointer transition-opacity hover:opacity-90 ${
+                images.length === 1 ? 'h-auto object-contain' : 'h-full object-cover'
+              }`}
+              style={{ 
+                maxHeight: images.length === 1 ? maxHeight : 200,
+                aspectRatio: images.length === 1 ? 'auto' : undefined
+              }}
               onClick={() => handleImageClick(image)}
               data-testid={`gallery-image-${index}`}
             />
