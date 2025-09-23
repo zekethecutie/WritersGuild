@@ -14,6 +14,10 @@ import { storage } from "./storage";
 import { insertPostSchema, insertCommentSchema } from "@shared/schema";
 import { getSpotifyClient } from "./spotifyClient";
 import spotifyRoutes from "./spotifyRoutes";
+import { eq, or } from "drizzle-orm";
+import { users } from "./db/schema";
+import { db } from "./db";
+import { Request, Response, NextFunction } from "express";
 
 // Configure multer for image uploads
 const upload = multer({
@@ -37,7 +41,7 @@ const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
 function createSessionMiddleware() {
   // Generate fallback secret for development
   const sessionSecret = process.env.SESSION_SECRET || 'dev-secret-writers-guild-' + Math.random().toString(36);
-  
+
   const memoryStore = MemoryStore(session);
   const sessionStore = new memoryStore({
     checkPeriod: sessionTtl, // prune expired entries every 24h
@@ -60,13 +64,23 @@ function createSessionMiddleware() {
 // Create single session middleware instance to share
 const sessionMiddleware = createSessionMiddleware();
 
-// Auth middleware
-const requireAuth = (req: any, res: any, next: any) => {
-  if (!req.session || !req.session.userId) {
-    return res.status(401).json({ message: "Unauthorized" });
+// Authentication middleware
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  console.log('Auth check - Session:', req.session);
+  console.log('Auth check - User ID:', req.session?.userId);
+
+  if (!req.session?.userId) {
+    console.log('No session or userId found');
+    return res.status(401).json({ error: "Authentication required" });
   }
   next();
-};
+}
+
+// Optional auth middleware - allows both authenticated and unauthenticated users
+function optionalAuth(req: Request, res: Response, next: NextFunction) {
+  // Just add user info to request if available, don't block
+  next();
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize admin account
@@ -137,7 +151,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const hashedPassword = await bcrypt.hash('test123', 10);
-      
+
       const user = await storage.createUser({
         email: 'test@example.com',
         password: hashedPassword,
@@ -192,7 +206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Set session
       req.session.userId = user.id;
-      
+
       // Save session explicitly
       await new Promise<void>((resolve, reject) => {
         req.session.save((err) => {
@@ -341,7 +355,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/posts', async (req, res) => {
+  // Get posts with infinite scroll
+  app.get("/api/posts", optionalAuth, async (req, res) => {
     try {
       const { limit = 20, offset = 0, userId } = req.query;
       const posts = await storage.getPosts(
@@ -714,7 +729,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Trending and discovery routes
-  app.get('/api/trending/posts', async (req, res) => {
+  // Get trending posts
+  app.get("/api/trending/posts", optionalAuth, async (req, res) => {
     try {
       const { limit = 20 } = req.query;
       const posts = await storage.getTrendingPosts(parseInt(limit as string));
@@ -725,12 +741,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/trending/topics', async (req, res) => {
+  // Get trending topics
+  app.get("/api/explore/trending-topics", optionalAuth, async (req, res) => {
     try {
       const topics = await storage.getTrendingTopics();
       res.json(topics);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching trending topics:", error);
+      if (error.code === '28P01' || error.code === 'ECONNREFUSED') {
+        return res.status(503).json({ message: "Service temporarily unavailable" });
+      }
       res.status(500).json({ message: "Failed to fetch trending topics" });
     }
   });
@@ -988,8 +1008,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { limit = 50, offset = 0 } = req.query;
 
       // Verify user is part of the conversation
-      const conversation = await storage.getConversation(userId, userId); // This doesn't work correctly
-      // Instead, let's get the conversation by ID and verify participation
       const conversations = await storage.getUserConversations(userId);
       const userConversation = conversations.find(c => c.id === conversationId);
 
@@ -1128,7 +1146,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Explore routes (public access)
-  app.get('/api/explore/trending-topics', async (req, res) => {
+  // Get trending topics
+  app.get("/api/explore/trending-topics", optionalAuth, async (req, res) => {
     try {
       const trendingTopics = await storage.getTrendingTopics();
       res.json(trendingTopics);
@@ -1141,7 +1160,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/explore/popular', async (req, res) => {
+  // Get popular posts for explore page
+  app.get("/api/explore/popular", optionalAuth, async (req, res) => {
     try {
       const popularPosts = await storage.getPopularPosts();
       res.json(popularPosts);
@@ -1169,7 +1189,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/users/trending', async (req, res) => {
+  // Get trending users
+  app.get("/api/users/trending", optionalAuth, async (req, res) => {
     try {
       const trendingUsers = await storage.getTrendingUsers();
       res.json(trendingUsers);

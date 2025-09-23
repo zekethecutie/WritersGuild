@@ -63,7 +63,7 @@ export default function Explore() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("trending");
   const [showAuthDialog, setShowAuthDialog] = useState(false);
-  const [isLoadingExploreData, setIsLoadingExploreData] = useState(true);
+  // const [isLoadingExploreData, setIsLoadingExploreData] = useState(true); // Removed duplicate declaration
 
   // Data states
   const [trendingPosts, setTrendingPosts] = useState<Post[]>([]);
