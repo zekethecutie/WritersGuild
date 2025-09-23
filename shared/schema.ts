@@ -127,6 +127,19 @@ export const bookmarks = pgTable("bookmarks", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Post collaborators table for Instagram-style collaboration
+export const postCollaborators = pgTable("post_collaborators", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  postId: uuid("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
+  collaboratorId: uuid("collaborator_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  invitedById: uuid("invited_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: varchar("status").notNull().default("pending"), // pending, accepted, declined
+  createdAt: timestamp("created_at").defaultNow(),
+  acceptedAt: timestamp("accepted_at"),
+}, (table) => ({
+  uniquePostCollaborator: unique().on(table.postId, table.collaboratorId),
+}));
+
 // Notifications table
 export const notifications = pgTable("notifications", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -268,6 +281,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   chapterComments: many(chapterComments),
   readingProgress: many(readingProgress),
   leaderboards: many(leaderboards),
+  postCollaborations: many(postCollaborators, { relationName: "collaborations" }),
+  invitedCollaborations: many(postCollaborators, { relationName: "invitations" }),
 }));
 
 export const postsRelations = relations(posts, ({ one, many }) => ({
@@ -279,6 +294,7 @@ export const postsRelations = relations(posts, ({ one, many }) => ({
   comments: many(comments),
   reposts: many(reposts),
   bookmarks: many(bookmarks),
+  collaborators: many(postCollaborators),
 }));
 
 export const likesRelations = relations(likes, ({ one }) => ({
@@ -408,6 +424,23 @@ export const readingProgressRelations = relations(readingProgress, ({ one }) => 
   }),
 }));
 
+export const postCollaboratorsRelations = relations(postCollaborators, ({ one }) => ({
+  post: one(posts, {
+    fields: [postCollaborators.postId],
+    references: [posts.id],
+  }),
+  collaborator: one(users, {
+    fields: [postCollaborators.collaboratorId],
+    references: [users.id],
+    relationName: "collaborations",
+  }),
+  invitedBy: one(users, {
+    fields: [postCollaborators.invitedById],
+    references: [users.id],
+    relationName: "invitations",
+  }),
+}));
+
 export const leaderboardsRelations = relations(leaderboards, ({ one }) => ({
   user: one(users, {
     fields: [leaderboards.userId],
@@ -471,6 +504,12 @@ export const insertChapterCommentSchema = createInsertSchema(chapterComments).om
   likesCount: true,
 });
 
+export const insertPostCollaboratorSchema = createInsertSchema(postCollaborators).omit({
+  id: true,
+  createdAt: true,
+  acceptedAt: true,
+});
+
 // Types
 export type UpsertUser = z.infer<typeof upsertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -500,6 +539,8 @@ export type SeriesLike = typeof seriesLikes.$inferSelect;
 export type ChapterLike = typeof chapterLikes.$inferSelect;
 export type ReadingProgress = typeof readingProgress.$inferSelect;
 export type Leaderboard = typeof leaderboards.$inferSelect;
+export type PostCollaborator = typeof postCollaborators.$inferSelect;
+export type InsertPostCollaborator = z.infer<typeof insertPostCollaboratorSchema>;
 
 // Conversations table for direct messaging
 export const conversations = pgTable("conversations", {

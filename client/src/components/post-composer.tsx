@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -30,7 +30,9 @@ import {
   Globe,
   Lock,
   Users,
-  X
+  X,
+  UserPlus,
+  Search
 } from "lucide-react";
 
 export default function PostComposer() {
@@ -47,6 +49,19 @@ export default function PostComposer() {
   const [isRichEditor, setIsRichEditor] = useState(false);
   const [showSpotify, setShowSpotify] = useState(false);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [collaborators, setCollaborators] = useState<any[]>([]);
+  const [showCollaboratorSearch, setShowCollaboratorSearch] = useState(false);
+  const [collaboratorSearchQuery, setCollaboratorSearchQuery] = useState("");
+
+  // Search for users to collaborate with
+  const searchUsersQuery = useQuery({
+    queryKey: ["/api/users/search", collaboratorSearchQuery],
+    queryFn: async () => {
+      if (!collaboratorSearchQuery.trim()) return [];
+      return apiRequest("GET", `/api/users/search?q=${encodeURIComponent(collaboratorSearchQuery)}`);
+    },
+    enabled: !!collaboratorSearchQuery.trim(),
+  });
 
   const createPostMutation = useMutation({
     mutationFn: async (postData: any) => {
@@ -62,6 +77,9 @@ export default function PostComposer() {
       setSelectedImages([]);
       setIsRichEditor(false);
       setShowSpotify(false);
+      setCollaborators([]);
+      setShowCollaboratorSearch(false);
+      setCollaboratorSearchQuery("");
 
       // Invalidate queries to refresh feed
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
@@ -156,6 +174,18 @@ export default function PostComposer() {
     } finally {
       setIsUploadingImages(false);
     }
+  };
+
+  const handleAddCollaborator = (user: any) => {
+    if (!collaborators.find(c => c.id === user.id)) {
+      setCollaborators(prev => [...prev, user]);
+    }
+    setCollaboratorSearchQuery("");
+    setShowCollaboratorSearch(false);
+  };
+
+  const handleRemoveCollaborator = (userId: string) => {
+    setCollaborators(prev => prev.filter(c => c.id !== userId));
   };
 
   const handleSubmit = () => {
@@ -359,6 +389,33 @@ export default function PostComposer() {
                   }}
                   className="rounded-xl overflow-hidden"
                 />
+              </div>
+            )}
+
+            {/* Collaborators */}
+            {collaborators.length > 0 && (
+              <div className="mb-4">
+                <div className="flex flex-wrap gap-2">
+                  {collaborators.map((collaborator, index) => (
+                    <div key={collaborator.id} className="flex items-center bg-secondary rounded-full px-3 py-1.5 text-sm">
+                      <img
+                        src={collaborator.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${collaborator.username}`}
+                        alt={collaborator.displayName}
+                        className="w-5 h-5 rounded-full mr-2"
+                      />
+                      <span>@{collaborator.username}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveCollaborator(collaborator.id)}
+                        className="ml-2 h-4 w-4 p-0 text-muted-foreground hover:text-destructive"
+                        data-testid={`button-remove-collaborator-${index}`}
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 

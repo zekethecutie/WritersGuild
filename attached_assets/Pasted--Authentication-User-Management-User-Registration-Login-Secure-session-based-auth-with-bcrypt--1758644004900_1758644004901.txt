@@ -1,0 +1,42 @@
+🔐 Authentication & User Management
+User Registration/Login: Secure session-based auth with bcrypt password hashing
+Profile Management: Users can update profiles, upload profile/cover photos
+Admin Controls: Admin users can verify accounts, manage users, delete content
+📝 Content Creation & Sharing
+Rich Text Posts: Create posts with formatting, images, and text
+Image Uploads: Upload and resize images (up to 4 per post)
+Spotify Integration: Embed music tracks in posts
+Post Types: Support for different content types (text, quotes, images)
+💬 Social Features
+Comments & Replies: Threaded comment system with nested replies
+Likes: Like posts and comments with real-time updates
+Following: Follow other writers to see their content
+Reposts: Share others' posts with optional commentary
+Bookmarks: Save posts for later reading
+🔍 Discovery & Exploration
+Search: Search posts, users, and topics
+Trending Content: Discover popular posts and trending topics
+User Recommendations: Get suggested users to follow
+Explore Page: Browse content without authentication required
+📱 Real-time Features
+WebSocket Notifications: Real-time notifications for likes, comments, follows
+Live Updates: Real-time post updates and interactions
+Typing Indicators: See when users are typing comments
+💬 Messaging System
+Direct Messages: Private conversations between users
+Message History: Persistent message storage
+Read Receipts: Track message read status
+📊 Analytics & Stats
+User Statistics: Track followers, following, post counts
+Writing Goals: Set and track writing objectives
+Engagement Metrics: View likes, comments, and interaction data
+🎨 UI/UX Features
+Responsive Design: Mobile-friendly interface with dedicated mobile navigation
+Dark/Light Theme: Theme support (configured in CSS)
+Infinite Scroll: Pagination for posts and content feeds
+Image Gallery: Lightbox view for post images
+🛡️ Moderation & Safety
+Rate Limiting: Prevent spam and abuse
+Content Moderation: Admin tools for content management
+User Verification: Verified badge system
+Account Security: Session management and logout functionality
