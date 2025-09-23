@@ -1,67 +1,75 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-// Assuming authService and AuthState are defined elsewhere and correctly imported.
-// For the purpose of this modification, we'll focus on the hook itself.
-// If authService.getCurrentUser() was the only part of authService used,
-// and the rest of the logic is now handled within the hook,
-// the import of authService might be redundant or need adjustment.
-// However, sticking strictly to the provided changes, we'll keep the import.
-import { authService, type AuthState } from "@/lib/auth";
-
+interface User {
+  id: string;
+  username: string;
+  displayName: string;
+  email?: string;
+  profileImageUrl?: string;
+  coverImageUrl?: string;
+  bio?: string;
+  isVerified?: boolean;
+  isAdmin?: boolean;
+  createdAt?: string;
+}
 
 export const useAuth = () => {
   const queryClient = useQueryClient();
 
   const { data: user, isLoading, error } = useQuery({
-    queryKey: ['user'],
-    queryFn: async () => {
+    queryKey: ['auth', 'user'],
+    queryFn: async (): Promise<User | null> => {
       try {
         const response = await fetch('/api/auth/user', {
-          credentials: 'include'
+          credentials: 'include',
+          headers: {
+            'Accept': 'application/json',
+          },
         });
 
-        if (response.status === 401) {
+        if (response.status === 401 || response.status === 403) {
           return null;
         }
 
         if (!response.ok) {
-          console.warn('Auth response not ok:', response.status, response.statusText);
+          console.warn(`Auth check failed: ${response.status}`);
           return null;
         }
 
         const data = await response.json();
-        return data;
+        return data || null;
       } catch (error) {
-        console.warn('Auth check error (non-critical):', error);
+        console.warn('Auth check error:', error);
         return null;
       }
     },
-    retry: 1,
+    retry: false,
     staleTime: 1000 * 60 * 5, // 5 minutes
+    refetchOnWindowFocus: false,
   });
 
   const login = useMutation({
     mutationFn: async ({ username, password }: { username: string; password: string }) => {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch('/api/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ email: username, password }),
+        body: JSON.stringify({ username, password }),
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Login failed');
+        const error = await response.json().catch(() => ({ message: 'Login failed' }));
+        throw new Error(error.message || 'Invalid credentials');
       }
 
-      const data = await response.json();
-      return data;
+      return response.json();
     },
     onSuccess: (data) => {
-      queryClient.setQueryData(['user'], data.user);
-      queryClient.invalidateQueries({ queryKey: ['user'] });
+      queryClient.setQueryData(['auth', 'user'], data.user);
+      queryClient.invalidateQueries({ queryKey: ['auth'] });
     },
   });
 
@@ -72,7 +80,7 @@ export const useAuth = () => {
       email?: string;
       displayName?: string;
     }) => {
-      const response = await fetch('/api/auth/register', {
+      const response = await fetch('/api/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -82,15 +90,15 @@ export const useAuth = () => {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json().catch(() => ({ message: 'Registration failed' }));
         throw new Error(error.message || 'Registration failed');
       }
 
       return response.json();
     },
     onSuccess: (data) => {
-      queryClient.setQueryData(['user'], data.user);
-      queryClient.invalidateQueries({ queryKey: ['user'] });
+      queryClient.setQueryData(['auth', 'user'], data.user);
+      queryClient.invalidateQueries({ queryKey: ['auth'] });
     },
   });
 
@@ -98,7 +106,7 @@ export const useAuth = () => {
     mutationFn: async () => {
       const response = await fetch('/api/auth/logout', {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -108,8 +116,8 @@ export const useAuth = () => {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.setQueryData(['user'], null);
-      queryClient.invalidateQueries({ queryKey: ['user'] });
+      queryClient.setQueryData(['auth', 'user'], null);
+      queryClient.clear();
     },
   });
 
