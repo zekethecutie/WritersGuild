@@ -8,7 +8,6 @@ channel = "stable-25_05"
 [deployment]
 deploymentTarget = "autoscale"
 build = ["npm", "run", "build"]
-run = ["npm", "run", "start"]
 
 [[ports]]
 localPort = 5000
@@ -21,6 +20,10 @@ externalPort = 4200
 [[ports]]
 localPort = 5173
 externalPort = 5173
+
+[[ports]]
+localPort = 35603
+externalPort = 5000
 
 [[ports]]
 localPort = 37391
@@ -46,7 +49,7 @@ integrations = ["javascript_log_in_with_replit:1.0.0", "spotify:1.0.0", "javascr
 expertMode = true
 
 [workflows]
-runButton = "Start App"
+runButton = "Project"
 
 [[workflows.workflow]]
 name = "Project"
@@ -61,13 +64,13 @@ args = "Start application"
 name = "Start application"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev"
-waitForPort = 5000
-
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=5000 npm run dev"
+waitForPort = 5000
 
 [[workflows.workflow]]
 name = "Start Server"
