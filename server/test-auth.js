@@ -1,5 +1,5 @@
 
-const fetch = require('node-fetch');
+import fetch from 'node-fetch';
 
 async function testAuth() {
   const baseUrl = 'http://localhost:5000';

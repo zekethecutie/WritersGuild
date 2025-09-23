@@ -79,18 +79,3 @@ export const posts = pgTable("posts", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
-
-export const series = pgTable("series", {
-  id: text("id").primaryKey().$defaultFn(() => generateId()),
-  title: text("title").notNull(),
-  description: text("description"),
-  authorId: text("author_id").notNull().references(() => schema.users.id, { onDelete: "cascade" }),
-  coverImageUrl: text("cover_image_url"),
-  genre: text("genre"),
-  tags: text("tags").array(),
-  isCompleted: boolean("is_completed").default(false),
-  totalChapters: integer("total_chapters").default(0),
-  followersCount: integer("followers_count").default(0),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
