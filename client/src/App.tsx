@@ -1,4 +1,3 @@
-
 import { Route, Router, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -43,7 +42,7 @@ function AppRouter() {
       <Route path="/bookmarks" component={isAuthenticated ? Bookmarks : Explore} />
       <Route path="/profile/:username" component={Profile} />
       <Route path="/settings" component={SettingsPage} />
-      <Route component={NotFound} />
+      <Route path="/:rest*" component={NotFound} />
     </Router>
   );
 }

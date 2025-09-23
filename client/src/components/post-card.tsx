@@ -46,7 +46,7 @@ export default function PostCard({ post }: PostCardProps) {
   const [showComments, setShowComments] = useState(false);
   const postRef = useRef<HTMLDivElement>(null);
 
-  // Mock author data if not provided (in real app, this would be joined in the query)
+  // Use author data from post or fallback for display
   const author = post.author || {
     id: post.authorId,
     username: `user${post.authorId.slice(-4)}`,
@@ -190,6 +190,36 @@ export default function PostCard({ post }: PostCardProps) {
       toast({
         title: "Delete failed",
         description: "There was an error deleting this post.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const reportPostMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", `/api/posts/${post.id}/report`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Post reported",
+        description: "Thank you for your report. Our team will review it.",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Report failed",
+        description: "There was an error reporting this post.",
         variant: "destructive",
       });
     },
@@ -499,6 +529,21 @@ export default function PostCard({ post }: PostCardProps) {
                 </div>
               </Button>
             )}
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => reportPostMutation.mutate()}
+              disabled={reportPostMutation.isPending}
+              className="engagement-btn hover:text-orange-400 group"
+              data-testid="button-report-post"
+            >
+              <div className="p-2 rounded-full group-hover:bg-orange-400/10 transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+            </Button>
 
             <Button
               variant="ghost"

@@ -1126,6 +1126,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Report post route
+  app.post('/api/posts/:id/report', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { id: postId } = req.params;
+      const { reason = "Inappropriate content" } = req.body;
+
+      // Get post to find the author
+      const post = await storage.getPost(postId);
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      // Don't allow reporting own posts
+      if (post.authorId === userId) {
+        return res.status(400).json({ message: "Cannot report your own post" });
+      }
+
+      // Create notification for admins
+      const admins = await storage.getAdminUsers();
+      for (const admin of admins) {
+        await storage.createNotification({
+          userId: admin.id,
+          type: 'report',
+          actorId: userId,
+          postId: postId,
+          isRead: false,
+          data: { reason }
+        });
+      }
+
+      res.json({ message: "Post reported successfully" });
+    } catch (error) {
+      console.error("Error reporting post:", error);
+      res.status(500).json({ message: "Failed to report post" });
+    }
+  });
+
   // Explore routes (public access)
   app.get('/api/explore/trending-topics', async (req, res) => {
     try {

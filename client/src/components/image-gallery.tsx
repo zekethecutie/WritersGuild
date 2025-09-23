@@ -38,18 +38,30 @@ export default function ImageGallery({
 
   return (
     <>
-      <div className={`${getGridClass()} ${className}`} data-testid="image-gallery">
+      <div className={`${getGridClass()} ${className} w-full`} data-testid="image-gallery"
+           style={{
+             display: 'grid',
+             gap: '0.5rem',
+             gridTemplateColumns: images.length === 1 ? '1fr' : 
+                                 images.length === 2 ? '1fr 1fr' :
+                                 images.length === 3 ? '1fr 1fr 1fr' : '1fr 1fr',
+             gridTemplateRows: images.length <= 2 ? '1fr' : 
+                              images.length === 3 ? '1fr' : '1fr 1fr',
+             maxHeight: '400px',
+             width: '100%'
+           }}>
         {images.slice(0, 4).map((image, index) => (
           <div key={index} className="relative group">
             <img
               src={image}
               alt={`Gallery image ${index + 1}`}
               className={`w-full cursor-pointer transition-opacity hover:opacity-90 ${
-                images.length === 1 ? 'h-auto object-contain' : 'h-full object-cover'
+                images.length === 1 ? 'h-auto object-cover' : 'h-full object-cover'
               }`}
               style={{ 
                 maxHeight: images.length === 1 ? maxHeight : 200,
-                aspectRatio: images.length === 1 ? 'auto' : undefined
+                aspectRatio: images.length === 1 ? '16/9' : undefined,
+                borderRadius: '0.75rem'
               }}
               onClick={() => handleImageClick(image)}
               data-testid={`gallery-image-${index}`}

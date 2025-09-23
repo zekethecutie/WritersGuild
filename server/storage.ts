@@ -616,6 +616,22 @@ export class DatabaseStorage implements IStorage {
     );
   }
 
+  async isPostBookmarked(userId: string, postId: string): Promise<boolean> {
+    const [bookmark] = await db
+      .select()
+      .from(bookmarks)
+      .where(and(eq(bookmarks.userId, userId), eq(bookmarks.postId, postId)));
+    return !!bookmark;
+  }
+
+  async hasUserReposted(userId: string, postId: string): Promise<boolean> {
+    const [repost] = await db
+      .select()
+      .from(reposts)
+      .where(and(eq(reposts.userId, userId), eq(reposts.postId, postId)));
+    return !!repost;
+  }
+
   async clearAllBookmarks(userId: string): Promise<void> {
     await db.delete(bookmarks).where(eq(bookmarks.userId, userId));
   }
@@ -964,6 +980,12 @@ export class DatabaseStorage implements IStorage {
         .set({ isVerified: true, updatedAt: new Date() })
         .where(eq(users.id, userId));
     }
+  }
+
+  async getAdminUsers(): Promise<User[]> {
+    return db.select()
+      .from(users)
+      .where(or(eq(users.isAdmin, true), eq(users.isSuperAdmin, true)));
   }
 
   // Messaging implementation
