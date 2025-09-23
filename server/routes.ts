@@ -164,7 +164,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: 'Test user created successfully', user: { ...user, password: undefined } });
     } catch (error) {
       console.error("Test user creation error:", error);
-      res.status(500).json({ message: "Failed to create test user", error: error.message });
+      res.status(500).json({ message: "Failed to create test user", error: (error as Error).message });
     }
   });
 
@@ -413,13 +413,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: 'like',
           actorId: userId,
           postId: postId,
-          isRead: false
+          isRead: false,
+          data: {}
         });
-
-        // Broadcast real-time notification
-        if (app && typeof app.broadcastNotification === 'function') {
-          app.broadcastNotification(post.authorId, notification);
-        }
       }
 
       res.json(like);
@@ -465,13 +461,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: 'comment',
           actorId: userId,
           postId: postId,
-          isRead: false
+          isRead: false,
+          data: {}
         });
-
-        // Broadcast real-time notification
-        if (app && typeof app.broadcastNotification === 'function') {
-          app.broadcastNotification(post.authorId, notification);
-        }
       }
 
       res.json(comment);
@@ -929,7 +921,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const spotify = await getSpotifyClient();
-      const results = await spotify.search(query as string, [type as 'track'], 'US', parseInt(limit as string));
+      const results = await spotify.search(query as string, [type as any], 'US', parseInt(limit as string, 10));
       res.json(results);
     } catch (error) {
       console.error("Error searching Spotify:", error);
