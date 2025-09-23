@@ -42,7 +42,7 @@ integrations = ["javascript_log_in_with_replit:1.0.0", "spotify:1.0.0", "javascr
 expertMode = true
 
 [workflows]
-runButton = "Start Server"
+runButton = "Project"
 
 [[workflows.workflow]]
 name = "Project"
@@ -61,6 +61,9 @@ author = "agent"
 task = "shell.exec"
 args = "npm run dev"
 waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
 
 [[workflows.workflow]]
 name = "Start Server"
