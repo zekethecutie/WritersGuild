@@ -11,22 +11,7 @@ declare module 'express-session' {
 
 const app = express();
 
-// Session configuration
-// Ensure session secret is available
-if (!process.env.SESSION_SECRET) {
-  process.env.SESSION_SECRET = 'dev-secret-key-change-in-production-' + Math.random().toString(36);
-}
-
-app.use(session({
-  secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  }
-}));
+// Session will be configured in routes.ts
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));

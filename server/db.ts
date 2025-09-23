@@ -79,3 +79,7 @@ export const posts = pgTable("posts", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Export all schema tables
+export * from "./db/schema";
+export * as schema from "./db/schema";
