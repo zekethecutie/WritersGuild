@@ -2,7 +2,6 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from "@shared/schema";
 import { pgTable, text, integer, timestamp, boolean, jsonb } from 'drizzle-orm/pg-core';
-import { users } from './users'; // Assuming users table is in a separate file
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
@@ -46,7 +45,7 @@ function generateId(): string {
 
 export const posts = pgTable("posts", {
   id: text("id").primaryKey().$defaultFn(() => generateId()),
-  authorId: text("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  authorId: text("author_id").notNull().references(() => schema.users.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
   postType: text("post_type").$type<"text" | "poetry" | "story" | "challenge" | "series" | "novel">().default("text"),
   genre: text("genre"),
@@ -69,7 +68,7 @@ export const series = pgTable("series", {
   id: text("id").primaryKey().$defaultFn(() => generateId()),
   title: text("title").notNull(),
   description: text("description"),
-  authorId: text("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  authorId: text("author_id").notNull().references(() => schema.users.id, { onDelete: "cascade" }),
   coverImageUrl: text("cover_image_url"),
   genre: text("genre"),
   tags: text("tags").array(),
