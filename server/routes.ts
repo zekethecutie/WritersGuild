@@ -107,6 +107,21 @@ function broadcastToUser(userId: string, data: any) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Health check endpoint
+  app.get('/health', (req, res) => {
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      memory: process.memoryUsage()
+    });
+  });
+
+  // Test endpoint
+  app.get('/test', (req, res) => {
+    res.json({ message: 'Server is working!', timestamp: new Date().toISOString() });
+  });
+
   // Initialize admin account
   await storage.initializeAdminAccount();
 
@@ -1262,7 +1277,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Handle WebSocket upgrade on the HTTP server with proper session handling
   httpServer.on('upgrade', (request, socket, head) => {
     const pathname = new URL(request.url!, `http://${request.headers.host}`).pathname;
-    
+
     if (pathname === '/ws') {
       // Parse session before upgrade
       sessionMiddleware(request as any, {} as any, () => {

@@ -9,41 +9,117 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { authService, type AuthState } from "@/lib/auth";
 
 
-export function useAuth() {
-  console.log('useAuth hook called');
+export const useAuth = () => {
+  const queryClient = useQueryClient();
 
-  const { data: user, isLoading, error, refetch } = useQuery({
-    queryKey: ["auth-user"],
+  const { data: user, isLoading, error } = useQuery({
+    queryKey: ['user'],
     queryFn: async () => {
-      console.log('Fetching auth user...');
-      const response = await fetch("/api/user", {
-        credentials: "include",
-      });
+      try {
+        const response = await fetch('/api/auth/user', {
+          credentials: 'include'
+        });
 
-      console.log('Auth response:', response.status, response.ok);
-
-      if (!response.ok) {
         if (response.status === 401) {
-          console.log('User not authenticated');
-          return null; // Not authenticated
+          return null;
         }
-        throw new Error(`Failed to fetch user: ${response.status}`);
-      }
 
-      const userData = await response.json();
-      console.log('User data:', userData);
-      return userData;
-    },
-    retry: (failureCount, error: any) => {
-      // Don't retry on 401 errors (unauthorized)
-      if (error?.message?.includes('401')) {
-        return false;
+        if (!response.ok) {
+          console.warn('Auth response not ok:', response.status, response.statusText);
+          return null;
+        }
+
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.warn('Auth check error (non-critical):', error);
+        return null;
       }
-      return failureCount < 2;
     },
+    retry: 1,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
-  console.log('Auth state:', { user, isLoading, error });
+  const login = useMutation({
+    mutationFn: async ({ username, password }: { username: string; password: string }) => {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ email: username, password }),
+      });
 
-  const login = async (credentials: LoginCredentials): Promise<LoginResult> => {
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Login failed');
+      }
+
+      const data = await response.json();
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(['user'], data.user);
+      queryClient.invalidateQueries({ queryKey: ['user'] });
+    },
+  });
+
+  const register = useMutation({
+    mutationFn: async ({ username, password, email, displayName }: {
+      username: string;
+      password: string;
+      email?: string;
+      displayName?: string;
+    }) => {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ username, password, email, displayName }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Registration failed');
+      }
+
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(['user'], data.user);
+      queryClient.invalidateQueries({ queryKey: ['user'] });
+    },
+  });
+
+  const logout = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('Logout failed');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.setQueryData(['user'], null);
+      queryClient.invalidateQueries({ queryKey: ['user'] });
+    },
+  });
+
+  return {
+    user,
+    isLoading,
+    error,
+    login,
+    register,
+    logout,
+    isAuthenticated: !!user,
+  };
+};
