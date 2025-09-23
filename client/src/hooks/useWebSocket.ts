@@ -31,10 +31,9 @@ export function useWebSocket(url: string, options: UseWebSocketOptions = {}) {
         return;
       }
 
-      // Skip WebSocket in development to avoid conflicts
+      // Allow WebSocket in all modes but handle gracefully
       if (process.env.NODE_ENV === 'development') {
-        console.log('WebSocket disabled in development mode');
-        return;
+        console.log('WebSocket enabled in development mode');
       }
 
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';

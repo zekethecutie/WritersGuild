@@ -10,11 +10,8 @@ declare module 'express-session' {
   }
 }
 
-// Prevent duplicate server initialization
-if ((global as any).__SERVER_STARTED__) {
-  process.exit(0);
-}
-(global as any).__SERVER_STARTED__ = true;
+// Server initialization
+console.log('Starting server...');
 
 const app = express();
 
