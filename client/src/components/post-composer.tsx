@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { 
   Separator 
 } from "@/components/ui/separator";
@@ -31,14 +30,8 @@ import {
   Globe,
   Lock,
   Users,
-  X,
-  UserPlus,
-  BookOpen,
-  FileText
+  X
 } from "lucide-react";
-
-// Mock useMobile hook for demonstration purposes
-const useMobile = () => [false]; 
 
 export default function PostComposer() {
   const { user } = useAuth();
@@ -46,7 +39,7 @@ export default function PostComposer() {
   const queryClient = useQueryClient();
 
   const [content, setContent] = useState("");
-  const [postType, setPostType] = useState<"text" | "poetry" | "story" | "challenge" | "series" | "novel">("text");
+  const [postType, setPostType] = useState<"text" | "poetry" | "story" | "challenge">("text");
   const [genre, setGenre] = useState("");
   const [privacy, setPrivacy] = useState<"public" | "followers" | "private">("public");
   const [selectedTrack, setSelectedTrack] = useState<any>(null);
@@ -54,20 +47,6 @@ export default function PostComposer() {
   const [isRichEditor, setIsRichEditor] = useState(false);
   const [showSpotify, setShowSpotify] = useState(false);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
-  const [collaborators, setCollaborators] = useState<string[]>([]);
-  const [collaboratorInput, setCollaboratorInput] = useState("");
-  const [showCollaboratorInput, setShowCollaboratorInput] = useState(false);
-  const [seriesTitle, setSeriesTitle] = useState("");
-  const [chapterNumber, setChapterNumber] = useState<number | undefined>();
-
-  // Search for users to collaborate with
-  const { data: userSearchResults } = useQuery({
-    queryKey: ["/api/search/users", collaboratorInput],
-    queryFn: () => collaboratorInput.trim() ? 
-      fetch(`/api/search/users?q=${collaboratorInput}&limit=5`).then(res => res.json()) : 
-      Promise.resolve([]),
-    enabled: collaboratorInput.length > 2,
-  });
 
   const createPostMutation = useMutation({
     mutationFn: async (postData: any) => {
@@ -83,11 +62,6 @@ export default function PostComposer() {
       setSelectedImages([]);
       setIsRichEditor(false);
       setShowSpotify(false);
-      setCollaborators([]);
-      setCollaboratorInput("");
-      setShowCollaboratorInput(false);
-      setSeriesTitle("");
-      setChapterNumber(undefined);
 
       // Invalidate queries to refresh feed
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
@@ -229,9 +203,6 @@ export default function PostComposer() {
         external_urls: selectedTrack.external_urls
       } : undefined,
       isPrivate: privacy === "private",
-      collaborators: collaborators.length > 0 ? collaborators : undefined,
-      seriesTitle: (postType === "series" || postType === "novel") && seriesTitle ? seriesTitle : undefined,
-      chapterNumber: (postType === "series" || postType === "novel") && chapterNumber ? chapterNumber : undefined,
     };
 
     createPostMutation.mutate(postData);
@@ -242,8 +213,6 @@ export default function PostComposer() {
       case "poetry": return "text-purple-400 border-purple-400/30 bg-purple-400/10";
       case "story": return "text-blue-400 border-blue-400/30 bg-blue-400/10";
       case "challenge": return "text-green-400 border-green-400/30 bg-green-400/10";
-      case "series": return "text-orange-400 border-orange-400/30 bg-orange-400/10";
-      case "novel": return "text-pink-400 border-pink-400/30 bg-pink-400/10";
       default: return "text-muted-foreground border-border bg-muted/50";
     }
   };
@@ -257,18 +226,6 @@ export default function PostComposer() {
   };
 
   const PrivacyIcon = getPrivacyIcon();
-
-  const addCollaborator = (username: string) => {
-    if (!collaborators.includes(username) && username !== user?.username) {
-      setCollaborators(prev => [...prev, username]);
-      setCollaboratorInput("");
-      setShowCollaboratorInput(false);
-    }
-  };
-
-  const removeCollaborator = (username: string) => {
-    setCollaborators(prev => prev.filter(c => c !== username));
-  };
 
   // If user is not logged in, show a message and a sign-in button
   if (!user) {
@@ -311,8 +268,6 @@ export default function PostComposer() {
                     <SelectItem value="poetry">Poetry</SelectItem>
                     <SelectItem value="story">Story</SelectItem>
                     <SelectItem value="challenge">Challenge</SelectItem>
-                    <SelectItem value="series">Series Chapter</SelectItem>
-                    <SelectItem value="novel">Novel Chapter</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -359,95 +314,8 @@ export default function PostComposer() {
               />
             )}
 
-            {/* Collaborators */}
-            {collaborators.length > 0 && (
-              <div className="mb-4">
-                <div className="flex flex-wrap gap-2">
-                  {collaborators.map((username) => (
-                    <Badge 
-                      key={username} 
-                      variant="secondary" 
-                      className="flex items-center gap-1"
-                    >
-                      <Users className="w-3 h-3" />
-                      @{username}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-4 w-4 p-0 hover:bg-destructive/20"
-                        onClick={() => removeCollaborator(username)}
-                      >
-                        <X className="w-3 h-3" />
-                      </Button>
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Collaborator Input */}
-            {showCollaboratorInput && (
-              <div className="mb-4">
-                <div className="relative">
-                  <Input
-                    placeholder="Enter username to collaborate with..."
-                    value={collaboratorInput}
-                    onChange={(e) => setCollaboratorInput(e.target.value)}
-                    className="pr-20"
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-1 top-1 h-7"
-                    onClick={() => setShowCollaboratorInput(false)}
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
-                {userSearchResults && userSearchResults.length > 0 && (
-                  <div className="mt-2 bg-card border border-border rounded-lg shadow-lg max-h-40 overflow-y-auto">
-                    {userSearchResults.map((user: any) => (
-                      <div
-                        key={user.id}
-                        className="p-2 hover:bg-muted cursor-pointer flex items-center gap-2"
-                        onClick={() => addCollaborator(user.username)}
-                      >
-                        <img
-                          src={user.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`}
-                          alt={user.displayName}
-                          className="w-6 h-6 rounded-full"
-                        />
-                        <div>
-                          <div className="font-medium text-sm">{user.displayName}</div>
-                          <div className="text-xs text-muted-foreground">@{user.username}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Series/Novel Information */}
-            {(postType === "series" || postType === "novel") && (
-              <div className="mb-4 space-y-3">
-                <Input
-                  placeholder={`${postType === "series" ? "Series" : "Novel"} title`}
-                  value={seriesTitle}
-                  onChange={(e) => setSeriesTitle(e.target.value)}
-                />
-                <Input
-                  type="number"
-                  placeholder="Chapter number"
-                  value={chapterNumber || ""}
-                  onChange={(e) => setChapterNumber(e.target.value ? parseInt(e.target.value) : undefined)}
-                  className="w-32"
-                />
-              </div>
-            )}
-
             {/* Genre Selection */}
-            {(postType === "poetry" || postType === "story" || postType === "series" || postType === "novel") && (
+            {(postType === "poetry" || postType === "story") && (
               <div className="mb-4">
                 <Select value={genre} onValueChange={setGenre}>
                   <SelectTrigger className="w-48 border-border">
@@ -464,7 +332,7 @@ export default function PostComposer() {
                         <SelectItem value="ballad">Ballad</SelectItem>
                       </>
                     )}
-                    {(postType === "story" || postType === "series" || postType === "novel") && (
+                    {postType === "story" && (
                       <>
                         <SelectItem value="flash-fiction">Flash Fiction</SelectItem>
                         <SelectItem value="short-story">Short Story</SelectItem>
@@ -474,9 +342,6 @@ export default function PostComposer() {
                         <SelectItem value="mystery">Mystery</SelectItem>
                         <SelectItem value="horror">Horror</SelectItem>
                         <SelectItem value="literary">Literary</SelectItem>
-                        <SelectItem value="thriller">Thriller</SelectItem>
-                        <SelectItem value="adventure">Adventure</SelectItem>
-                        <SelectItem value="historical">Historical Fiction</SelectItem>
                       </>
                     )}
                   </SelectContent>
@@ -590,19 +455,6 @@ export default function PostComposer() {
                     <Quote className="w-5 h-5" />
                   </Button>
                 )}
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowCollaboratorInput(!showCollaboratorInput)}
-                  className={`p-2 rounded-lg transition-colors ${
-                    showCollaboratorInput || collaborators.length > 0 ? "text-blue-500 bg-blue-500/10" : "text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10"
-                  }`}
-                  title="Add Collaborators"
-                  data-testid="button-add-collaborators"
-                >
-                  <UserPlus className="w-5 h-5" />
-                </Button>
 
                 <Button
                   variant="ghost"

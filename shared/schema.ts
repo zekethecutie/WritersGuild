@@ -426,26 +426,14 @@ export const upsertUserSchema = insertUserSchema.extend({
   id: z.string().optional(),
 });
 
-export const insertPostSchema = createInsertSchema(posts, {
-  content: z.string().min(1).max(10000),
-  postType: z.enum(["text", "poetry", "story", "challenge", "series", "novel"]).default("text"),
-  genre: z.string().optional(),
-  imageUrls: z.array(z.string()).optional(),
-  spotifyTrackId: z.string().optional(),
-  spotifyTrackData: z.object({
-    name: z.string(),
-    artist: z.string(),
-    album: z.string().optional(),
-    image: z.string().optional(),
-    preview_url: z.string().optional(),
-    external_urls: z.object({
-      spotify: z.string()
-    }).optional()
-  }).optional(),
-  isPrivate: z.boolean().default(false),
-  collaborators: z.array(z.string()).optional(),
-  seriesId: z.string().optional(),
-  chapterNumber: z.number().optional(),
+export const insertPostSchema = createInsertSchema(posts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  likesCount: true,
+  commentsCount: true,
+  repostsCount: true,
+  viewsCount: true,
 });
 
 export const insertCommentSchema = createInsertSchema(comments).omit({

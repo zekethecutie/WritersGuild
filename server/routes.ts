@@ -1,3 +1,4 @@
+
 import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
@@ -14,12 +15,6 @@ import { storage } from "./storage";
 import { insertPostSchema, insertCommentSchema } from "@shared/schema";
 import { getSpotifyClient } from "./spotifyClient";
 import spotifyRoutes from "./spotifyRoutes";
-import { eq, or } from "drizzle-orm";
-import { users } from "./db/schema";
-import { db } from "./db";
-import { Request, Response, NextFunction } from "express";
-import { generateId } from "./utils"; // Assuming generateId is defined elsewhere
-import * as schema from "./db/schema"; // Import schema for type safety
 
 // Configure multer for image uploads
 const upload = multer({
@@ -41,23 +36,25 @@ const upload = multer({
 const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
 
 function createSessionMiddleware() {
-  // Generate fallback secret for development
-  const sessionSecret = process.env.SESSION_SECRET || 'dev-secret-writers-guild-' + Math.random().toString(36);
-
+  // Require SESSION_SECRET - no fallback for security
+  if (!process.env.SESSION_SECRET) {
+    throw new Error('SESSION_SECRET environment variable is required for security');
+  }
+  
   const memoryStore = MemoryStore(session);
   const sessionStore = new memoryStore({
     checkPeriod: sessionTtl, // prune expired entries every 24h
   });
-
+  
   return session({
-    secret: sessionSecret,
+    secret: process.env.SESSION_SECRET,
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: false, // Disable secure in development
-      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
       maxAge: sessionTtl,
     },
   });
@@ -66,28 +63,18 @@ function createSessionMiddleware() {
 // Create single session middleware instance to share
 const sessionMiddleware = createSessionMiddleware();
 
-// Authentication middleware
-function requireAuth(req: Request, res: Response, next: NextFunction) {
-  console.log('Auth check - Session:', req.session);
-  console.log('Auth check - User ID:', req.session?.userId);
-
-  if (!req.session?.userId) {
-    console.log('No session or userId found');
-    return res.status(401).json({ error: "Authentication required" });
+// Auth middleware
+const requireAuth = (req: any, res: any, next: any) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ message: "Unauthorized" });
   }
   next();
-}
-
-// Optional auth middleware - allows both authenticated and unauthenticated users
-function optionalAuth(req: Request, res: Response, next: NextFunction) {
-  // Just add user info to request if available, don't block
-  next();
-}
+};
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize admin account
   await storage.initializeAdminAccount();
-
+  
   // Retry admin account creation after a delay (in case database wasn't ready)
   setTimeout(async () => {
     try {
@@ -122,12 +109,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     legacyHeaders: false,
   });
 
-  // Trust proxy for session cookies
+  // Session middleware
   app.set("trust proxy", 1);
-
-  // Apply session middleware BEFORE other middlewares
   app.use(sessionMiddleware);
-
+  
   // Apply general rate limiting to all routes
   app.use('/api', generalLimiter);
 
@@ -143,126 +128,126 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   }, express.static(uploadsDir));
 
-  // Test route to create test user
-  app.post('/api/create-test-user', async (req, res) => {
+  // Auth routes (with rate limiting)
+  app.post('/api/auth/register', authLimiter, async (req, res) => {
     try {
-      // Check if test user already exists
-      const existingUser = await storage.getUserByUsername('testuser');
-      if (existingUser) {
-        return res.json({ message: 'Test user already exists', user: { ...existingUser, password: undefined } });
+      const { email, password, displayName, username } = req.body;
+
+      if (!displayName || !username || !password) {
+        return res.status(400).json({ message: "Display name, username, and password are required" });
       }
 
-      const hashedPassword = await bcrypt.hash('test123', 10);
+      // Check if email is provided and user already exists
+      if (email) {
+        try {
+          const existingUser = await storage.getUserByEmail(email);
+          if (existingUser) {
+            return res.status(400).json({ message: "User already exists with this email" });
+          }
+        } catch (error: any) {
+          console.error("Database error checking email:", error.message);
+          if (error.code === '28P01' || error.code === 'ECONNREFUSED') {
+            return res.status(503).json({ message: "Database connection failed. Please try again later." });
+          }
+        }
+      }
 
+      // Check if username is taken
+      try {
+        const existingUsername = await storage.getUserByUsername(username);
+        if (existingUsername) {
+          return res.status(400).json({ message: "Username is already taken" });
+        }
+      } catch (error: any) {
+        console.error("Database error checking username:", error.message);
+        if (error.code === '28P01' || error.code === 'ECONNREFUSED') {
+          return res.status(503).json({ message: "Database connection failed. Please try again later." });
+        }
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Create user
       const user = await storage.createUser({
-        email: 'test@example.com',
+        email: email || undefined,
         password: hashedPassword,
-        displayName: 'Test User',
-        username: 'testuser',
+        displayName,
+        username,
       });
 
-      res.json({ message: 'Test user created successfully', user: { ...user, password: undefined } });
-    } catch (error) {
-      console.error("Test user creation error:", error);
-      res.status(500).json({ message: "Failed to create test user", error: error.message });
-    }
-  });
-
-  // Auth routes
-  app.post("/api/register", async (req, res) => {
-    try {
-      const { username, email, password, displayName } = req.body;
-
-      if (!username || !email || !password) {
-        return res.status(400).json({ error: "Missing required fields" });
-      }
-
-      // Validate input
-      if (username.length < 3 || username.length > 30) {
-        return res.status(400).json({ error: "Username must be 3-30 characters long" });
-      }
-
-      if (password.length < 6) {
-        return res.status(400).json({ error: "Password must be at least 6 characters long" });
-      }
-
-      // Check if user already exists
-      const existingUser = await db.select().from(schema.users).where(
-        or(
-          eq(schema.users.username, username),
-          eq(schema.users.email, email)
-        )
-      ).limit(1);
-
-      if (existingUser.length > 0) {
-        return res.status(400).json({ error: "User already exists" });
-      }
-
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const userId = generateId();
-
-      const [newUser] = await db.insert(schema.users).values({
-        id: userId,
-        username,
-        email,
-        password: hashedPassword,
-        displayName: displayName || username,
-      }).returning();
-
-      const { password: _, ...userWithoutPassword } = newUser;
-
       // Set session
-      req.session.userId = newUser.id;
-      req.session.username = newUser.username;
+      (req.session as any).userId = user.id;
 
-      console.log("User registered successfully:", username);
-      res.json({ user: userWithoutPassword });
+      console.log(`✅ User registered successfully: ${user.username} (${user.id})`);
+      res.json({ user: { ...user, password: undefined } });
     } catch (error) {
       console.error("Registration error:", error);
-      res.status(500).json({ error: "Internal server error" });
+      res.status(500).json({ message: "Failed to create account" });
     }
   });
 
-  app.post("/api/login", async (req, res) => {
+  app.post('/api/auth/login', authLimiter, async (req, res) => {
     try {
-      const { username, password } = req.body;
+      const { email, password } = req.body;
 
-      if (!username || !password) {
-        return res.status(400).json({ error: "Missing username or password" });
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email/username and password are required" });
       }
 
-      console.log("Login attempt for:", username);
-
-      // Find user by username or email
-      const [user] = await db.select().from(schema.users).where(
-        or(
-          eq(schema.users.username, username),
-          eq(schema.users.email, username)
-        )
-      ).limit(1);
-
-      if (!user || !user.password) {
-        console.log("User not found:", username);
-        return res.status(401).json({ error: "Invalid credentials" });
+      // Find user by email or username
+      let user = null;
+      try {
+        if (email.includes('@')) {
+          user = await storage.getUserByEmail(email);
+        } else {
+          user = await storage.getUserByUsername(email);
+        }
+      } catch (error: any) {
+        console.error("Database error during login:", error.message);
+        if (error.code === '28P01' || error.code === 'ECONNREFUSED') {
+          return res.status(503).json({ message: "Database connection failed. Please try again later." });
+        }
+        return res.status(500).json({ message: "Database error, please try again" });
       }
 
-      const validPassword = await bcrypt.compare(password, user.password);
-      if (!validPassword) {
-        console.log("Invalid password for:", username);
-        return res.status(401).json({ error: "Invalid credentials" });
+      if (!user) {
+        console.log(`Login attempt failed: user not found for "${email}"`);
+        return res.status(401).json({ message: "Invalid username/email or password" });
       }
 
-      const { password: _, ...userWithoutPassword } = user;
+      if (!user.password) {
+        console.log(`Login attempt failed: no password set for user "${email}"`);
+        return res.status(401).json({ message: "Invalid username/email or password" });
+      }
+
+      // Check password
+      const isValid = await bcrypt.compare(password, user.password);
+      if (!isValid) {
+        console.log(`Login attempt failed: invalid password for user "${email}"`);
+        return res.status(401).json({ message: "Invalid username/email or password" });
+      }
 
       // Set session
-      req.session.userId = user.id;
-      req.session.username = user.username;
+      (req.session as any).userId = user.id;
+      
+      // Save session explicitly
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) {
+            console.error("Session save error:", err);
+            reject(err);
+          } else {
+            resolve();
+          }
+        });
+      });
 
-      console.log("Login successful for:", username);
-      res.json({ user: userWithoutPassword });
+      console.log(`✅ User logged in successfully: ${user.username} (${user.id})`);
+      res.json({ user: { ...user, password: undefined } });
     } catch (error) {
       console.error("Login error:", error);
-      res.status(500).json({ error: "Internal server error" });
+      res.status(500).json({ message: "Failed to login. Please try again." });
     }
   });
 
@@ -276,16 +261,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  app.get('/api/auth/user', async (req: any, res) => {
+  app.get('/api/auth/user', requireAuth, async (req: any, res) => {
     try {
-      if (!req.session || !req.session.userId) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
       const userId = req.session.userId;
       const user = await storage.getUser(userId);
       if (!user) {
-        req.session.destroy(() => {});
         return res.status(401).json({ message: "User not found" });
       }
       res.json({ ...user, password: undefined });
@@ -342,8 +322,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get posts with infinite scroll
-  app.get("/api/posts", optionalAuth, async (req, res) => {
+  app.get('/api/posts', async (req, res) => {
     try {
       const { limit = 20, offset = 0, userId } = req.query;
       const posts = await storage.getPosts(
@@ -403,7 +382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const like = await storage.likePost(userId, postId);
-
+      
       // Get post to find the author for notification
       const post = await storage.getPost(postId);
       if (post && post.authorId !== userId) {
@@ -415,13 +394,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           postId: postId,
           isRead: false
         });
-
+        
         // Broadcast real-time notification
         if (app && typeof app.broadcastNotification === 'function') {
           app.broadcastNotification(post.authorId, notification);
         }
       }
-
+      
       res.json(like);
     } catch (error) {
       console.error("Error liking post:", error);
@@ -455,7 +434,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const comment = await storage.createComment(commentData);
-
+      
       // Get post to find the author for notification
       const post = await storage.getPost(postId);
       if (post && post.authorId !== userId) {
@@ -467,13 +446,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           postId: postId,
           isRead: false
         });
-
+        
         // Broadcast real-time notification
         if (app && typeof app.broadcastNotification === 'function') {
           app.broadcastNotification(post.authorId, notification);
         }
       }
-
+      
       res.json(comment);
     } catch (error) {
       console.error("Error creating comment:", error);
@@ -529,7 +508,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id: commentId } = req.params;
 
       const hasLiked = await storage.hasUserLikedComment(userId, commentId);
-
+      
       if (hasLiked) {
         await storage.unlikeComment(userId, commentId);
         res.json({ liked: false, message: "Comment unliked" });
@@ -559,7 +538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const follow = await storage.followUser(followerId, followingId);
-
+      
       // Create and broadcast follow notification
       const notification = await storage.createNotification({
         userId: followingId,
@@ -567,12 +546,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         actorId: followerId,
         isRead: false
       });
-
+      
       // Broadcast real-time notification
       if (app && typeof app.broadcastNotification === 'function') {
         app.broadcastNotification(followingId, notification);
       }
-
+      
       res.json(follow);
     } catch (error) {
       console.error("Error following user:", error);
@@ -601,7 +580,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { comment } = req.body;
 
       const repost = await storage.repostPost(userId, postId, comment);
-
+      
       // Get post to find the author for notification
       const post = await storage.getPost(postId);
       if (post && post.authorId !== userId) {
@@ -613,13 +592,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           postId: postId,
           isRead: false
         });
-
+        
         // Broadcast real-time notification
         if (app && typeof app.broadcastNotification === 'function') {
           app.broadcastNotification(post.authorId, notification);
         }
       }
-
+      
       res.json(repost);
     } catch (error) {
       console.error("Error reposting:", error);
@@ -716,8 +695,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Trending and discovery routes
-  // Get trending posts
-  app.get("/api/trending/posts", optionalAuth, async (req, res) => {
+  app.get('/api/trending/posts', async (req, res) => {
     try {
       const { limit = 20 } = req.query;
       const posts = await storage.getTrendingPosts(parseInt(limit as string));
@@ -728,16 +706,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get trending topics
-  app.get("/api/explore/trending-topics", optionalAuth, async (req, res) => {
+  app.get('/api/trending/topics', async (req, res) => {
     try {
       const topics = await storage.getTrendingTopics();
       res.json(topics);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error fetching trending topics:", error);
-      if (error.code === '28P01' || error.code === 'ECONNREFUSED') {
-        return res.status(503).json({ message: "Service temporarily unavailable" });
-      }
       res.status(500).json({ message: "Failed to fetch trending topics" });
     }
   });
@@ -757,7 +731,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const userId = req.session.userId;
-
+      
       // Users can only see their own goals unless they're admin
       if (id !== userId) {
         const user = await storage.getUser(userId);
@@ -976,7 +950,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if conversation already exists
       let conversation = await storage.getConversation(userId, participantId);
-
+      
       if (!conversation) {
         conversation = await storage.createConversation(userId, participantId);
       }
@@ -995,19 +969,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { limit = 50, offset = 0 } = req.query;
 
       // Verify user is part of the conversation
+      const conversation = await storage.getConversation(userId, userId); // This doesn't work correctly
+      // Instead, let's get the conversation by ID and verify participation
       const conversations = await storage.getUserConversations(userId);
       const userConversation = conversations.find(c => c.id === conversationId);
-
+      
       if (!userConversation) {
         return res.status(403).json({ message: "Access denied to this conversation" });
       }
 
       const messages = await storage.getConversationMessages(
-        conversationId,
-        parseInt(limit as string),
+        conversationId, 
+        parseInt(limit as string), 
         parseInt(offset as string)
       );
-
+      
       res.json(messages);
     } catch (error) {
       console.error("Error fetching messages:", error);
@@ -1028,7 +1004,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verify user is part of the conversation
       const conversations = await storage.getUserConversations(userId);
       const userConversation = conversations.find(c => c.id === conversationId);
-
+      
       if (!userConversation) {
         return res.status(403).json({ message: "Access denied to this conversation" });
       }
@@ -1064,7 +1040,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verify user is part of the conversation
       const conversations = await storage.getUserConversations(userId);
       const userConversation = conversations.find(c => c.id === conversationId);
-
+      
       if (!userConversation) {
         return res.status(403).json({ message: "Access denied to this conversation" });
       }
@@ -1133,8 +1109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Explore routes (public access)
-  // Get trending topics
-  app.get("/api/explore/trending-topics", optionalAuth, async (req, res) => {
+  app.get('/api/explore/trending-topics', async (req, res) => {
     try {
       const trendingTopics = await storage.getTrendingTopics();
       res.json(trendingTopics);
@@ -1147,8 +1122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get popular posts for explore page
-  app.get("/api/explore/popular", optionalAuth, async (req, res) => {
+  app.get('/api/explore/popular', async (req, res) => {
     try {
       const popularPosts = await storage.getPopularPosts();
       res.json(popularPosts);
@@ -1176,8 +1150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get trending users
-  app.get("/api/users/trending", optionalAuth, async (req, res) => {
+  app.get('/api/users/trending', async (req, res) => {
     try {
       const trendingUsers = await storage.getTrendingUsers();
       res.json(trendingUsers);
@@ -1206,7 +1179,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/search', requireAuth, async (req: any, res) => {
     try {
       const { q: query } = req.query;
-
+      
       if (!query || typeof query !== 'string') {
         return res.status(400).json({ message: "Search query is required" });
       }
@@ -1233,22 +1206,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   wss.on('connection', (ws: WebSocket, req) => {
     console.log('New WebSocket connection');
-
+    
     // Authenticate user using the same session middleware
     sessionMiddleware(req as any, {} as any, () => {
       const userId = (req as any).session?.userId;
-
+      
       if (userId) {
         (ws as any).userId = userId;
         (ws as any).authenticated = true;
         console.log(`WebSocket authenticated for user: ${userId}`);
-
+        
         // Add to user connections registry
         if (!userConnections.has(userId)) {
           userConnections.set(userId, new Set());
         }
         userConnections.get(userId)!.add(ws);
-
+        
         // Send authentication success
         ws.send(JSON.stringify({
           type: 'auth_success',
@@ -1268,7 +1241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ws.close(4001, 'Not authenticated');
           return;
         }
-
+        
         const data = JSON.parse(message.toString());
 
         // Handle different types of real-time events
@@ -1312,7 +1285,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     ws.on('close', () => {
       const userId = (ws as any).userId;
       console.log(`WebSocket connection closed for user: ${userId}`);
-
+      
       // Remove from user connections registry
       if (userId && userConnections.has(userId)) {
         userConnections.get(userId)!.delete(ws);
@@ -1331,7 +1304,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type: 'notification',
         data: notification,
       });
-
+      
       connections.forEach((ws) => {
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(message);
@@ -1340,7 +1313,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   };
 
-  // Decoupled message broadcaster
+  // Decoupled message broadcaster  
   const broadcastMessage = (userId: string, message: any) => {
     const connections = userConnections.get(userId);
     if (connections) {
@@ -1348,7 +1321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type: 'new_message',
         data: message,
       });
-
+      
       connections.forEach((ws) => {
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(payload);

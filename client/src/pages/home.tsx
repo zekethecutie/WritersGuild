@@ -33,14 +33,14 @@ export default function Home() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  // Fetch posts based on active tab
+  // Fetch posts with infinite scroll
   const {
     data: postsData,
-    isLoading: postsLoading,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-    error: postsError, // Keep the original error state for potential handling elsewhere
+    isLoading: postsLoading,
+    error: postsError,
   } = useInfiniteQuery({
     queryKey: ["/api/posts", activeTab === "following" ? user?.id : undefined],
     queryFn: ({ pageParam = 0 }) => 

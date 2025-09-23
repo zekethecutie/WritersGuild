@@ -11,10 +11,10 @@ import FollowButton from "@/components/follow-button";
 import { Search, TrendingUp, Users, BookOpen, Hash, Clock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { isUnauthorizedError } from "@/lib/authUtils";
 import Sidebar from "@/components/sidebar";
 import MobileNav from "@/components/mobile-nav";
 import { AuthDialog } from "@/components/auth-dialog";
-import { useQuery } from '@tanstack/react-query';
 
 // Define interfaces for data types
 interface TrendingTopic {
@@ -63,101 +63,17 @@ export default function Explore() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("trending");
   const [showAuthDialog, setShowAuthDialog] = useState(false);
-  // const [isLoadingExploreData, setIsLoadingExploreData] = useState(true); // Removed duplicate declaration
+  const [isLoadingExploreData, setIsLoadingExploreData] = useState(true);
 
   // Data states
   const [trendingPosts, setTrendingPosts] = useState<Post[]>([]);
+  const [popularPosts, setPopularPosts] = useState<Post[]>([]);
+  const [trendingTopics, setTrendingTopics] = useState<TrendingTopic[]>([]);
+  const [trendingUsers, setTrendingUsers] = useState<TrendingUser[]>([]);
   const [searchResults, setSearchResults] = useState<{
     posts: Post[];
     users: TrendingUser[];
   }>({ posts: [], users: [] });
-
-  // Fetch trending posts
-  const { data: trendingPostsData = [], isLoading: trendingPostsLoading } = useQuery({
-    queryKey: ['trending-posts'],
-    queryFn: async () => {
-      try {
-        const response = await fetch('/api/trending/posts?limit=20');
-        if (!response.ok) {
-          if (response.status === 503) return [];
-          throw new Error('Failed to fetch trending posts');
-        }
-        const data = await response.json();
-        return Array.isArray(data) ? data : [];
-      } catch (error) {
-        console.error('Error fetching trending posts:', error);
-        return [];
-      }
-    },
-    retry: 1,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-
-  // Fetch popular posts
-  const { data: popularPosts = [], isLoading: popularPostsLoading } = useQuery({
-    queryKey: ['popular-posts'],
-    queryFn: async () => {
-      try {
-        const response = await fetch('/api/explore/popular');
-        if (!response.ok) {
-          if (response.status === 503) return [];
-          throw new Error('Failed to fetch popular posts');
-        }
-        const data = await response.json();
-        return Array.isArray(data) ? data : [];
-      } catch (error) {
-        console.error('Error fetching popular posts:', error);
-        return [];
-      }
-    },
-    retry: 1,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  // Fetch trending topics
-  const { data: trendingTopics = [], isLoading: topicsLoading } = useQuery({
-    queryKey: ['trending-topics'],
-    queryFn: async () => {
-      try {
-        const response = await fetch('/api/explore/trending-topics');
-        if (!response.ok) {
-          if (response.status === 503) return [];
-          throw new Error('Failed to fetch trending topics');
-        }
-        const data = await response.json();
-        return Array.isArray(data) ? data : [];
-      } catch (error) {
-        console.error('Error fetching trending topics:', error);
-        return [];
-      }
-    },
-    retry: 1,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-
-  // Fetch trending users (for authenticated users)
-  const { data: trendingUsers = [], isLoading: usersLoading } = useQuery({
-    queryKey: ['trending-users'],
-    queryFn: async () => {
-      try {
-        const response = await fetch('/api/users/trending');
-        if (!response.ok) {
-          if (response.status === 503) return [];
-          throw new Error('Failed to fetch trending users');
-        }
-        const data = await response.json();
-        return Array.isArray(data) ? data : [];
-      } catch (error) {
-        console.error('Error fetching trending users:', error);
-        return [];
-      }
-    },
-    enabled: isAuthenticated,
-    retry: 1,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const isLoadingExploreData = trendingPostsLoading || popularPostsLoading || topicsLoading || usersLoading;
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -173,6 +89,57 @@ export default function Explore() {
       return;
     }
   }, [isAuthenticated, authLoading, toast]);
+
+  // Fetch explore data
+  useEffect(() => {
+    fetchExploreData();
+  }, []);
+
+  const fetchExploreData = async () => {
+    try {
+      setIsLoadingExploreData(true);
+
+      const [trendingRes, popularRes, topicsRes, usersRes] = await Promise.allSettled([
+        fetch('/api/trending/posts?limit=20'),
+        fetch('/api/explore/popular?limit=20'),
+        fetch('/api/explore/trending-topics'),
+        fetch('/api/users/trending?limit=10')
+      ]);
+
+      if (trendingRes.status === 'fulfilled' && trendingRes.value.ok) {
+        const data = await trendingRes.value.json();
+        setTrendingPosts(data);
+      } else if (trendingRes.status === 'rejected') {
+        console.error("Error fetching trending posts:", trendingRes.reason);
+      }
+
+      if (popularRes.status === 'fulfilled' && popularRes.value.ok) {
+        const data = await popularRes.value.json();
+        setPopularPosts(data);
+      } else if (popularRes.status === 'rejected') {
+        console.error("Error fetching popular posts:", popularRes.reason);
+      }
+
+      if (topicsRes.status === 'fulfilled' && topicsRes.value.ok) {
+        const data = await topicsRes.value.json();
+        setTrendingTopics(data);
+      } else if (topicsRes.status === 'rejected') {
+        console.error("Error fetching trending topics:", topicsRes.reason);
+      }
+
+      if (usersRes.status === 'fulfilled' && usersRes.value.ok) {
+        const data = await usersRes.value.json();
+        setTrendingUsers(data);
+      } else if (usersRes.status === 'rejected') {
+        console.error("Error fetching trending users:", usersRes.reason);
+      }
+
+    } catch (error) {
+      console.error("An unexpected error occurred during fetchExploreData:", error);
+    } finally {
+      setIsLoadingExploreData(false);
+    }
+  };
 
   // Search functionality
   const handleSearch = async () => {
@@ -204,6 +171,12 @@ export default function Explore() {
       handleSearch();
     }
   };
+
+  // Handle errors from original queries
+  useEffect(() => {
+    // This effect is less relevant with the new fetching logic, but kept for completeness if needed elsewhere.
+  }, [toast]);
+
 
   // Render component for unauthenticated users
   if (!isAuthenticated && !authLoading) {
@@ -314,7 +287,7 @@ export default function Explore() {
                       </div>
                     </div>
                   ))
-                ) : trendingPostsData?.length === 0 ? (
+                ) : trendingPosts?.length === 0 ? (
                    <div className="p-12 text-center" data-testid="empty-trending">
                      <div className="w-16 h-16 bg-muted rounded-xl flex items-center justify-center mb-4 mx-auto">
                        <TrendingUp className="w-8 h-8 text-muted-foreground" />
@@ -325,7 +298,7 @@ export default function Explore() {
                      </p>
                    </div>
                 ) : (
-                  trendingPostsData?.map((post: Post) => (
+                  trendingPosts?.map((post: Post) => (
                     <PostCard key={post.id} post={post} />
                   ))
                 )}

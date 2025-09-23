@@ -1,63 +1,75 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
-import { UserPlus, UserCheck } from "lucide-react";
+import { UserPlus, UserCheck, Loader2 } from "lucide-react";
 
 interface FollowButtonProps {
   userId: string;
   isFollowing?: boolean;
-  className?: string;
+  variant?: "default" | "outline" | "ghost";
+  size?: "sm" | "default" | "lg";
 }
 
-export default function FollowButton({ userId, isFollowing = false, className = "" }: FollowButtonProps) {
-  const { user } = useAuth();
+export default function FollowButton({ 
+  userId, 
+  isFollowing = false, 
+  variant,
+  size = "sm" 
+}: FollowButtonProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [following, setFollowing] = useState(isFollowing);
 
   const followMutation = useMutation({
     mutationFn: async () => {
-      if (following) {
-        return apiRequest("DELETE", `/api/users/${userId}/follow`);
-      } else {
-        return apiRequest("POST", `/api/users/${userId}/follow`);
-      }
+      const endpoint = following ? `/api/follows/${userId}` : "/api/follows";
+      const method = following ? "DELETE" : "POST";
+      const body = following ? undefined : { followingId: userId };
+      
+      return apiRequest(method, endpoint, body);
+    },
+    onMutate: () => {
+      // Optimistic update
+      setFollowing(!following);
     },
     onSuccess: () => {
-      setFollowing(!following);
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/suggested/users"] });
-
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: ["/api/users/recommended"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users/trending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/search"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/follows"] });
+      
       toast({
-        title: following ? "Unfollowed" : "Following!",
-        description: following ? "You unfollowed this writer" : "You're now following this writer",
+        title: following ? "Unfollowed" : "Following",
+        description: following 
+          ? "You have unfollowed this user" 
+          : "You are now following this user",
       });
     },
     onError: () => {
+      // Revert optimistic update
+      setFollowing(following);
       toast({
-        title: "Action failed",
-        description: "Please try again",
+        title: "Error",
+        description: "Failed to update follow status",
         variant: "destructive",
       });
     },
   });
 
-  if (!user || user.id === userId) {
-    return null;
-  }
-
   return (
     <Button
+      variant={variant || (following ? "outline" : "default")}
+      size={size}
       onClick={() => followMutation.mutate()}
       disabled={followMutation.isPending}
-      variant={following ? "outline" : "default"}
-      size="sm"
-      className={className}
+      className="ml-2"
     >
-      {following ? (
+      {followMutation.isPending ? (
+        <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+      ) : following ? (
         <>
           <UserCheck className="w-4 h-4 mr-1" />
           Following

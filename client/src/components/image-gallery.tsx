@@ -1,230 +1,112 @@
-
-import { useState } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, X, Download, Share } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { X } from "lucide-react";
 
 interface ImageGalleryProps {
   images: string[];
+  onRemove?: (index: number) => void;
   className?: string;
+  maxHeight?: number;
 }
 
-export default function ImageGallery({ images, className }: ImageGalleryProps) {
+export default function ImageGallery({ 
+  images, 
+  onRemove, 
+  className = "", 
+  maxHeight = 300 
+}: ImageGalleryProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
 
   if (!images || images.length === 0) return null;
 
-  const openLightbox = (image: string, index: number) => {
-    setSelectedImage(image);
-    setCurrentIndex(index);
-  };
-
-  const closeLightbox = () => {
-    setSelectedImage(null);
-  };
-
-  const nextImage = () => {
-    const nextIndex = (currentIndex + 1) % images.length;
-    setCurrentIndex(nextIndex);
-    setSelectedImage(images[nextIndex]);
-  };
-
-  const prevImage = () => {
-    const prevIndex = currentIndex === 0 ? images.length - 1 : currentIndex - 1;
-    setCurrentIndex(prevIndex);
-    setSelectedImage(images[prevIndex]);
-  };
-
-  const downloadImage = (url: string) => {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `image-${Date.now()}.jpg`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const shareImage = async (url: string) => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Check out this image',
-          url: url
-        });
-      } catch (error) {
-        console.log('Error sharing:', error);
-      }
-    } else {
-      // Fallback: copy to clipboard
-      try {
-        await navigator.clipboard.writeText(url);
-      } catch (error) {
-        console.log('Error copying to clipboard:', error);
-      }
+  const getGridClass = () => {
+    switch (images.length) {
+      case 1:
+        return "image-gallery single";
+      case 2:
+        return "image-gallery double";
+      case 3:
+        return "image-gallery triple";
+      default:
+        return "image-gallery quad";
     }
   };
 
-  // Render single image
-  if (images.length === 1) {
-    return (
-      <div className={cn("relative overflow-hidden rounded-lg", className)}>
-        <img
-          src={images[0]}
-          alt="Post image"
-          className="w-full h-auto object-contain cursor-pointer hover:opacity-90 transition-opacity"
-          onClick={() => openLightbox(images[0], 0)}
-          style={{ maxHeight: '500px' }}
-        />
-        
-        {/* Lightbox */}
-        <Dialog open={!!selectedImage} onOpenChange={() => closeLightbox()}>
-          <DialogContent className="max-w-4xl p-0 bg-black/90">
-            <div className="relative">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="absolute top-4 right-4 z-10 text-white hover:bg-white/20"
-                onClick={closeLightbox}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-              
-              <div className="absolute top-4 left-4 z-10 flex gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-white hover:bg-white/20"
-                  onClick={() => downloadImage(selectedImage!)}
-                >
-                  <Download className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-white hover:bg-white/20"
-                  onClick={() => shareImage(selectedImage!)}
-                >
-                  <Share className="h-4 w-4" />
-                </Button>
-              </div>
-              
-              <img
-                src={selectedImage!}
-                alt="Full size image"
-                className="w-full h-auto max-h-[90vh] object-contain"
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-    );
-  }
-
-  // Render image grid for multiple images
-  const gridClass = images.length === 2 ? 'grid-cols-2' : 
-                   images.length === 3 ? 'grid-cols-2' : 
-                   'grid-cols-2';
+  const handleImageClick = (image: string) => {
+    setSelectedImage(image);
+  };
 
   return (
-    <div className={cn("relative", className)}>
-      <div className={`grid gap-1 ${gridClass}`}>
+    <>
+      <div className={`${getGridClass()} ${className}`} data-testid="image-gallery">
         {images.slice(0, 4).map((image, index) => (
-          <div 
-            key={index} 
-            className={cn(
-              "relative overflow-hidden rounded-lg cursor-pointer",
-              images.length === 3 && index === 0 ? "row-span-2" : "",
-              "aspect-square"
-            )}
-            onClick={() => openLightbox(image, index)}
-          >
+          <div key={index} className="relative group">
             <img
               src={image}
-              alt={`Post image ${index + 1}`}
-              className="w-full h-full object-cover hover:opacity-90 transition-opacity"
+              alt={`Gallery image ${index + 1}`}
+              className="w-full h-full object-cover cursor-pointer transition-opacity hover:opacity-90"
+              style={{ maxHeight: images.length === 1 ? maxHeight : 200 }}
+              onClick={() => handleImageClick(image)}
+              data-testid={`gallery-image-${index}`}
             />
             
-            {/* Show +N more overlay for 4+ images */}
+            {/* Show count overlay for 4+ images on last image */}
             {index === 3 && images.length > 4 && (
-              <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                <span className="text-white text-lg font-semibold">
-                  +{images.length - 4} more
+              <div 
+                className="absolute inset-0 bg-black/60 flex items-center justify-center cursor-pointer"
+                onClick={() => handleImageClick(image)}
+              >
+                <span className="text-white text-xl font-bold">
+                  +{images.length - 4}
                 </span>
               </div>
+            )}
+            
+            {/* Remove button for editing mode */}
+            {onRemove && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemove(index);
+                }}
+                className="absolute top-2 right-2 w-6 h-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                data-testid={`button-remove-image-${index}`}
+              >
+                <X className="w-4 h-4" />
+              </Button>
             )}
           </div>
         ))}
       </div>
 
-      {/* Lightbox */}
-      <Dialog open={!!selectedImage} onOpenChange={() => closeLightbox()}>
-        <DialogContent className="max-w-4xl p-0 bg-black/90">
-          <div className="relative">
+      {/* Lightbox Modal */}
+      {selectedImage && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setSelectedImage(null)}
+          data-testid="image-lightbox"
+        >
+          <div className="relative max-w-4xl max-h-full">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="absolute top-4 right-4 z-10 text-white hover:bg-white/20"
-              onClick={closeLightbox}
+              onClick={() => setSelectedImage(null)}
+              className="absolute top-4 right-4 z-10 bg-black/50 border-white/20 text-white hover:bg-black/70"
+              data-testid="button-close-lightbox"
             >
-              <X className="h-4 w-4" />
+              <X className="w-4 h-4" />
             </Button>
-            
-            <div className="absolute top-4 left-4 z-10 flex gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-white hover:bg-white/20"
-                onClick={() => downloadImage(selectedImage!)}
-              >
-                <Download className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-white hover:bg-white/20"
-                onClick={() => shareImage(selectedImage!)}
-              >
-                <Share className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            {images.length > 1 && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="absolute left-4 top-1/2 -translate-y-1/2 z-10 text-white hover:bg-white/20"
-                  onClick={prevImage}
-                >
-                  <ChevronLeft className="h-6 w-6" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-4 top-1/2 -translate-y-1/2 z-10 text-white hover:bg-white/20"
-                  onClick={nextImage}
-                >
-                  <ChevronRight className="h-6 w-6" />
-                </Button>
-              </>
-            )}
-            
             <img
-              src={selectedImage!}
-              alt="Full size image"
-              className="w-full h-auto max-h-[90vh] object-contain"
+              src={selectedImage}
+              alt="Full size"
+              className="max-w-full max-h-full object-contain"
+              onClick={(e) => e.stopPropagation()}
             />
-            
-            {images.length > 1 && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 text-white text-sm bg-black/50 px-2 py-1 rounded">
-                {currentIndex + 1} / {images.length}
-              </div>
-            )}
           </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+        </div>
+      )}
+    </>
   );
 }

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -5,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
+import { authService } from "@/lib/auth";
 import { Loader2 } from "lucide-react";
 
 interface AuthDialogProps {
@@ -15,13 +16,12 @@ interface AuthDialogProps {
 }
 
 export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
+  const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
   const { toast } = useToast();
-  const [error, setError] = useState<string | null>(null);
-  const { login, register } = useAuth();
 
   const [loginForm, setLoginForm] = useState({
-    identifier: "",
+    identifier: "", 
     password: "",
   });
 
@@ -33,50 +33,33 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
     username: "",
   });
 
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Helper function to close the dialog
-  const onClose = () => {
-    onOpenChange(false);
-    // Reset forms and error on close
-    setLoginForm({ identifier: "", password: "" });
-    setRegisterForm({ email: "", password: "", confirmPassword: "", displayName: "", username: "" });
-    setError(null);
-    setIsLoading(false);
-  };
-
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!loginForm.identifier || !loginForm.password) {
-      setError('Please fill in all fields');
-      return;
-    }
-
-    setError(null);
     setIsLoading(true);
 
     try {
-      await login.mutateAsync({
-        username: loginForm.identifier,
-        password: loginForm.password,
-      });
+      const result = await authService.login(loginForm.identifier, loginForm.password);
 
-      toast({
-        title: "Welcome back!",
-        description: "You've successfully logged in.",
-      });
-      onSuccess?.();
-      onClose();
-    } catch (error: any) {
-      console.error('Login error:', error);
-      const errorMessage = error.message || 'Login failed';
+      if (result.success) {
+        toast({
+          title: "Welcome back!",
+          description: "You've successfully logged in.",
+        });
+        onSuccess?.();
+        onOpenChange(false);
+      } else {
+        toast({
+          title: "Login failed",
+          description: result.error,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
       toast({
         title: "Login failed",
-        description: errorMessage,
+        description: "An unexpected error occurred.",
         variant: "destructive",
       });
-      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -84,41 +67,46 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!registerForm.username || !registerForm.password || !registerForm.displayName) {
-      setError('Please fill in all required fields');
-      return;
-    }
+
     if (registerForm.password !== registerForm.confirmPassword) {
-      setError("Passwords don't match");
+      toast({
+        title: "Passwords don't match",
+        description: "Please make sure your passwords match.",
+        variant: "destructive",
+      });
       return;
     }
 
-    setError(null);
     setIsLoading(true);
 
     try {
-      await register.mutateAsync({
+      const result = await authService.register({
         email: registerForm.email || undefined,
         password: registerForm.password,
         displayName: registerForm.displayName,
         username: registerForm.username,
       });
 
-      toast({
-        title: "Welcome to Writers Guild!",
-        description: "Your account has been created successfully.",
-      });
-      onSuccess?.();
-      onClose();
-    } catch (error: any) {
-      console.error('Registration error:', error);
-      const errorMessage = error.message || 'Registration failed';
+      if (result.success) {
+        toast({
+          title: "Welcome to Writers Guild!",
+          description: "Your account has been created successfully.",
+        });
+        onSuccess?.();
+        onOpenChange(false);
+      } else {
+        toast({
+          title: "Registration failed",
+          description: result.error,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
       toast({
         title: "Registration failed",
-        description: errorMessage,
+        description: "An unexpected error occurred.",
         variant: "destructive",
       });
-      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -162,10 +150,8 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
                 />
               </div>
 
-              {error && <p className="text-red-500 text-sm">{error}</p>}
-
-              <Button type="submit" className="w-full" disabled={login.isPending || isLoading}>
-                {(login.isPending || isLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Login
               </Button>
             </form>
@@ -228,10 +214,8 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
                 />
               </div>
 
-              {error && <p className="text-red-500 text-sm">{error}</p>}
-
-              <Button type="submit" className="w-full" disabled={register.isPending || isLoading}>
-                {(register.isPending || isLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Create Account
               </Button>
             </form>
