@@ -4,7 +4,7 @@ import React from "react";
 import App from "./App";
 import "./index.css";
 
-// Error Boundary Component
+// Proper Error Boundary
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { hasError: boolean; error?: Error }
@@ -19,25 +19,36 @@ class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Application Error:', error, errorInfo);
+    console.error('App Error:', error, errorInfo);
   }
 
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <div className="text-center max-w-md mx-auto p-6">
-            <h1 className="text-2xl font-bold text-destructive mb-4">
-              Something went wrong
-            </h1>
-            <p className="text-muted-foreground mb-4">
-              {this.state.error?.message || 'An unexpected error occurred'}
+        <div style={{ 
+          minHeight: '100vh', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          fontFamily: 'system-ui, sans-serif'
+        }}>
+          <div style={{ textAlign: 'center', padding: '2rem' }}>
+            <h1 style={{ color: '#dc2626', marginBottom: '1rem' }}>App Error</h1>
+            <p style={{ color: '#6b7280', marginBottom: '1rem' }}>
+              {this.state.error?.message || 'Something went wrong'}
             </p>
             <button 
-              onClick={() => window.location.reload()} 
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+              onClick={() => window.location.reload()}
+              style={{ 
+                padding: '0.5rem 1rem', 
+                backgroundColor: '#3b82f6', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
             >
-              Reload Application
+              Reload
             </button>
           </div>
         </div>
@@ -48,41 +59,17 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-// Initialize application
-function initializeApp() {
-  const rootElement = document.getElementById("root");
-  
-  if (!rootElement) {
-    throw new Error("Root element not found");
-  }
+// Initialize app
+const rootElement = document.getElementById("root");
 
+if (!rootElement) {
+  document.body.innerHTML = '<div style="padding: 2rem;">Root element not found</div>';
+} else {
   const root = createRoot(rootElement);
   
   root.render(
-    <React.StrictMode>
-      <ErrorBoundary>
-        <App />
-      </ErrorBoundary>
-    </React.StrictMode>
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   );
-}
-
-// Start the application
-try {
-  initializeApp();
-} catch (error) {
-  console.error('Failed to initialize application:', error);
-  
-  // Fallback error display
-  document.body.innerHTML = `
-    <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: system-ui, sans-serif;">
-      <div style="text-align: center; max-width: 400px; padding: 2rem;">
-        <h1 style="color: #dc2626; margin-bottom: 1rem;">Application Failed to Load</h1>
-        <p style="color: #6b7280; margin-bottom: 1rem;">Please refresh the page to try again.</p>
-        <button onclick="window.location.reload()" style="padding: 0.5rem 1rem; background: #3b82f6; color: white; border: none; border-radius: 0.375rem; cursor: pointer;">
-          Reload Page
-        </button>
-      </div>
-    </div>
-  `;
 }

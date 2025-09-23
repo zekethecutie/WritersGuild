@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface User {
@@ -18,87 +17,49 @@ export const useAuth = () => {
   const queryClient = useQueryClient();
 
   const { data: user, isLoading, error } = useQuery({
-    queryKey: ['auth', 'user'],
+    queryKey: ['auth'],
     queryFn: async (): Promise<User | null> => {
       try {
         const response = await fetch('/api/auth/user', {
           credentials: 'include',
-          headers: {
-            'Accept': 'application/json',
-          },
         });
 
-        if (response.status === 401 || response.status === 403) {
-          return null;
-        }
-
         if (!response.ok) {
-          console.warn(`Auth check failed: ${response.status}`);
-          return null;
+          if (response.status === 401) return null;
+          throw new Error(`Auth failed: ${response.status}`);
         }
 
         const data = await response.json();
         return data || null;
-      } catch (error) {
-        console.warn('Auth check error:', error);
+      } catch (err) {
+        console.warn('Auth check failed:', err);
         return null;
       }
     },
-    retry: false,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: 1,
+    staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   const login = useMutation({
     mutationFn: async ({ username, password }: { username: string; password: string }) => {
       const response = await fetch('/api/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ username, password }),
       });
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: 'Login failed' }));
-        throw new Error(error.message || 'Invalid credentials');
+        throw new Error(error.message);
       }
 
       return response.json();
     },
     onSuccess: (data) => {
-      queryClient.setQueryData(['auth', 'user'], data.user);
-      queryClient.invalidateQueries({ queryKey: ['auth'] });
-    },
-  });
-
-  const register = useMutation({
-    mutationFn: async ({ username, password, email, displayName }: {
-      username: string;
-      password: string;
-      email?: string;
-      displayName?: string;
-    }) => {
-      const response = await fetch('/api/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ username, password, email, displayName }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Registration failed' }));
-        throw new Error(error.message || 'Registration failed');
-      }
-
-      return response.json();
-    },
-    onSuccess: (data) => {
-      queryClient.setQueryData(['auth', 'user'], data.user);
-      queryClient.invalidateQueries({ queryKey: ['auth'] });
+      queryClient.setQueryData(['auth'], data.user);
     },
   });
 
@@ -108,15 +69,10 @@ export const useAuth = () => {
         method: 'POST',
         credentials: 'include',
       });
-
-      if (!response.ok) {
-        throw new Error('Logout failed');
-      }
-
       return response.json();
     },
     onSuccess: () => {
-      queryClient.setQueryData(['auth', 'user'], null);
+      queryClient.setQueryData(['auth'], null);
       queryClient.clear();
     },
   });
@@ -126,7 +82,6 @@ export const useAuth = () => {
     isLoading,
     error,
     login,
-    register,
     logout,
     isAuthenticated: !!user,
   };
