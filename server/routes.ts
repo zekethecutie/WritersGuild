@@ -1254,11 +1254,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // WebSocket connection registry for broadcasting
   const userConnections = new Map<string, Set<WebSocket>>();
 
-  // WebSocket server for real-time features - attach to existing HTTP server
+  // WebSocket server for real-time features - properly attach to HTTP server after it's listening
   const wss = new WebSocketServer({ 
-    server: httpServer,
-    path: '/ws',
-    noServer: false
+    noServer: true
+  });
+
+  // Handle WebSocket upgrade on the HTTP server
+  httpServer.on('upgrade', (request, socket, head) => {
+    const pathname = new URL(request.url!, `http://${request.headers.host}`).pathname;
+    
+    if (pathname === '/ws') {
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit('connection', ws, request);
+      });
+    } else {
+      socket.destroy();
+    }
   });
 
   wss.on('connection', (ws: WebSocket, req) => {
