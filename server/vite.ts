@@ -41,7 +41,7 @@ export async function setupVite(app: Express, server: Server) {
       host: '0.0.0.0',
       allowedHosts: 'all',
       hmr: {
-        port: 5173,
+        port: parseInt(process.env.PORT || '5000', 10),
         host: '0.0.0.0',
       },
     },
