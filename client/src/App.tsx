@@ -1,106 +1,117 @@
 
-import { Route, Router } from "wouter";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { queryClient } from "./lib/queryClient";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { useAuth } from "@/hooks/useAuth";
-import { Suspense } from "react";
+import React from "react";
 
-// Simple loading component
-function LoadingScreen() {
+// Minimal working app
+export default function App() {
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      display: 'flex', 
-      alignItems: 'center', 
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: '#f8fafc'
+      backgroundColor: '#f8fafc',
+      fontFamily: 'system-ui, sans-serif',
+      padding: '2rem'
     }}>
-      <div style={{ textAlign: 'center' }}>
+      <div style={{ textAlign: 'center', maxWidth: '600px' }}>
+        <h1 style={{ 
+          fontSize: '3rem', 
+          fontWeight: 'bold', 
+          marginBottom: '1rem',
+          color: '#1e293b'
+        }}>
+          Writers Guild
+        </h1>
+        
+        <p style={{ 
+          fontSize: '1.25rem', 
+          color: '#64748b', 
+          marginBottom: '2rem',
+          lineHeight: '1.6'
+        }}>
+          A community platform for writers to share their stories, connect with readers, and build their audience.
+        </p>
+
         <div style={{ 
-          width: '2rem', 
-          height: '2rem', 
-          border: '2px solid #e2e8f0',
-          borderTop: '2px solid #3b82f6',
-          borderRadius: '50%',
-          margin: '0 auto 1rem',
-          animation: 'spin 1s linear infinite'
-        }}></div>
-        <p style={{ color: '#64748b', fontSize: '0.875rem' }}>Loading Writers Guild...</p>
+          display: 'flex', 
+          gap: '1rem', 
+          justifyContent: 'center',
+          flexWrap: 'wrap'
+        }}>
+          <button
+            onClick={() => testConnection()}
+            style={{
+              padding: '0.75rem 1.5rem',
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '1rem',
+              cursor: 'pointer',
+              fontWeight: '500'
+            }}
+          >
+            Test Connection
+          </button>
+
+          <button
+            onClick={() => window.location.href = '/api/auth/replit'}
+            style={{
+              padding: '0.75rem 1.5rem',
+              backgroundColor: '#10b981',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '1rem',
+              cursor: 'pointer',
+              fontWeight: '500'
+            }}
+          >
+            Sign in with Replit
+          </button>
+        </div>
+
+        <div id="status" style={{
+          marginTop: '2rem',
+          padding: '1rem',
+          backgroundColor: 'white',
+          borderRadius: '8px',
+          border: '1px solid #e2e8f0',
+          minHeight: '100px'
+        }}>
+          <p style={{ color: '#64748b' }}>Click "Test Connection" to verify server connectivity</p>
+        </div>
       </div>
     </div>
   );
 }
 
-// Lazy load pages to prevent blocking
-const Landing = () => import("@/pages/landing").then(m => ({ default: m.default }));
-const Home = () => import("@/pages/home").then(m => ({ default: m.default }));
-const Explore = () => import("@/pages/explore").then(m => ({ default: m.default }));
-const Profile = () => import("@/pages/profile").then(m => ({ default: m.default }));
-const NotFound = () => import("@/pages/not-found").then(m => ({ default: m.default }));
+function testConnection() {
+  const statusDiv = document.getElementById('status');
+  if (!statusDiv) return;
 
-function AppContent() {
-  const { isAuthenticated, isLoading, error } = useAuth();
+  statusDiv.innerHTML = '<p style="color: #f59e0b;">Testing connection...</p>';
 
-  if (error) {
-    return (
-      <div style={{ 
-        minHeight: '100vh', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center' 
-      }}>
-        <div style={{ textAlign: 'center', padding: '2rem' }}>
-          <h1 style={{ color: '#dc2626', marginBottom: '1rem' }}>Connection Error</h1>
-          <p style={{ color: '#6b7280', marginBottom: '1rem' }}>Unable to connect to server</p>
-          <button 
-            onClick={() => window.location.reload()}
-            style={{ 
-              padding: '0.5rem 1rem', 
-              backgroundColor: '#3b82f6', 
-              color: 'white', 
-              border: 'none', 
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
-          >
-            Retry
-          </button>
+  fetch('/api/health')
+    .then(response => response.json())
+    .then(data => {
+      statusDiv.innerHTML = `
+        <div style="color: #10b981;">
+          <h3 style="margin: 0 0 0.5rem 0; font-weight: 600;">✅ Server Connected</h3>
+          <p style="margin: 0; font-size: 0.875rem;">Status: ${data.status}</p>
+          <p style="margin: 0; font-size: 0.875rem;">Database: ${data.database}</p>
+          <p style="margin: 0; font-size: 0.875rem;">Time: ${new Date(data.timestamp).toLocaleString()}</p>
         </div>
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return <LoadingScreen />;
-  }
-
-  return (
-    <Suspense fallback={<LoadingScreen />}>
-      <Router>
-        <Route path="/" component={isAuthenticated ? Home : Landing} />
-        <Route path="/explore" component={Explore} />
-        <Route path="/profile/:username" component={Profile} />
-        <Route component={NotFound} />
-      </Router>
-    </Suspense>
-  );
-}
-
-export default function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <style>{`
-          @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-          }
-        `}</style>
-        <AppContent />
-        <Toaster />
-      </TooltipProvider>
-    </QueryClientProvider>
-  );
+      `;
+    })
+    .catch(error => {
+      statusDiv.innerHTML = `
+        <div style="color: #dc2626;">
+          <h3 style="margin: 0 0 0.5rem 0; font-weight: 600;">❌ Connection Failed</h3>
+          <p style="margin: 0; font-size: 0.875rem;">Error: ${error.message}</p>
+          <p style="margin: 0; font-size: 0.875rem;">Check if server is running on port 5000</p>
+        </div>
+      `;
+    });
 }

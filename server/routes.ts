@@ -14,11 +14,12 @@ import { storage } from "./storage";
 import { insertPostSchema, insertCommentSchema } from "@shared/schema";
 import { getSpotifyClient } from "./spotifyClient";
 import spotifyRoutes from "./spotifyRoutes";
-import { eq, or } from "drizzle-orm";
+import { eq, or, sql } from "drizzle-orm";
 import { db } from "./db";
 import { Request, Response, NextFunction } from "express";
 import { generateId } from "./utils"; // Assuming generateId is defined elsewhere
 import * as schema from "@shared/schema"; // Import unified schema
+import { users } from "@shared/schema";
 
 // Configure multer for image uploads
 const upload = multer({
@@ -108,13 +109,24 @@ function broadcastToUser(userId: string, data: any) {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint
-  app.get('/health', (req, res) => {
-    res.json({ 
-      status: 'ok', 
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      memory: process.memoryUsage()
-    });
+  app.get("/api/health", async (_req, res) => {
+    try {
+      // Test database connection
+      const result = await db.select({ count: sql`count(*)` }).from(users).limit(1);
+      res.json({
+        status: "ok",
+        database: "connected",
+        timestamp: new Date().toISOString(),
+        users: result[0]?.count || 0
+      });
+    } catch (error) {
+      res.status(500).json({
+        status: "error",
+        database: "disconnected",
+        error: error instanceof Error ? error.message : "Unknown error",
+        timestamp: new Date().toISOString()
+      });
+    }
   });
 
   // Test endpoint
@@ -189,7 +201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ message: 'Test user already exists', user: { ...existingUser, password: undefined } });
       }
 
-      const hashedPassword = await bcrypt.hash('test123', 10);
+      const hashedPassword = await bcrypt.hash('test12345', 10); // Use a stronger default password
 
       const user = await storage.createUser({
         email: 'test@example.com',
@@ -1270,7 +1282,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const userConnections = new Map<string, Set<WebSocket>>();
 
   // WebSocket server for real-time features - properly attach to HTTP server after it's listening
-  const wss = new WebSocketServer({ 
+  const wss = new WebSocketServer({
     noServer: true
   });
 
