@@ -132,10 +132,9 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  color: transparent;
   display: inline-block;
   font-weight: bold;
-  /* Fallback color for when gradient doesn't work */
-  color: hsl(var(--primary));
 }
 
 /* Ensure text is visible on all devices - better fallback */
@@ -154,11 +153,6 @@
     color: hsl(var(--primary));
     -webkit-text-fill-color: unset;
   }
-}
-
-/* Additional fallback for invisible text issues */
-.gradient-text:not([style*="background"]) {
-  color: hsl(var(--primary)) !important;
 }
 
 /* Poetry formatting styles */
