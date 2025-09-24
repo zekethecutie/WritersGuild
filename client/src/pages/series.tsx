@@ -97,6 +97,14 @@ function MyStoriesSection() {
     );
   }
 
+  if (!Array.isArray(myStories)) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-muted-foreground">Unable to load stories. Please try again.</p>
+      </div>
+    );
+  }
+
   if (myStories.length === 0) {
     return (
       <Card className="p-8 text-center border-2 border-dashed">

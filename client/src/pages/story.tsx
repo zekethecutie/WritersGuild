@@ -339,11 +339,11 @@ export default function StoryPage() {
               <div className="flex items-center gap-3 mt-4 p-3 bg-card rounded-lg">
                 <Avatar className="w-12 h-12">
                   <AvatarImage src={getProfileImageUrl(story.author?.profileImageUrl)} />
-                  <AvatarFallback>{story.author?.displayName?.[0]}</AvatarFallback>
+                  <AvatarFallback>{story.author?.displayName?.[0] || 'U'}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-semibold">{story.author?.displayName}</p>
-                  <p className="text-sm text-muted-foreground">@{story.author?.username}</p>
+                  <p className="font-semibold">{story.author?.displayName || 'Unknown Author'}</p>
+                  <p className="text-sm text-muted-foreground">@{story.author?.username || 'unknown'}</p>
                 </div>
               </div>
             </div>
@@ -375,19 +375,19 @@ export default function StoryPage() {
               <div className="flex items-center gap-6 mb-6 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1">
                   <BookOpen className="w-4 h-4" />
-                  <span>{chapters.length} chapters</span>
+                  <span>{chapters.length || 0} chapters</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Users className="w-4 h-4" />
-                  <span>{story.followersCount} followers</span>
+                  <span>{story.followersCount || 0} followers</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Heart className="w-4 h-4" />
-                  <span>{story.likesCount} likes</span>
+                  <span>{story.likesCount || 0} likes</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Eye className="w-4 h-4" />
-                  <span>{story.viewsCount} views</span>
+                  <span>{story.viewsCount || 0} views</span>
                 </div>
               </div>
 
@@ -408,9 +408,15 @@ export default function StoryPage() {
                   onClick={startReading}
                   size="lg"
                   className="flex items-center gap-2"
+                  disabled={chapters.length === 0}
                 >
                   <Play className="w-4 h-4" />
-                  {progress?.lastChapterIndex >= 0 ? "Continue Reading" : "Start Reading"}
+                  {chapters.length === 0 
+                    ? "No Chapters Available" 
+                    : progress?.lastChapterIndex >= 0 
+                    ? "Continue Reading" 
+                    : "Start Reading"
+                  }
                 </Button>
 
                 {isAuthenticated && (
@@ -502,9 +508,16 @@ export default function StoryPage() {
 
           {/* Chapters List */}
           <div className="mb-8">
-            <h2 className="text-2xl font-bold mb-6">Chapters</h2>
-            <div className="space-y-3">
-              {Array.isArray(chapters) && chapters.length > 0 && chapters.map((chapter: any, index: number) => (
+            <h2 className="text-2xl font-bold mb-6">Chapters ({chapters.length})</h2>
+            {chapters.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>No chapters published yet.</p>
+                <p className="text-sm">Check back later for updates!</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {chapters.map((chapter: any, index: number) => (
                 <Card 
                   key={chapter.id} 
                   className="hover:shadow-md transition-shadow cursor-pointer"
@@ -541,8 +554,9 @@ export default function StoryPage() {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <Separator className="mb-8" />

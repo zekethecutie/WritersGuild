@@ -1623,26 +1623,90 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateReadingProgress(userId: string, seriesId: string, chapterIndex: number): Promise<void> {
-    await this.db
+    // Get total chapters count for progress calculation
+    const totalChapters = await db.select({ count: sql<number>`count(*)` })
+      .from(chapters)
+      .where(eq(chapters.seriesId, seriesId));
+    
+    const progressPercentage = totalChapters[0]?.count > 0 
+      ? Math.round(((chapterIndex + 1) / totalChapters[0].count) * 100)
+      : 0;
+
+    await db
       .insert(readingProgress)
       .values({
-        id: crypto.randomUUID(),
         userId,
         seriesId,
         lastChapterIndex: chapterIndex,
-        progressPercentage: 0, // Calculate based on total chapters
+        progressPercentage,
         lastReadAt: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date()
       })
       .onConflictDoUpdate({
         target: [readingProgress.userId, readingProgress.seriesId],
         set: {
           lastChapterIndex: chapterIndex,
+          progressPercentage,
           lastReadAt: new Date(),
           updatedAt: new Date()
         }
       });
+  }
+
+  async getReadingProgress(userId: string, seriesId: string): Promise<any> {
+    const [progress] = await db.select()
+      .from(readingProgress)
+      .where(and(
+        eq(readingProgress.userId, userId),
+        eq(readingProgress.seriesId, seriesId)
+      ));
+    
+    return progress;
+  }
+
+  async getSeriesComments(seriesId: string): Promise<any[]> {
+    // For now, return empty array - implement series comments later
+    return [];
+  }
+
+  async createSeriesComment(userId: string, seriesId: string, content: string): Promise<any> {
+    // For now, return a placeholder - implement series comments later
+    return {
+      id: crypto.randomUUID(),
+      userId,
+      seriesId,
+      content,
+      createdAt: new Date()
+    };
+  }
+
+  async isSeriesBookmarked(userId: string, seriesId: string): Promise<boolean> {
+    // For now, return false - implement series bookmarks later
+    return false;
+  }
+
+  async bookmarkSeries(userId: string, seriesId: string): Promise<any> {
+    // For now, return a placeholder - implement series bookmarks later
+    return {
+      id: crypto.randomUUID(),
+      userId,
+      seriesId,
+      createdAt: new Date()
+    };
+  }
+
+  async removeSeriesBookmark(userId: string, seriesId: string): Promise<void> {
+    // For now, do nothing - implement series bookmarks later
+  }
+
+  async reactToSeries(userId: string, seriesId: string, reaction: string): Promise<any> {
+    // For now, return a placeholder - implement series reactions later
+    return {
+      id: crypto.randomUUID(),
+      userId,
+      seriesId,
+      reaction,
+      createdAt: new Date()
+    };
   }
 
   // Leaderboard methods

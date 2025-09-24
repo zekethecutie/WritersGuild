@@ -257,3 +257,4 @@ function AuthDialog({
 
 export { AuthDialog };
 export default AuthDialog;
+export default AuthDialog;
