@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { 
   Select,
@@ -255,6 +255,9 @@ export default function PostModal({ trigger, isOpen, onClose }: PostModalProps) 
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create a Post</DialogTitle>
+          <DialogDescription>
+            Share your thoughts, stories, and creative content with the community.
+          </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-4">

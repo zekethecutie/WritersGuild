@@ -63,6 +63,7 @@ function MyStoriesSection() {
       const response = await apiRequest("GET", "/api/series/my-stories");
       return Array.isArray(response) ? response : [];
     },
+    enabled: !!user,
   });
 
   const deleteSeriesMutation = useMutation({
@@ -97,7 +98,7 @@ function MyStoriesSection() {
         <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
         <h3 className="text-lg font-semibold mb-2">No stories yet</h3>
         <p className="text-muted-foreground mb-4">Start your writing journey by creating your first series</p>
-        <Button>
+        <Button onClick={() => setShowCreateDialog(true)}>
           <Plus className="w-4 h-4 mr-2" />
           Create Your First Story
         </Button>
@@ -107,7 +108,7 @@ function MyStoriesSection() {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {myStories.map((story: any) => (
+      {Array.isArray(myStories) && myStories.map((story: any) => (
         <Card key={story.id} className="group hover:shadow-lg transition-shadow">
           <div className="aspect-[3/4] bg-gradient-to-br from-primary/20 to-accent/20 rounded-t-lg flex items-center justify-center relative">
             {story.coverImageUrl ? (
@@ -342,7 +343,7 @@ export default function SeriesPage() {
                     Create Series
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-md">
+                <DialogContent className="max-w-sm">
                   <DialogHeader>
                     <DialogTitle>Create New Series</DialogTitle>
                     <DialogDescription>

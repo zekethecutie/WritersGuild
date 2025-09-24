@@ -67,7 +67,10 @@ export default function StoryPage() {
   // Fetch chapters
   const { data: chapters = [], isLoading: chaptersLoading } = useQuery({
     queryKey: ["/api/series", storyId, "chapters"],
-    queryFn: () => apiRequest("GET", `/api/series/${storyId}/chapters`),
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/series/${storyId}/chapters`);
+      return Array.isArray(response) ? response : [];
+    },
     enabled: !!storyId,
   });
 
@@ -478,7 +481,7 @@ export default function StoryPage() {
           <div className="mb-8">
             <h2 className="text-2xl font-bold mb-6">Chapters</h2>
             <div className="space-y-3">
-              {chapters.map((chapter: any, index: number) => (
+              {Array.isArray(chapters) && chapters.map((chapter: any, index: number) => (
                 <Card 
                   key={chapter.id} 
                   className="hover:shadow-md transition-shadow cursor-pointer"
