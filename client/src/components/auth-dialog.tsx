@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -29,12 +28,12 @@ interface AuthDialogProps {
 export default function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
   const { login } = useAuth();
   const { toast } = useToast();
-  
+
   const [activeTab, setActiveTab] = useState("login");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState(1); // 1: basic info, 2: role selection, 3: preferences
-  
+
   // Form states
   const [loginForm, setLoginForm] = useState({
     email: "",
@@ -93,7 +92,7 @@ export default function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialog
 
   const handleRegisterStep1 = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!registerForm.displayName || !registerForm.username || !registerForm.password) {
       toast({
         title: "Error",
@@ -223,7 +222,7 @@ export default function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialog
                 required
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="login-password">Password</Label>
               <div className="relative">
@@ -263,12 +262,13 @@ export default function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialog
               <div>
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
+                  size="lg"
                   onClick={() => {
                     onOpenChange(false);
-                    // Allow guest access by simply closing the dialog
+                    window.location.href = '/explore';
                   }}
-                  className="text-sm text-muted-foreground hover:text-foreground"
+                  className="text-sm border-muted-foreground/30 text-muted-foreground hover:text-foreground hover:border-foreground"
                 >
                   Continue as Guest
                 </Button>
@@ -288,7 +288,7 @@ export default function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialog
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="register-username">Username *</Label>
                 <Input
@@ -311,7 +311,7 @@ export default function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialog
                 placeholder="your.email@example.com"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="register-password">Password *</Label>
               <div className="relative">
@@ -363,12 +363,13 @@ export default function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialog
               <div>
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
+                  size="lg"
                   onClick={() => {
                     onOpenChange(false);
-                    // Allow guest access by simply closing the dialog
+                    window.location.href = '/explore';
                   }}
-                  className="text-sm text-muted-foreground hover:text-foreground"
+                  className="text-sm border-muted-foreground/30 text-muted-foreground hover:text-foreground hover:border-foreground"
                 >
                   Continue as Guest
                 </Button>

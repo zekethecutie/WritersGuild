@@ -30,11 +30,6 @@ function AppRouter() {
     );
   }
 
-  // Show landing page only for the root path when not authenticated
-  if (!isAuthenticated && location === '/') {
-    return <Landing />;
-  }
-
   return (
     <Router>
       <Route path="/" component={isAuthenticated ? Home : Landing} />
@@ -50,7 +45,7 @@ function AppRouter() {
       <Route path="/messages" component={isAuthenticated ? Messages : Explore} />
       <Route path="/bookmarks" component={isAuthenticated ? Bookmarks : Explore} />
       <Route path="/profile/:username" component={Profile} />
-      <Route path="/settings" component={SettingsPage} />
+      <Route path="/settings" component={isAuthenticated ? SettingsPage : Landing} />
       <Route component={NotFound} />
     </Router>
   );
