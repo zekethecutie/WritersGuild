@@ -184,15 +184,23 @@ export default function Home() {
                   <div className="p-2 text-center">
                     <h3 className="text-lg font-semibold mb-2">Share Your Writing</h3>
                     <p className="text-muted-foreground mb-4">Join Writers Guild to post your stories, poems, and creative works</p>
-                    <Button onClick={() => setShowAuthDialog(true)} className="mr-2">
-                      Create Account
-                    </Button>
-                    <Button variant="outline" onClick={() => setShowAuthDialog(true)}>
-                      Sign In
-                    </Button>
-                    <Button variant="ghost" onClick={() => { /* No-op for guest, as they are already viewing */ }} className="mt-4">
-                      Continue as Guest
-                    </Button>
+                    <div className="space-y-3">
+                      <div className="flex gap-2">
+                        <Button onClick={() => setShowAuthDialog(true)} className="flex-1">
+                          Create Account
+                        </Button>
+                        <Button variant="outline" onClick={() => setShowAuthDialog(true)} className="flex-1">
+                          Sign In
+                        </Button>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        onClick={() => window.location.href = '/explore'} 
+                        className="w-full text-muted-foreground hover:text-foreground"
+                      >
+                        Continue as Guest
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>

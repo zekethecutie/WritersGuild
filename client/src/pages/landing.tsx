@@ -65,6 +65,16 @@ export default function Landing() {
               >
                 Learn More
               </Button>
+
+              <Button
+                variant="ghost"
+                size="lg"
+                className="text-muted-foreground hover:text-foreground px-8 py-3 text-lg"
+                data-testid="button-continue-guest"
+                onClick={() => window.location.href = '/explore'}
+              >
+                Continue as Guest
+              </Button>
             </div>
           </div>
         </div>
@@ -169,14 +179,26 @@ export default function Landing() {
             Your story matters, and we're here to help you tell it beautifully.
           </p>
 
-          <Button
-            size="lg"
-            className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 text-lg"
-            onClick={() => setShowAuthDialog(true)}
-            data-testid="button-join-guild"
-          >
-            Join the Guild Today
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button
+              size="lg"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 text-lg"
+              onClick={() => setShowAuthDialog(true)}
+              data-testid="button-join-guild"
+            >
+              Join the Guild Today
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="lg"
+              className="text-muted-foreground hover:text-foreground px-8 py-3 text-lg"
+              data-testid="button-browse-guest"
+              onClick={() => window.location.href = '/explore'}
+            >
+              Browse as Guest
+            </Button>
+          </div>
         </div>
       </div>
 

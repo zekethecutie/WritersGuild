@@ -251,7 +251,7 @@ export default function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialog
               {isLoading ? "Signing in..." : "Sign In"}
             </Button>
 
-            <div className="text-center">
+            <div className="text-center space-y-2">
               <Button
                 type="button"
                 variant="link"
@@ -260,6 +260,19 @@ export default function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialog
               >
                 Don't have an account? Sign up
               </Button>
+              <div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    onOpenChange(false);
+                    // Allow guest access by simply closing the dialog
+                  }}
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
+                  Continue as Guest
+                </Button>
+              </div>
             </div>
           </form>
         ) : step === 1 ? (
@@ -338,7 +351,7 @@ export default function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialog
               Continue
             </Button>
 
-            <div className="text-center">
+            <div className="text-center space-y-2">
               <Button
                 type="button"
                 variant="link"
@@ -347,6 +360,19 @@ export default function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialog
               >
                 Already have an account? Sign in
               </Button>
+              <div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    onOpenChange(false);
+                    // Allow guest access by simply closing the dialog
+                  }}
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
+                  Continue as Guest
+                </Button>
+              </div>
             </div>
           </form>
         ) : step === 2 ? (

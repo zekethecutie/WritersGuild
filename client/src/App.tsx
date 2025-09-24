@@ -44,14 +44,13 @@ function AppRouter() {
       <Route path="/story/:id/chapter/:chapterId" component={StoryPage} />
       <Route path="/story/:id/edit" component={lazy(() => import("./pages/chapter-editor"))} />
       <Route path="/story/:id/chapter/:chapterId/edit" component={lazy(() => import("./pages/chapter-editor"))} />
-      <Route path="/messages" component={Messages} />
+      <Route path="/leaderboard" component={lazy(() => import("./pages/leaderboard"))} />
       <Route path="/search" component={isAuthenticated ? SearchPage : Explore} />
       <Route path="/notifications" component={isAuthenticated ? Notifications : Explore} />
       <Route path="/messages" component={isAuthenticated ? Messages : Explore} />
       <Route path="/bookmarks" component={isAuthenticated ? Bookmarks : Explore} />
       <Route path="/profile/:username" component={Profile} />
       <Route path="/settings" component={SettingsPage} />
-      <Route path="/leaderboard" component={lazy(() => import("./pages/leaderboard"))} />
       <Route component={NotFound} />
     </Router>
   );
