@@ -393,7 +393,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: 'like',
           actorId: userId,
           postId: postId,
-          isRead: false
+          isRead: false,
+          data: {}
         });
         
         // Broadcast real-time notification
@@ -445,7 +446,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: 'comment',
           actorId: userId,
           postId: postId,
-          isRead: false
+          isRead: false,
+          data: {}
         });
         
         // Broadcast real-time notification
@@ -545,7 +547,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: followingId,
         type: 'follow',
         actorId: followerId,
-        isRead: false
+        isRead: false,
+        postId: null,
+        data: {}
       });
       
       // Broadcast real-time notification
@@ -598,7 +602,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             type: 'repost',
             actorId: userId,
             postId: postId,
-            isRead: false
+            isRead: false,
+            data: {}
           });
           
           // Broadcast real-time notification
