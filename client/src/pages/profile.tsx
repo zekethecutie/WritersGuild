@@ -23,9 +23,11 @@ import {
   Bookmark,
   Users,
   Edit3,
-  Camera
+  Camera,
+  BookOpen
 } from "lucide-react";
 import { getProfileImageUrl, getCoverImageUrl } from "@/lib/defaultImages";
+import { formatDistanceToNow } from "date-fns";
 import type { Post, User } from "@shared/schema";
 
 // User Stories Section Component
