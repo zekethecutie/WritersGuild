@@ -93,14 +93,14 @@ export default function Messages() {
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!messageInput.trim() || !selectedConversation) return;
-    
+
     sendMessageMutation.mutate({ content: messageInput.trim() });
   };
 
   // Filter conversations based on search
-  const filteredConversations = (conversations as ConversationWithDetails[]).filter((conversation: ConversationWithDetails) =>
-    conversation.otherParticipant.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    conversation.otherParticipant.username.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredConversations = (conversations || []).filter((conv: any) =>
+    conv.otherParticipant.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    conv.otherParticipant.username.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   if (!isAuthenticated) {
@@ -120,7 +120,7 @@ export default function Messages() {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-      
+
       <div className="lg:ml-64 min-h-screen">
         <div className="h-screen flex">
           {/* Conversations List */}
@@ -130,7 +130,7 @@ export default function Messages() {
                 <MessageCircle className="w-6 h-6" />
                 Messages
               </h1>
-              
+
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -180,7 +180,7 @@ export default function Messages() {
                           <UserIcon className="w-6 h-6" />
                         </AvatarFallback>
                       </Avatar>
-                      
+
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
                           <p className="font-medium truncate">
@@ -192,11 +192,11 @@ export default function Messages() {
                             </span>
                           )}
                         </div>
-                        
+
                         <p className="text-sm text-muted-foreground truncate">
                           @{conversation.otherParticipant.username}
                         </p>
-                        
+
                         {conversation.lastMessage && (
                           <p className="text-sm text-muted-foreground truncate mt-1">
                             {conversation.lastMessage.content}
@@ -235,7 +235,7 @@ export default function Messages() {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center space-x-2">
                     <Button variant="ghost" size="sm">
                       <Phone className="w-4 h-4" />
@@ -332,7 +332,7 @@ export default function Messages() {
           </div>
         </div>
       </div>
-      
+
       <MobileNav />
     </div>
   );

@@ -323,6 +323,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(posts)
       .leftJoin(users, eq(posts.authorId, users.id))
+      .where(eq(posts.isPrivate, false))
       .orderBy(desc(posts.createdAt))
       .limit(limit)
       .offset(offset);

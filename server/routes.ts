@@ -1284,6 +1284,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/series/:id/bookmark', requireAuth, writeLimiter, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { id: seriesId } = req.params;
+
+      const isBookmarked = await storage.isSeriesBookmarked(userId, seriesId);
+      
+      if (isBookmarked) {
+        await storage.removeSeriesBookmark(userId, seriesId);
+        res.json({ bookmarked: false, message: "Bookmark removed" });
+      } else {
+        await storage.bookmarkSeries(userId, seriesId);
+        res.json({ bookmarked: true, message: "Series bookmarked" });
+      }
+    } catch (error) {
+      console.error("Error toggling series bookmark:", error);
+      res.status(500).json({ message: "Failed to update bookmark status" });
+    }
+  });
+
+  app.post('/api/series/:id/react', requireAuth, writeLimiter, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { id: seriesId } = req.params;
+      const { reaction } = req.body;
+
+      await storage.reactToSeries(userId, seriesId, reaction);
+      res.json({ message: "Reaction added" });
+    } catch (error) {
+      console.error("Error adding reaction:", error);
+      res.status(500).json({ message: "Failed to add reaction" });
+    }
+  });
+
+  app.post('/api/series/:id/comments', requireAuth, writeLimiter, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { id: seriesId } = req.params;
+      const { content } = req.body;
+
+      const comment = await storage.createSeriesComment(userId, seriesId, content);
+      res.json(comment);
+    } catch (error) {
+      console.error("Error creating comment:", error);
+      res.status(500).json({ message: "Failed to create comment" });
+    }
+  });
+
+  app.get('/api/series/:id/comments', async (req, res) => {
+    try {
+      const { id: seriesId } = req.params;
+      const comments = await storage.getSeriesComments(seriesId);
+      res.json(comments);
+    } catch (error) {
+      console.error("Error fetching comments:", error);
+      res.status(500).json({ message: "Failed to fetch comments" });
+    }
+  });
+
+  app.get('/api/series/:id/progress', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { id: seriesId } = req.params;
+      
+      const progress = await storage.getReadingProgress(userId, seriesId);
+      res.json(progress);
+    } catch (error) {
+      console.error("Error fetching reading progress:", error);
+      res.status(500).json({ message: "Failed to fetch reading progress" });
+    }
+  });
+
+  app.put('/api/series/:id/progress', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { id: seriesId } = req.params;
+      const { chapterIndex } = req.body;
+      
+      await storage.updateReadingProgress(userId, seriesId, chapterIndex);
+      res.json({ message: "Progress updated" });
+    } catch (error) {
+      console.error("Error updating reading progress:", error);
+      res.status(500).json({ message: "Failed to update reading progress" });
+    }
+  });
+
   // Explore routes (public access)
   app.get('/api/explore/trending-topics', async (req, res) => {
     try {

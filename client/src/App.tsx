@@ -9,7 +9,8 @@ import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import Profile from "@/pages/profile";
 import Explore from "./pages/explore";
-import Series from "./pages/series";
+import SeriesPage from "./pages/series";
+import StoryPage from "./pages/story";
 import Messages from "./pages/messages";
 import Notifications from "./pages/notifications";
 import Bookmarks from "./pages/bookmarks";
@@ -37,7 +38,9 @@ function AppRouter() {
     <Router>
       <Route path="/" component={isAuthenticated ? Home : Landing} />
       <Route path="/explore" component={Explore} />
-      <Route path="/series" component={Series} />
+      <Route path="/series" component={SeriesPage} />
+      <Route path="/story/:id" component={StoryPage} />
+      <Route path="/story/:id/chapter/:chapterId" component={StoryPage} />
       <Route path="/messages" component={Messages} />
       <Route path="/search" component={isAuthenticated ? SearchPage : Explore} />
       <Route path="/notifications" component={isAuthenticated ? Notifications : Explore} />

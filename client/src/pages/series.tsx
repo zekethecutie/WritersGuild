@@ -60,8 +60,10 @@ export default function SeriesPage() {
     title: "",
     description: "",
     genre: "",
-    tags: ""
+    tags: "",
+    coverImageUrl: ""
   });
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
 
   // Fetch series
   const { 
@@ -85,7 +87,7 @@ export default function SeriesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/series"] });
       setShowCreateDialog(false);
-      setNewSeries({ title: "", description: "", genre: "", tags: "" });
+      setNewSeries({ title: "", description: "", genre: "", tags: "", coverImageUrl: "" });
       toast({
         title: "Success",
         description: "Series created successfully!",
@@ -116,6 +118,40 @@ export default function SeriesPage() {
       });
     },
   });
+
+  const handleCoverUpload = async (file: File) => {
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('coverPhoto', file);
+
+    setIsUploadingCover(true);
+    try {
+      const response = await fetch("/api/upload/cover-photo", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!response.ok) throw new Error("Upload failed");
+
+      const data = await response.json();
+      setNewSeries(prev => ({ ...prev, coverImageUrl: data.imageUrl }));
+      
+      toast({
+        title: "Cover uploaded!",
+        description: "Cover image has been added to your series.",
+      });
+    } catch (error) {
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload cover image.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingCover(false);
+    }
+  };
 
   const handleCreateSeries = () => {
     if (!newSeries.title.trim() || !newSeries.description.trim()) {
@@ -189,6 +225,36 @@ export default function SeriesPage() {
                         placeholder="Describe your series"
                         rows={3}
                       />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Cover Image (9:16 ratio recommended)</label>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={(e) => e.target.files?.[0] && handleCoverUpload(e.target.files[0])}
+                        className="hidden"
+                        id="cover-upload"
+                      />
+                      <div className="flex items-center gap-3">
+                        <Button 
+                          type="button"
+                          variant="outline"
+                          onClick={() => document.getElementById('cover-upload')?.click()}
+                          disabled={isUploadingCover}
+                          className="flex items-center gap-2"
+                        >
+                          {isUploadingCover ? "Uploading..." : "Upload Cover"}
+                        </Button>
+                        {newSeries.coverImageUrl && (
+                          <div className="w-12 h-16 rounded border overflow-hidden">
+                            <img 
+                              src={newSeries.coverImageUrl} 
+                              alt="Cover preview"
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-2">Genre</label>
@@ -269,7 +335,11 @@ export default function SeriesPage() {
           ) : filteredSeries.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredSeries.map((series: Series) => (
-                <Card key={series.id} className="hover:shadow-lg transition-shadow cursor-pointer group">
+                <Card 
+                  key={series.id} 
+                  className="hover:shadow-lg transition-shadow cursor-pointer group"
+                  onClick={() => window.location.href = `/story/${series.id}`}
+                >
                   <div className="aspect-[3/4] bg-gradient-to-br from-primary/20 to-accent/20 rounded-t-lg flex items-center justify-center">
                     {series.coverImageUrl ? (
                       <img 
@@ -348,7 +418,11 @@ export default function SeriesPage() {
                     )}
 
                     <div className="flex gap-2">
-                      <Button size="sm" className="flex-1">
+                      <Button 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={() => window.location.href = `/story/${series.id}`}
+                      >
                         Read Now
                       </Button>
                       {isAuthenticated && (
