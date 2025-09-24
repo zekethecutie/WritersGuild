@@ -1,4 +1,3 @@
-
 import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
@@ -40,12 +39,12 @@ function createSessionMiddleware() {
   if (!process.env.SESSION_SECRET) {
     throw new Error('SESSION_SECRET environment variable is required for security');
   }
-  
+
   const memoryStore = MemoryStore(session);
   const sessionStore = new memoryStore({
     checkPeriod: sessionTtl, // prune expired entries every 24h
   });
-  
+
   return session({
     secret: process.env.SESSION_SECRET,
     store: sessionStore,
@@ -74,7 +73,7 @@ const requireAuth = (req: any, res: any, next: any) => {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize admin account
   await storage.initializeAdminAccount();
-  
+
   // Retry admin account creation after a delay (in case database wasn't ready)
   setTimeout(async () => {
     try {
@@ -112,7 +111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Session middleware
   app.set("trust proxy", 1);
   app.use(sessionMiddleware);
-  
+
   // Apply general rate limiting to all routes
   app.use('/api', generalLimiter);
 
@@ -230,7 +229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Set session
       (req.session as any).userId = user.id;
-      
+
       // Save session explicitly
       await new Promise<void>((resolve, reject) => {
         req.session.save((err) => {
@@ -383,7 +382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const like = await storage.likePost(userId, postId);
-      
+
       // Get post to find the author for notification
       const post = await storage.getPost(postId);
       if (post && post.authorId !== userId) {
@@ -396,13 +395,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isRead: false,
           data: {}
         });
-        
+
         // Broadcast real-time notification
         if ((app as any).broadcastNotification) {
           (app as any).broadcastNotification(post.authorId, notification);
         }
       }
-      
+
       res.json(like);
     } catch (error) {
       console.error("Error liking post:", error);
@@ -436,7 +435,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const comment = await storage.createComment(commentData);
-      
+
       // Get post to find the author for notification
       const post = await storage.getPost(postId);
       if (post && post.authorId !== userId) {
@@ -449,13 +448,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isRead: false,
           data: {}
         });
-        
+
         // Broadcast real-time notification
         if ((app as any).broadcastNotification) {
           (app as any).broadcastNotification(post.authorId, notification);
         }
       }
-      
+
       res.json(comment);
     } catch (error) {
       console.error("Error creating comment:", error);
@@ -511,7 +510,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id: commentId } = req.params;
 
       const hasLiked = await storage.hasUserLikedComment(userId, commentId);
-      
+
       if (hasLiked) {
         await storage.unlikeComment(userId, commentId);
         res.json({ liked: false, message: "Comment unliked" });
@@ -541,7 +540,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const follow = await storage.followUser(followerId, followingId);
-      
+
       // Create and broadcast follow notification
       const notification = await storage.createNotification({
         userId: followingId,
@@ -551,12 +550,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         postId: null,
         data: {}
       });
-      
+
       // Broadcast real-time notification
       if ((app as any).broadcastNotification) {
         (app as any).broadcastNotification(followingId, notification);
       }
-      
+
       res.json(follow);
     } catch (error) {
       console.error("Error following user:", error);
@@ -586,13 +585,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if already reposted
       const isReposted = await storage.hasUserReposted(userId, postId);
-      
+
       if (isReposted) {
         await storage.unrepost(userId, postId);
         res.json({ reposted: false, message: "Repost removed" });
       } else {
         const repost = await storage.repostPost(userId, postId, comment);
-        
+
         // Get post to find the author for notification
         const post = await storage.getPost(postId);
         if (post && post.authorId !== userId) {
@@ -605,13 +604,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             isRead: false,
             data: {}
           });
-          
+
           // Broadcast real-time notification
           if ((app as any).broadcastNotification) {
             (app as any).broadcastNotification(post.authorId, notification);
           }
         }
-        
+
         res.json({ reposted: true, repost });
       }
     } catch (error) {
@@ -628,7 +627,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if already bookmarked
       const isBookmarked = await storage.isPostBookmarked(userId, postId);
-      
+
       if (isBookmarked) {
         await storage.removeBookmark(userId, postId);
         res.json({ bookmarked: false, message: "Bookmark removed" });
@@ -739,22 +738,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/users/:id/stats', async (req, res) => {
+  app.get("/api/users/:id/stats", async (req, res) => {
     try {
-      const { id } = req.params;
-      const stats = await storage.getUserStats(id);
+      const userId = req.params.id;
+
+      const stats = await storage.getUserStats(userId);
       res.json(stats);
     } catch (error) {
       console.error("Error fetching user stats:", error);
-      res.status(500).json({ message: "Failed to fetch user stats" });
+      res.status(500).json({ error: "Failed to fetch user stats" });
     }
   });
+
+  // Get user's stories
+  app.get("/api/users/:id/stories", async (req, res) => {
+    try {
+      const userId = req.params.id;
+      const stories = await storage.getUserStories(userId);
+      res.json(stories);
+    } catch (error) {
+      console.error("Error fetching user stories:", error);
+      res.status(500).json({ error: "Failed to fetch user stories" });
+    }
+  });
+
+  // Get current user's stories (my stories)
+  app.get("/api/series/my-stories", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const stories = await storage.getUserStories(userId);
+      res.json(stories);
+    } catch (error) {
+      console.error("Error fetching my stories:", error);
+      res.status(500).json({ error: "Failed to fetch my stories" });
+    }
+  });
+
+  // Delete series
+  app.delete("/api/series/:id", requireAuth, async (req, res) => {
+    try {
+      const seriesId = req.params.id;
+      const userId = req.user!.id;
+
+      // Check if user owns the series
+      const seriesData = await storage.getSeriesById(seriesId);
+      if (!seriesData || seriesData.authorId !== userId) {
+        return res.status(403).json({ error: "You can only delete your own series" });
+      }
+
+      await storage.deleteSeries(seriesId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting series:", error);
+      res.status(500).json({ error: "Failed to delete series" });
+    }
+  });
+
 
   app.get('/api/users/:id/writing-goals', requireAuth, async (req: any, res) => {
     try {
       const { id } = req.params;
       const userId = req.session.userId;
-      
+
       // Users can only see their own goals unless they're admin
       if (id !== userId) {
         const user = await storage.getUser(userId);
@@ -973,7 +1018,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if conversation already exists
       let conversation = await storage.getConversation(userId, participantId);
-      
+
       if (!conversation) {
         conversation = await storage.createConversation(userId, participantId);
       }
@@ -996,17 +1041,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Instead, let's get the conversation by ID and verify participation
       const conversations = await storage.getUserConversations(userId);
       const userConversation = conversations.find(c => c.id === conversationId);
-      
+
       if (!userConversation) {
         return res.status(403).json({ message: "Access denied to this conversation" });
       }
 
       const messages = await storage.getConversationMessages(
-        conversationId, 
-        parseInt(limit as string), 
+        conversationId,
+        parseInt(limit as string),
         parseInt(offset as string)
       );
-      
+
       res.json(messages);
     } catch (error) {
       console.error("Error fetching messages:", error);
@@ -1027,7 +1072,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verify user is part of the conversation
       const conversations = await storage.getUserConversations(userId);
       const userConversation = conversations.find(c => c.id === conversationId);
-      
+
       if (!userConversation) {
         return res.status(403).json({ message: "Access denied to this conversation" });
       }
@@ -1063,7 +1108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verify user is part of the conversation
       const conversations = await storage.getUserConversations(userId);
       const userConversation = conversations.find(c => c.id === conversationId);
-      
+
       if (!userConversation) {
         return res.status(403).json({ message: "Access denied to this conversation" });
       }
@@ -1214,7 +1259,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const series = await storage.getSeriesById(id);
-      
+
       if (!series) {
         return res.status(404).json({ message: "Series not found" });
       }
@@ -1270,7 +1315,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id: seriesId } = req.params;
 
       const isFollowing = await storage.isFollowingSeries(userId, seriesId);
-      
+
       if (isFollowing) {
         await storage.unfollowSeries(userId, seriesId);
         res.json({ following: false, message: "Unfollowed series" });
@@ -1290,7 +1335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id: seriesId } = req.params;
 
       const isBookmarked = await storage.isSeriesBookmarked(userId, seriesId);
-      
+
       if (isBookmarked) {
         await storage.removeSeriesBookmark(userId, seriesId);
         res.json({ bookmarked: false, message: "Bookmark removed" });
@@ -1347,7 +1392,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.session.userId;
       const { id: seriesId } = req.params;
-      
+
       const progress = await storage.getReadingProgress(userId, seriesId);
       res.json(progress);
     } catch (error) {
@@ -1361,7 +1406,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.session.userId;
       const { id: seriesId } = req.params;
       const { chapterIndex } = req.body;
-      
+
       await storage.updateReadingProgress(userId, seriesId, chapterIndex);
       res.json({ message: "Progress updated" });
     } catch (error) {
@@ -1441,7 +1486,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/search', requireAuth, async (req: any, res) => {
     try {
       const { q: query } = req.query;
-      
+
       if (!query || typeof query !== 'string') {
         return res.status(400).json({ message: "Search query is required" });
       }
@@ -1468,22 +1513,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   wss.on('connection', (ws: WebSocket, req) => {
     console.log('New WebSocket connection');
-    
+
     // Authenticate user using the same session middleware
     sessionMiddleware(req as any, {} as any, () => {
       const userId = (req as any).session?.userId;
-      
+
       if (userId) {
         (ws as any).userId = userId;
         (ws as any).authenticated = true;
         console.log(`WebSocket authenticated for user: ${userId}`);
-        
+
         // Add to user connections registry
         if (!userConnections.has(userId)) {
           userConnections.set(userId, new Set());
         }
         userConnections.get(userId)!.add(ws);
-        
+
         // Send authentication success
         ws.send(JSON.stringify({
           type: 'auth_success',
@@ -1503,7 +1548,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ws.close(4001, 'Not authenticated');
           return;
         }
-        
+
         const data = JSON.parse(message.toString());
 
         // Handle different types of real-time events
@@ -1547,7 +1592,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     ws.on('close', () => {
       const userId = (ws as any).userId;
       console.log(`WebSocket connection closed for user: ${userId}`);
-      
+
       // Remove from user connections registry
       if (userId && userConnections.has(userId)) {
         userConnections.get(userId)!.delete(ws);
@@ -1566,7 +1611,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type: 'notification',
         data: notification,
       });
-      
+
       connections.forEach((ws) => {
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(message);
@@ -1575,7 +1620,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   };
 
-  // Decoupled message broadcaster  
+  // Decoupled message broadcaster
   const broadcastMessage = (userId: string, message: any) => {
     const connections = userConnections.get(userId);
     if (connections) {
@@ -1583,7 +1628,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type: 'new_message',
         data: message,
       });
-      
+
       connections.forEach((ws) => {
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(payload);

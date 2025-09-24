@@ -1539,6 +1539,32 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(seriesFollowers.userId, userId), eq(seriesFollowers.seriesId, seriesId)));
     return !!follow;
   }
+
+  async getUserStories(userId: string): Promise<any[]> {
+    return db
+      .select({
+        id: series.id,
+        title: series.title,
+        description: series.description,
+        coverImageUrl: series.coverImageUrl,
+        genre: series.genre,
+        tags: series.tags,
+        isCompleted: series.isCompleted,
+        chaptersCount: series.chaptersCount,
+        followersCount: series.followersCount,
+        likesCount: series.likesCount,
+        viewsCount: series.viewsCount,
+        createdAt: series.createdAt,
+        updatedAt: series.updatedAt,
+      })
+      .from(series)
+      .where(eq(series.authorId, userId))
+      .orderBy(desc(series.updatedAt));
+  }
+
+  async deleteSeries(seriesId: string): Promise<void> {
+    await db.delete(series).where(eq(series.id, seriesId));
+  }
 }
 
 export const storage = new DatabaseStorage();

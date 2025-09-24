@@ -29,7 +29,7 @@ import {
   Smile,
   Laugh,
   Angry,
-  Sad,
+  Frown,
   Surprised
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -40,7 +40,7 @@ const reactions = [
   { name: "love", icon: Heart, color: "text-red-500" },
   { name: "laugh", icon: Laugh, color: "text-yellow-500" },
   { name: "surprise", icon: Surprised, color: "text-purple-500" },
-  { name: "sad", icon: Sad, color: "text-gray-500" },
+  { name: "sad", icon: Frown, color: "text-gray-500" },
   { name: "angry", icon: Angry, color: "text-red-600" },
 ];
 

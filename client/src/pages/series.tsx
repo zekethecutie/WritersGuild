@@ -23,7 +23,9 @@ import {
   Calendar,
   User as UserIcon,
   Filter,
-  Search
+  Search,
+  Edit3,
+  X
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { getProfileImageUrl } from "@/lib/defaultImages";
@@ -47,6 +49,131 @@ interface Series {
     displayName: string;
     profileImageUrl?: string;
   };
+}
+
+// My Stories Section Component
+function MyStoriesSection() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: myStories = [], isLoading } = useQuery({
+    queryKey: ["/api/series/my-stories"],
+    queryFn: () => apiRequest("GET", "/api/series/my-stories"),
+  });
+
+  const deleteSeriesMutation = useMutation({
+    mutationFn: async (seriesId: string) => {
+      return apiRequest("DELETE", `/api/series/${seriesId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/series/my-stories"] });
+      toast({ title: "Success", description: "Series deleted successfully" });
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Card key={i} className="animate-pulse">
+            <div className="aspect-[3/4] bg-muted rounded-t-lg" />
+            <CardContent className="p-4">
+              <div className="h-4 bg-muted rounded mb-2" />
+              <div className="h-3 bg-muted rounded w-3/4" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  if (myStories.length === 0) {
+    return (
+      <Card className="p-8 text-center border-2 border-dashed">
+        <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+        <h3 className="text-lg font-semibold mb-2">No stories yet</h3>
+        <p className="text-muted-foreground mb-4">Start your writing journey by creating your first series</p>
+        <Button>
+          <Plus className="w-4 h-4 mr-2" />
+          Create Your First Story
+        </Button>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {myStories.map((story: any) => (
+        <Card key={story.id} className="group hover:shadow-lg transition-shadow">
+          <div className="aspect-[3/4] bg-gradient-to-br from-primary/20 to-accent/20 rounded-t-lg flex items-center justify-center relative">
+            {story.coverImageUrl ? (
+              <img 
+                src={story.coverImageUrl} 
+                alt={story.title}
+                className="w-full h-full object-cover rounded-t-lg"
+              />
+            ) : (
+              <BookOpen className="w-16 h-16 text-muted-foreground" />
+            )}
+            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button size="sm" variant="secondary">
+                <Edit3 className="w-4 h-4" />
+              </Button>
+            </div>
+            {story.isCompleted && (
+              <Badge className="absolute top-2 left-2 bg-green-500/10 text-green-500 border-green-500/30">
+                Complete
+              </Badge>
+            )}
+          </div>
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between mb-2">
+              <h3 className="font-semibold text-lg line-clamp-1">{story.title}</h3>
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                onClick={() => deleteSeriesMutation.mutate(story.id)}
+                className="opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            
+            <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+              {story.description}
+            </p>
+
+            <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1">
+                  <BookOpen className="w-3 h-3" />
+                  {story.chaptersCount}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Users className="w-3 h-3" />
+                  {story.followersCount}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Heart className="w-3 h-3" />
+                  {story.likesCount}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <Button size="sm" className="flex-1" asChild>
+                <a href={`/story/${story.id}`}>Manage</a>
+              </Button>
+              <Button size="sm" variant="outline" asChild>
+                <a href={`/story/${story.id}/edit`}>Edit</a>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
 }
 
 export default function SeriesPage() {
@@ -194,8 +321,16 @@ export default function SeriesPage() {
             </p>
           </div>
 
-          <div className="flex items-center justify-between mb-6">
+          {/* My Stories Section for authenticated users */}
+          {isAuthenticated && (
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold mb-4">My Stories</h2>
+              <MyStoriesSection />
+            </div>
+          )}
 
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold">Discover Stories</h2>
             {isAuthenticated && (
               <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
                 <DialogTrigger asChild>

@@ -28,6 +28,112 @@ import {
 import { getProfileImageUrl, getCoverImageUrl } from "@/lib/defaultImages";
 import type { Post, User } from "@shared/schema";
 
+// User Stories Section Component
+function UserStoriesSection({ userId, isOwnProfile }: { userId: string; isOwnProfile: boolean }) {
+  const { data: userStories = [], isLoading } = useQuery({
+    queryKey: ["/api/users", userId, "stories"],
+    queryFn: () => fetch(`/api/users/${userId}/stories`).then(res => res.json()),
+    enabled: !!userId,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Card key={i} className="animate-pulse">
+            <div className="aspect-[3/4] bg-muted rounded-t-lg" />
+            <CardContent className="p-4">
+              <div className="h-4 bg-muted rounded mb-2" />
+              <div className="h-3 bg-muted rounded w-3/4" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  if (userStories.length === 0) {
+    return (
+      <div className="p-12 text-center">
+        <div className="w-16 h-16 bg-muted rounded-xl flex items-center justify-center mb-4 mx-auto">
+          <BookOpen className="w-8 h-8 text-muted-foreground" />
+        </div>
+        <h3 className="text-lg font-semibold mb-2">No stories yet</h3>
+        <p className="text-muted-foreground">
+          {isOwnProfile 
+            ? "Start writing your first story and share it with the world" 
+            : "This user hasn't published any stories yet"
+          }
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
+      {userStories.map((story: any) => (
+        <Card 
+          key={story.id} 
+          className="hover:shadow-lg transition-shadow cursor-pointer"
+          onClick={() => window.location.href = `/story/${story.id}`}
+        >
+          <div className="aspect-[3/4] bg-gradient-to-br from-primary/20 to-accent/20 rounded-t-lg flex items-center justify-center">
+            {story.coverImageUrl ? (
+              <img 
+                src={story.coverImageUrl} 
+                alt={story.title}
+                className="w-full h-full object-cover rounded-t-lg"
+              />
+            ) : (
+              <BookOpen className="w-16 h-16 text-muted-foreground" />
+            )}
+          </div>
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between mb-2">
+              <h3 className="font-semibold text-lg line-clamp-2">
+                {story.title}
+              </h3>
+              {story.isCompleted && (
+                <Badge variant="secondary" className="text-xs">Complete</Badge>
+              )}
+            </div>
+            
+            <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+              {story.description}
+            </p>
+
+            {story.genre && (
+              <Badge variant="outline" className="mb-3 text-xs">
+                {story.genre}
+              </Badge>
+            )}
+
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1">
+                  <BookOpen className="w-3 h-3" />
+                  {story.chaptersCount}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Users className="w-3 h-3" />
+                  {story.followersCount}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Heart className="w-3 h-3" />
+                  {story.likesCount}
+                </span>
+              </div>
+              <span>
+                {formatDistanceToNow(new Date(story.createdAt), { addSuffix: true })}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 export default function Profile() {
   const { username } = useParams();
   const { user: currentUser, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -497,6 +603,13 @@ export default function Profile() {
               >
                 Reposts
               </TabsTrigger>
+              <TabsTrigger 
+                value="stories" 
+                className="flex-1 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent"
+                data-testid="tab-stories"
+              >
+                Stories
+              </TabsTrigger>
               {isOwnProfile && (
                 <TabsTrigger 
                   value="bookmarks" 
@@ -568,6 +681,10 @@ export default function Profile() {
                   Posts reposted by {isOwnProfile ? "you" : profileUser.firstName} will appear here
                 </p>
               </div>
+            </TabsContent>
+
+            <TabsContent value="stories" className="mt-0">
+              <UserStoriesSection userId={profileUser.id} isOwnProfile={isOwnProfile} />
             </TabsContent>
 
             {isOwnProfile && (
