@@ -1,18 +1,22 @@
-
 import { useState, useEffect } from "react";
-import { useRoute } from "wouter";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import Sidebar from "@/components/sidebar";
-import MobileNav from "@/components/mobile-nav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -25,376 +29,355 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { 
+  Plus, 
   BookOpen, 
+  Edit, 
+  Trash2, 
   Save, 
+  Eye, 
+  Users, 
+  Clock,
   ArrowLeft,
-  Plus,
-  Edit3,
-  Trash2,
-  Image as ImageIcon
+  Settings,
+  Upload,
+  X,
+  FileText,
+  List
 } from "lucide-react";
+import { useLocation } from "wouter";
 
-export default function SeriesEditPage() {
-  const [match, params] = useRoute("/story/:id/edit");
-  const { user, isAuthenticated } = useAuth();
+interface Chapter {
+  id: string;
+  title: string;
+  content: string;
+  wordCount: number;
+  order: number;
+  published: boolean;
+  createdAt: string;
+}
+
+interface Series {
+  id: string;
+  title: string;
+  description: string;
+  genre: string;
+  tags: string[];
+  isPublic: boolean;
+  coverImageUrl?: string;
+  chapters: Chapter[];
+  status: 'draft' | 'ongoing' | 'completed';
+  totalWordCount: number;
+  authorId: string;
+}
+
+export default function SeriesEdit() {
+  const { user } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
-  const storyId = params?.id;
+  // Form states
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [genre, setGenre] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [newTag, setNewTag] = useState("");
+  const [isPublic, setIsPublic] = useState(true);
+  const [status, setStatus] = useState<'draft' | 'ongoing' | 'completed'>('draft');
+  const [coverImage, setCoverImage] = useState<File | null>(null);
+  const [coverImagePreview, setCoverImagePreview] = useState<string>("");
+  const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [showChapterForm, setShowChapterForm] = useState(false);
+  const [newChapterTitle, setNewChapterTitle] = useState("");
+  const [editingChapter, setEditingChapter] = useState<Chapter | null>(null);
 
-  const [seriesData, setSeriesData] = useState({
-    title: "",
-    description: "",
-    genre: "",
-    tags: "",
-    coverImageUrl: "",
-    isCompleted: false,
-    isPrivate: false
-  });
-  const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const createSeriesMutation = useMutation({
+    mutationFn: async (seriesData: any) => {
+      const formData = new FormData();
+      formData.append('title', seriesData.title);
+      formData.append('description', seriesData.description);
+      formData.append('genre', seriesData.genre);
+      formData.append('tags', JSON.stringify(seriesData.tags));
+      formData.append('isPublic', seriesData.isPublic.toString());
+      formData.append('status', seriesData.status);
 
-  // Fetch story details
-  const { data: story, isLoading: storyLoading } = useQuery({
-    queryKey: ["/api/series", storyId],
-    queryFn: () => apiRequest("GET", `/api/series/${storyId}`),
-    enabled: !!storyId,
-  });
+      if (coverImage) {
+        formData.append('coverImage', coverImage);
+      }
 
-  // Fetch chapters
-  const { data: chapters = [], isLoading: chaptersLoading } = useQuery({
-    queryKey: ["/api/series", storyId, "chapters"],
-    queryFn: () => apiRequest("GET", `/api/series/${storyId}/chapters`),
-    enabled: !!storyId,
-  });
-
-  // Update series mutation
-  const updateSeriesMutation = useMutation({
-    mutationFn: async (data: any) => {
-      return apiRequest("PUT", `/api/series/${storyId}`, data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/series", storyId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/series/my-stories"] });
-      toast({ title: "Success", description: "Series updated successfully!" });
-    },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to update series", variant: "destructive" });
-    }
-  });
-
-  // Delete series mutation
-  const deleteSeriesMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest("DELETE", `/api/series/${storyId}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/series"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/series/my-stories"] });
-      toast({ title: "Success", description: "Series deleted successfully" });
-      window.location.href = "/series";
-    },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to delete series", variant: "destructive" });
-    }
-  });
-
-  // Delete chapter mutation
-  const deleteChapterMutation = useMutation({
-    mutationFn: async (chapterId: string) => {
-      return apiRequest("DELETE", `/api/chapters/${chapterId}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/series", storyId, "chapters"] });
-      toast({ title: "Success", description: "Chapter deleted successfully" });
-    },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to delete chapter", variant: "destructive" });
-    }
-  });
-
-  // Set series data when loaded
-  useEffect(() => {
-    if (story) {
-      setSeriesData({
-        title: story.title || "",
-        description: story.description || "",
-        genre: story.genre || "",
-        tags: Array.isArray(story.tags) ? story.tags.join(", ") : "",
-        coverImageUrl: story.coverImageUrl || "",
-        isCompleted: story.isCompleted || false,
-        isPrivate: story.isPrivate || false
+      return apiRequest("POST", "/api/series", formData, {
+        headers: {}
       });
-    }
-  }, [story]);
-
-  const handleCoverUpload = async (file: File) => {
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append('coverPhoto', file);
-
-    setIsUploadingCover(true);
-    try {
-      const response = await fetch("/api/upload/series-cover", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-
-      if (!response.ok) throw new Error("Upload failed");
-
-      const data = await response.json();
-      setSeriesData(prev => ({ ...prev, coverImageUrl: data.imageUrl }));
-      
+    },
+    onSuccess: (data) => {
       toast({
-        title: "Cover uploaded!",
-        description: "Cover image has been updated.",
+        title: "Series created!",
+        description: "Your new series has been created successfully.",
       });
-    } catch (error) {
-      toast({
-        title: "Upload failed",
-        description: "Failed to upload cover image.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUploadingCover(false);
-    }
-  };
-
-  const handleSave = () => {
-    if (!seriesData.title.trim() || !seriesData.description.trim()) {
+      setLocation(`/series/${data.id}`);
+    },
+    onError: (error) => {
       toast({
         title: "Error",
-        description: "Title and description are required.",
+        description: "Failed to create series. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const addChapter = () => {
+    if (!newChapterTitle.trim()) return;
+
+    const newChapter: Chapter = {
+      id: Date.now().toString(),
+      title: newChapterTitle,
+      content: "",
+      wordCount: 0,
+      order: chapters.length + 1,
+      published: false,
+      createdAt: new Date().toISOString()
+    };
+
+    setChapters([...chapters, newChapter]);
+    setNewChapterTitle("");
+    setShowChapterForm(false);
+  };
+
+  const deleteChapter = (chapterId: string) => {
+    setChapters(chapters.filter(ch => ch.id !== chapterId));
+  };
+
+  const reorderChapters = (fromIndex: number, toIndex: number) => {
+    const updatedChapters = [...chapters];
+    const [movedChapter] = updatedChapters.splice(fromIndex, 1);
+    updatedChapters.splice(toIndex, 0, movedChapter);
+
+    // Update order numbers
+    updatedChapters.forEach((chapter, index) => {
+      chapter.order = index + 1;
+    });
+
+    setChapters(updatedChapters);
+  };
+
+  const handleCreateSeries = () => {
+    if (!title.trim() || !description.trim()) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in the title and description.",
         variant: "destructive",
       });
       return;
     }
 
-    updateSeriesMutation.mutate({
-      ...seriesData,
-      tags: seriesData.tags.split(",").map(tag => tag.trim()).filter(Boolean)
+    createSeriesMutation.mutate({
+      title,
+      description,
+      genre,
+      tags,
+      isPublic,
+      status,
+      chapters
     });
   };
 
-  if (!isAuthenticated) {
+  const totalWordCount = chapters.reduce((sum, chapter) => sum + chapter.wordCount, 0);
+
+  if (!user) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">Authentication Required</h1>
-          <p className="text-muted-foreground">Please login to edit series.</p>
+          <h2 className="text-2xl font-bold mb-4">Authentication Required</h2>
+          <p className="text-muted-foreground">Please log in to create a series.</p>
         </div>
       </div>
     );
   }
-
-  if (storyLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading series...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!story || story.authorId !== user?.id) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
-          <p className="text-muted-foreground">You can only edit your own series.</p>
-        </div>
-      </div>
-    );
-  }
-
-  const genres = ["Romance", "Fantasy", "Mystery", "Sci-Fi", "Drama", "Comedy", "Horror", "Adventure"];
 
   return (
-    <div className="min-h-screen bg-background">
-      <Sidebar />
-
-      <div className="lg:ml-64 min-h-screen">
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" onClick={() => window.history.back()}>
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold">Edit Series</h1>
-                <p className="text-muted-foreground">{story.title}</p>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm">
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete Series
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Series</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to delete this series? This will permanently delete the series and all its chapters. This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => deleteSeriesMutation.mutate()}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      Delete Series
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
+    <div className="max-w-6xl mx-auto p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-4">
+          <Button 
+            variant="ghost" 
+            onClick={() => setLocation("/series")}
+            className="p-2"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold">Create New Series</h1>
+            <p className="text-muted-foreground">Set up your novel or story collection</p>
           </div>
+        </div>
+      </div>
 
-          {/* Series Details */}
-          <Card className="mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Main Form */}
+        <div className="lg:col-span-3 space-y-6">
+          <Card>
             <CardHeader>
-              <CardTitle>Series Information</CardTitle>
+              <CardTitle className="flex items-center space-x-2">
+                <BookOpen className="w-5 h-5" />
+                <span>Series Details</span>
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Title *</label>
-                    <Input
-                      value={seriesData.title}
-                      onChange={(e) => setSeriesData(prev => ({ ...prev, title: e.target.value }))}
-                      placeholder="Series title"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Genre</label>
-                    <Select 
-                      value={seriesData.genre} 
-                      onValueChange={(value) => setSeriesData(prev => ({ ...prev, genre: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select genre" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {genres.map(genre => (
-                          <SelectItem key={genre} value={genre}>{genre}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Tags</label>
-                    <Input
-                      value={seriesData.tags}
-                      onChange={(e) => setSeriesData(prev => ({ ...prev, tags: e.target.value }))}
-                      placeholder="romance, fantasy, magic (comma separated)"
-                    />
-                  </div>
-
-                  <div className="flex items-center space-x-4">
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        checked={seriesData.isCompleted}
-                        onChange={(e) => setSeriesData(prev => ({ ...prev, isCompleted: e.target.checked }))}
-                        className="rounded border-border"
-                      />
-                      <span className="text-sm">Mark as completed</span>
-                    </label>
-                    
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        checked={seriesData.isPrivate}
-                        onChange={(e) => setSeriesData(prev => ({ ...prev, isPrivate: e.target.checked }))}
-                        className="rounded border-border"
-                      />
-                      <span className="text-sm">Private series</span>
-                    </label>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Cover Image</label>
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={(e) => e.target.files?.[0] && handleCoverUpload(e.target.files[0])}
-                      className="hidden"
-                      id="cover-upload"
-                    />
-                    <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
-                      {seriesData.coverImageUrl ? (
-                        <div className="space-y-3">
-                          <div className="w-32 h-42 mx-auto rounded border overflow-hidden">
-                            <img 
-                              src={seriesData.coverImageUrl} 
-                              alt="Cover preview"
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <Button 
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => document.getElementById('cover-upload')?.click()}
-                            disabled={isUploadingCover}
-                          >
-                            <ImageIcon className="w-4 h-4 mr-2" />
-                            {isUploadingCover ? "Uploading..." : "Change Cover"}
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          <BookOpen className="w-12 h-12 text-muted-foreground mx-auto" />
-                          <Button 
-                            type="button"
-                            variant="outline"
-                            onClick={() => document.getElementById('cover-upload')?.click()}
-                            disabled={isUploadingCover}
-                          >
-                            <ImageIcon className="w-4 h-4 mr-2" />
-                            {isUploadingCover ? "Uploading..." : "Upload Cover"}
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
+            <CardContent className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">Description *</label>
-                <Textarea
-                  value={seriesData.description}
-                  onChange={(e) => setSeriesData(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Describe your series..."
-                  rows={4}
-                  className="resize-none"
+                <Label htmlFor="title">Title *</Label>
+                <Input
+                  id="title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Enter your series title..."
+                  className="mt-1"
                 />
               </div>
 
-              <div className="flex justify-end">
-                <Button 
-                  onClick={handleSave}
-                  disabled={updateSeriesMutation.isPending}
-                >
-                  <Save className="w-4 h-4 mr-2" />
-                  {updateSeriesMutation.isPending ? "Saving..." : "Save Changes"}
-                </Button>
+              <div>
+                <Label htmlFor="description">Description *</Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Write a compelling description of your series..."
+                  className="mt-1 min-h-[120px]"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="genre">Genre</Label>
+                  <Select value={genre} onValueChange={setGenre}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Select a genre" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="romance">Romance</SelectItem>
+                      <SelectItem value="fantasy">Fantasy</SelectItem>
+                      <SelectItem value="mystery">Mystery</SelectItem>
+                      <SelectItem value="thriller">Thriller</SelectItem>
+                      <SelectItem value="sci-fi">Science Fiction</SelectItem>
+                      <SelectItem value="horror">Horror</SelectItem>
+                      <SelectItem value="drama">Drama</SelectItem>
+                      <SelectItem value="comedy">Comedy</SelectItem>
+                      <SelectItem value="historical">Historical Fiction</SelectItem>
+                      <SelectItem value="young-adult">Young Adult</SelectItem>
+                      <SelectItem value="literary">Literary Fiction</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="status">Status</Label>
+                  <Select value={status} onValueChange={(value: any) => setStatus(value)}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="ongoing">Ongoing</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <Label>Tags</Label>
+                <div className="flex items-center space-x-2 mt-1">
+                  <Input
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value)}
+                    placeholder="Add a tag..."
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && newTag.trim()) {
+                        if (!tags.includes(newTag.trim())) {
+                          setTags([...tags, newTag.trim()]);
+                        }
+                        setNewTag("");
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      if (newTag.trim() && !tags.includes(newTag.trim())) {
+                        setTags([...tags, newTag.trim()]);
+                        setNewTag("");
+                      }
+                    }}
+                    size="sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {tags.map((tag, index) => (
+                    <Badge key={index} variant="secondary" className="flex items-center space-x-1">
+                      <span>{tag}</span>
+                      <button
+                        onClick={() => setTags(tags.filter((_, i) => i !== index))}
+                        className="ml-1 hover:text-destructive"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Cover Image Upload */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Upload className="w-5 h-5" />
+                <span>Cover Image</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setCoverImage(file);
+                      const reader = new FileReader();
+                      reader.onload = (e) => {
+                        setCoverImagePreview(e.target?.result as string);
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  className="hidden"
+                  id="cover-upload"
+                />
+                <Label htmlFor="cover-upload" className="cursor-pointer">
+                  <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary transition-colors">
+                    {coverImagePreview ? (
+                      <div className="space-y-2">
+                        <img
+                          src={coverImagePreview}
+                          alt="Cover preview"
+                          className="max-w-32 max-h-48 mx-auto rounded-lg object-cover"
+                        />
+                        <p className="text-sm text-muted-foreground">Click to change cover</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <Upload className="w-8 h-8 mx-auto text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">
+                          Click to upload cover image
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </Label>
               </div>
             </CardContent>
           </Card>
@@ -402,57 +385,78 @@ export default function SeriesEditPage() {
           {/* Chapters Management */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Chapters ({chapters.length})</CardTitle>
-                <Button onClick={() => window.location.href = `/story/${storyId}/chapter/new`}>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <List className="w-5 h-5" />
+                  <span>Chapters</span>
+                </div>
+                <Button
+                  onClick={() => setShowChapterForm(true)}
+                  size="sm"
+                >
                   <Plus className="w-4 h-4 mr-2" />
                   Add Chapter
                 </Button>
-              </div>
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              {chaptersLoading ? (
-                <div className="text-center py-4">
-                  <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-                </div>
-              ) : chapters.length === 0 ? (
-                <div className="text-center py-8">
-                  <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground mb-4">No chapters yet</p>
-                  <Button onClick={() => window.location.href = `/story/${storyId}/chapter/new`}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add First Chapter
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {chapters.map((chapter: any) => (
-                    <div 
-                      key={chapter.id} 
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50"
+              {showChapterForm && (
+                <div className="bg-muted p-4 rounded-lg mb-4">
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      value={newChapterTitle}
+                      onChange={(e) => setNewChapterTitle(e.target.value)}
+                      placeholder="Chapter title..."
+                      onKeyPress={(e) => e.key === 'Enter' && addChapter()}
+                    />
+                    <Button onClick={addChapter} size="sm">
+                      Add
+                    </Button>
+                    <Button 
+                      onClick={() => setShowChapterForm(false)} 
+                      variant="ghost" 
+                      size="sm"
                     >
-                      <div className="flex-1">
-                        <h4 className="font-medium">
-                          Chapter {chapter.chapterNumber}: {chapter.title}
-                        </h4>
-                        <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-                          <span>{chapter.wordCount} words</span>
-                          <Badge variant={chapter.isPublished ? "default" : "secondary"}>
-                            {chapter.isPublished ? "Published" : "Draft"}
-                          </Badge>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                {chapters.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="w-8 h-8 mx-auto mb-2" />
+                    <p>No chapters yet. Add your first chapter to get started!</p>
+                  </div>
+                ) : (
+                  chapters.map((chapter, index) => (
+                    <div key={chapter.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <span className="text-sm text-muted-foreground w-8">
+                          {chapter.order}
+                        </span>
+                        <div>
+                          <h4 className="font-medium">{chapter.title}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {chapter.wordCount} words
+                          </p>
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button 
-                          variant="ghost" 
+                      <div className="flex items-center space-x-2">
+                        <Badge variant={chapter.published ? "default" : "secondary"}>
+                          {chapter.published ? "Published" : "Draft"}
+                        </Badge>
+                        <Button
+                          onClick={() => setEditingChapter(chapter)}
                           size="sm"
-                          onClick={() => window.location.href = `/story/${storyId}/chapter/${chapter.id}/edit`}
+                          variant="ghost"
                         >
-                          <Edit3 className="w-4 h-4" />
+                          <Edit className="w-4 h-4" />
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="sm">
+                            <Button size="sm" variant="ghost">
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </AlertDialogTrigger>
@@ -466,25 +470,107 @@ export default function SeriesEditPage() {
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
                               <AlertDialogAction
-                                onClick={() => deleteChapterMutation.mutate(chapter.id)}
+                                onClick={() => deleteChapter(chapter.id)}
                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               >
-                                Delete Chapter
+                                Delete
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Sidebar */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Settings className="w-5 h-5" />
+                <span>Settings</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Visibility</Label>
+                <Select value={isPublic ? "public" : "private"} onValueChange={(value) => setIsPublic(value === "public")}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="public">
+                      <div className="flex items-center space-x-2">
+                        <Users className="w-4 h-4" />
+                        <span>Public</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="private">
+                      <div className="flex items-center space-x-2">
+                        <Eye className="w-4 h-4" />
+                        <span>Private</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {isPublic ? "Anyone can find and read your series" : "Only you can see this series"}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Statistics</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Chapters</span>
+                <span className="text-sm font-medium">{chapters.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Total Words</span>
+                <span className="text-sm font-medium">{totalWordCount.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Status</span>
+                <Badge variant="outline" className="capitalize">{status}</Badge>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Published</span>
+                <span className="text-sm font-medium">
+                  {chapters.filter(ch => ch.published).length}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-6">
+              <div className="space-y-2">
+                <Button 
+                  className="w-full" 
+                  disabled={!title.trim() || !description.trim() || createSeriesMutation.isPending}
+                  onClick={handleCreateSeries}
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {createSeriesMutation.isPending ? "Creating..." : "Create Series"}
+                </Button>
+                <Button variant="outline" className="w-full">
+                  <Eye className="w-4 h-4 mr-2" />
+                  Preview
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
       </div>
-
-      <MobileNav />
     </div>
   );
 }

@@ -480,8 +480,8 @@ export default function PostCard({ post }: PostCardProps) {
 
           {/* Post Title */}
           {post.title && (
-            <div className="mb-3">
-              <h2 className="text-xl font-bold leading-tight text-foreground">
+            <div className="mb-4">
+              <h2 className="text-2xl font-bold leading-tight text-foreground mb-2 break-words">
                 {post.title}
               </h2>
             </div>

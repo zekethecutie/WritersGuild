@@ -47,7 +47,7 @@ export default function ImageGallery({
                                  images.length === 3 ? '1fr 1fr 1fr' : '1fr 1fr',
              gridTemplateRows: images.length <= 2 ? '1fr' :
                               images.length === 3 ? '1fr' : '1fr 1fr',
-             maxHeight: '400px',
+             maxHeight: images.length === 1 ? '500px' : '400px',
              width: '100%'
            }}>
         {images.slice(0, 4).map((image, index) => (
@@ -55,12 +55,12 @@ export default function ImageGallery({
             <img
               src={image}
               alt={`Gallery image ${index + 1}`}
-              className={`w-full h-auto object-contain cursor-pointer transition-opacity hover:opacity-90 ${
+              className={`w-full cursor-pointer transition-opacity hover:opacity-90 ${
                 images.length === 1 ? 'h-auto object-cover' : 'h-full object-cover'
               }`}
               style={{
-                maxHeight: images.length === 1 ? maxHeight : 200,
-                aspectRatio: images.length === 1 ? '16/9' : undefined,
+                maxHeight: images.length === 1 ? '500px' : '200px',
+                width: '100%',
                 borderRadius: '0.75rem'
               }}
               onClick={() => handleImageClick(image)}

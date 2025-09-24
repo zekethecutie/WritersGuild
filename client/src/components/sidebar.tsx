@@ -175,15 +175,41 @@ export default function Sidebar() {
                 @{user?.username}
               </p>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="p-2 hover:bg-muted"
-              onClick={() => window.location.href = "/api/logout"}
-              data-testid="button-user-menu"
-            >
-              <MoreHorizontal className="w-4 h-4" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="p-2 hover:bg-muted"
+                  data-testid="button-user-menu"
+                >
+                  <MoreHorizontal className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => window.location.href = "/settings"}>
+                  <Settings className="w-4 h-4 mr-2" />
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={async () => {
+                    try {
+                      await fetch("/api/logout", { method: "GET", credentials: "include" });
+                      logout();
+                      window.location.href = "/";
+                    } catch (error) {
+                      console.error("Logout error:", error);
+                      window.location.href = "/";
+                    }
+                  }}
+                  className="text-red-600 focus:text-red-600"
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Log Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>

@@ -1392,7 +1392,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id: chapterId } = req.params;
       const chapter = await storage.getChapterById(chapterId);
-      
+
       if (!chapter) {
         return res.status(404).json({ message: "Chapter not found" });
       }
