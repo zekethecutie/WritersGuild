@@ -268,7 +268,6 @@ export class DatabaseStorage implements IStorage {
       .select({
         id: posts.id,
         authorId: posts.authorId,
-        title: posts.title,
         content: posts.content,
         formattedContent: posts.formattedContent,
         postType: posts.postType,
