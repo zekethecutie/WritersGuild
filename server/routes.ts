@@ -763,14 +763,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Series routes
-  app.get('/api/series', async (req, res) => {
+  // Get public series
+  app.get("/api/series", async (req, res) => {
     try {
-      const { limit = 20, offset = 0, genre } = req.query;
-      const series = await storage.getPublicSeries(
+      const { genre, limit = "20", offset = "0" } = req.query;
+      const seriesList = await storage.getPublicSeries(
         parseInt(limit as string),
         parseInt(offset as string),
         genre as string
       );
+      res.json(seriesList);
+    } catch (error) {
+      console.error("Error fetching series:", error);
+      res.status(500).json({ error: "Failed to fetch series" });
+    }
+  });
+
+  // Get my stories (user's own stories) - must come before /:id route
+  app.get("/api/series/my-stories", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const userStories = await storage.getUserStories(userId);
+      res.json(userStories);
+    } catch (error) {
+      console.error("Error fetching user stories:", error);
+      res.status(500).json({ error: "Failed to fetch user stories" });
+    }
+  });
+
+  // Get series by ID
+  app.get("/api/series/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const series = await storage.getSeriesById(id);
+      if (!series) {
+        return res.status(404).json({ error: "Series not found" });
+      }
       res.json(series);
     } catch (error) {
       console.error("Error fetching series:", error);
@@ -790,20 +818,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/series/:id', async (req, res) => {
-    try {
-      const { id } = req.params;
-      const series = await storage.getSeriesById(id);
-      if (!series) {
-        return res.status(404).json({ error: "Series not found" });
-      }
-      res.json(series);
-    } catch (error) {
-      console.error("Error fetching series:", error);
-      res.status(500).json({ error: "Failed to fetch series" });
-    }
-  });
-
   app.get('/api/series/:id/chapters', async (req, res) => {
     try {
       const { id } = req.params;
@@ -812,23 +826,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching chapters:", error);
       res.status(500).json({ error: "Failed to fetch chapters" });
-    }
-  });
-
-  // Get user's own stories
-  app.get('/api/series/my-stories', requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.session.userId;
-
-      if (!userId) {
-        return res.status(401).json({ error: "User not authenticated" });
-      }
-
-      const userSeries = await storage.getUserStories(userId);
-      res.json(userSeries);
-    } catch (error) {
-      console.error("Error fetching my stories:", error);
-      res.status(500).json({ error: "Failed to fetch my stories" });
     }
   });
 
@@ -956,7 +953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Profile picture upload route
+  // Upload user profile picture endpoint
   app.post('/api/upload/profile-picture', requireAuth, writeLimiter, upload.single('profilePicture'), async (req: any, res) => {
     try {
       if (!req.file) {
@@ -988,15 +985,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Cover photo upload route
-  app.post('/api/upload/cover-photo', requireAuth, writeLimiter, upload.single('coverPhoto'), async (req: any, res) => {
+  // Upload user cover photo endpoint
+  app.post("/api/upload/cover-photo", requireAuth, upload.single('coverPhoto'), async (req, res) => {
     try {
       if (!req.file) {
-        return res.status(400).json({ message: "No file uploaded" });
+        return res.status(400).json({ error: "No file uploaded" });
       }
 
       const userId = req.session.userId;
-      const filename = `cover-${userId}-${Date.now()}.webp`;
+      const filename = `user-cover-${userId}-${Date.now()}.webp`;
       const filepath = path.join(uploadsDir, filename);
 
       // Resize to 1080p (1920x1080 for cover photos)
@@ -1010,13 +1007,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const imageUrl = `/uploads/${filename}`;
 
-      // Update user's cover photo
+      // Update user's cover image URL
       await storage.updateUserProfile(userId, { coverImageUrl: imageUrl });
 
       res.json({ imageUrl });
     } catch (error) {
-      console.error("Error uploading cover photo:", error);
-      res.status(500).json({ message: "Failed to upload cover photo" });
+      console.error("Error uploading user cover photo:", error);
+      res.status(500).json({ error: "Failed to upload user cover photo" });
+    }
+  });
+
+  // Upload series cover photo endpoint
+  app.post("/api/upload/series-cover-photo", requireAuth, upload.single('coverPhoto'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const userId = req.session.userId;
+      const filename = `series-cover-${userId}-${Date.now()}.webp`;
+      const filepath = path.join(uploadsDir, filename);
+
+      // Resize to 1080p (1920x1080 for cover photos)
+      await sharp(req.file.buffer)
+        .resize(1920, 1080, {
+          fit: 'cover',
+          position: 'center',
+        })
+        .webp({ quality: 85 })
+        .toFile(filepath);
+
+      const imageUrl = `/uploads/${filename}`;
+
+      // Update series cover image URL
+      // Assuming there's a storage method to update series cover image, e.g., storage.updateSeriesCover(seriesId, imageUrl)
+      // For now, we'll just return the URL. This part might need adjustment based on your storage implementation.
+      res.json({ imageUrl });
+    } catch (error) {
+      console.error("Error uploading series cover photo:", error);
+      res.status(500).json({ error: "Failed to upload series cover photo" });
     }
   });
 

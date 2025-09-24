@@ -1663,6 +1663,12 @@ export class DatabaseStorage implements IStorage {
     return progress;
   }
 
+  // Add missing method for series comments
+  async getSeriesComments(seriesId: string): Promise<any[]> {
+    // For now, return empty array - implement series comments later
+    return [];
+  }
+
   async getSeriesComments(seriesId: string): Promise<any[]> {
     // For now, return empty array - implement series comments later
     return [];
