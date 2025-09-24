@@ -60,8 +60,13 @@ function MyStoriesSection() {
   const { data: myStories = [], isLoading } = useQuery({
     queryKey: ["/api/series/my-stories"],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/series/my-stories");
-      return Array.isArray(response) ? response : [];
+      try {
+        const response = await apiRequest("GET", "/api/series/my-stories");
+        return Array.isArray(response) ? response : [];
+      } catch (error) {
+        console.error("Error fetching my stories:", error);
+        return [];
+      }
     },
     enabled: !!user,
   });
@@ -108,7 +113,7 @@ function MyStoriesSection() {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {Array.isArray(myStories) && myStories.map((story: any) => (
+      {Array.isArray(myStories) && myStories.length > 0 && myStories.map((story: any) => (
         <Card key={story.id} className="group hover:shadow-lg transition-shadow">
           <div className="aspect-[3/4] bg-gradient-to-br from-primary/20 to-accent/20 rounded-t-lg flex items-center justify-center relative">
             {story.coverImageUrl ? (

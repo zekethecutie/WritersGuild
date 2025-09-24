@@ -17,7 +17,7 @@ interface AuthDialogProps {
   description?: string;
 }
 
-export function AuthDialog({ 
+function AuthDialog({ 
   open, 
   onOpenChange, 
   onSuccess, 
@@ -254,3 +254,6 @@ export function AuthDialog({
     </Dialog>
   );
 }
+
+export { AuthDialog };
+export default AuthDialog;

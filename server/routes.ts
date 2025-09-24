@@ -762,6 +762,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Series routes
+  app.get('/api/series', async (req, res) => {
+    try {
+      const { limit = 20, offset = 0, genre } = req.query;
+      const series = await storage.getPublicSeries(
+        parseInt(limit as string),
+        parseInt(offset as string),
+        genre as string
+      );
+      res.json(series);
+    } catch (error) {
+      console.error("Error fetching series:", error);
+      res.status(500).json({ error: "Failed to fetch series" });
+    }
+  });
+
+  app.post('/api/series', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const seriesData = { ...req.body, authorId: userId };
+      const series = await storage.createSeries(seriesData);
+      res.json(series);
+    } catch (error) {
+      console.error("Error creating series:", error);
+      res.status(500).json({ error: "Failed to create series" });
+    }
+  });
+
+  app.get('/api/series/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const series = await storage.getSeriesById(id);
+      if (!series) {
+        return res.status(404).json({ error: "Series not found" });
+      }
+      res.json(series);
+    } catch (error) {
+      console.error("Error fetching series:", error);
+      res.status(500).json({ error: "Failed to fetch series" });
+    }
+  });
+
+  app.get('/api/series/:id/chapters', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const chapters = await storage.getSeriesChapters(id);
+      res.json(chapters);
+    } catch (error) {
+      console.error("Error fetching chapters:", error);
+      res.status(500).json({ error: "Failed to fetch chapters" });
+    }
+  });
+
   // Get user's own stories
   app.get('/api/series/my-stories', requireAuth, async (req: any, res) => {
     try {

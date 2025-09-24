@@ -1445,76 +1445,92 @@ export class DatabaseStorage implements IStorage {
 
   // Series management methods
   async createSeries(seriesData: any): Promise<any> {
-    const [newSeries] = await db.insert(series).values(seriesData).returning();
-    return newSeries;
+    try {
+      const [newSeries] = await db.insert(series).values(seriesData).returning();
+      return newSeries;
+    } catch (error) {
+      console.error("Error creating series:", error);
+      throw error;
+    }
   }
 
   async getPublicSeries(limit = 20, offset = 0, genre?: string): Promise<any[]> {
-    let query = db
-      .select({
-        id: series.id,
-        title: series.title,
-        description: series.description,
-        genre: series.genre,
-        tags: series.tags,
-        coverImageUrl: series.coverImageUrl,
-        isCompleted: series.isCompleted,
-        chaptersCount: series.chaptersCount,
-        followersCount: series.followersCount,
-        likesCount: series.likesCount,
-        viewsCount: series.viewsCount,
-        createdAt: series.createdAt,
-        author: {
-          id: users.id,
-          username: users.username,
-          displayName: users.displayName,
-          profileImageUrl: users.profileImageUrl,
-        },
-      })
-      .from(series)
-      .innerJoin(users, eq(series.authorId, users.id))
-      .where(eq(series.isPrivate, false));
-
-    if (genre) {
-      query = query.where(and(eq(series.isPrivate, false), eq(series.genre, genre)));
-    }
-
-    return query
-      .orderBy(desc(series.createdAt))
-      .limit(limit)
-      .offset(offset);
-  }
-
-  async getSeriesById(seriesId: string): Promise<any> {
-    const [result] = await db
-      .select({
+    try {
+      let query = db.select({
         id: series.id,
         authorId: series.authorId,
         title: series.title,
         description: series.description,
+        coverImageUrl: series.coverImageUrl,
         genre: series.genre,
         tags: series.tags,
-        coverImageUrl: series.coverImageUrl,
         isCompleted: series.isCompleted,
-        isPrivate: series.isPrivate,
+        viewsCount: series.viewsCount,
+        likesCount: series.likesCount,
         chaptersCount: series.chaptersCount,
         followersCount: series.followersCount,
-        likesCount: series.likesCount,
-        viewsCount: series.viewsCount,
         createdAt: series.createdAt,
-        updatedAt: series.updatedAt,
         author: {
           id: users.id,
           username: users.username,
           displayName: users.displayName,
           profileImageUrl: users.profileImageUrl,
-        },
+          isVerified: users.isVerified,
+        }
       })
       .from(series)
-      .innerJoin(users, eq(series.authorId, users.id))
+      .leftJoin(users, eq(series.authorId, users.id))
+      .where(eq(series.isPrivate, false));
+
+      if (genre) {
+        query = query.where(and(eq(series.isPrivate, false), eq(series.genre, genre)));
+      }
+
+      const result = await query
+        .orderBy(desc(series.createdAt))
+        .limit(limit)
+        .offset(offset);
+
+      return result;
+    } catch (error) {
+      console.error("Error fetching public series:", error);
+      return [];
+    }
+  }
+
+  async getSeriesById(seriesId: string): Promise<any> {
+    try {
+      const [result] = await db.select({
+        id: series.id,
+        authorId: series.authorId,
+        title: series.title,
+        description: series.description,
+        coverImageUrl: series.coverImageUrl,
+        genre: series.genre,
+        tags: series.tags,
+        isCompleted: series.isCompleted,
+        viewsCount: series.viewsCount,
+        likesCount: series.likesCount,
+        chaptersCount: series.chaptersCount,
+        followersCount: series.followersCount,
+        createdAt: series.createdAt,
+        author: {
+          id: users.id,
+          username: users.username,
+          displayName: users.displayName,
+          profileImageUrl: users.profileImageUrl,
+          isVerified: users.isVerified,
+        }
+      })
+      .from(series)
+      .leftJoin(users, eq(series.authorId, users.id))
       .where(eq(series.id, seriesId));
 
-    return result;
+      return result;
+    } catch (error) {
+      console.error("Error fetching series by ID:", error);
+      return null;
+    }
   }
 
   async createChapter(chapterData: any): Promise<any> {
@@ -1530,11 +1546,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSeriesChapters(seriesId: string): Promise<any[]> {
-    return db
-      .select()
-      .from(chapters)
-      .where(eq(chapters.seriesId, seriesId))
-      .orderBy(asc(chapters.chapterNumber));
+    try {
+      const result = await db.select()
+        .from(chapters)
+        .where(eq(chapters.seriesId, seriesId))
+        .orderBy(asc(chapters.chapterNumber));
+
+      return result;
+    } catch (error) {
+      console.error("Error fetching series chapters:", error);
+      return [];
+    }
   }
 
   async followSeries(userId: string, seriesId: string): Promise<any> {
@@ -1570,8 +1592,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserStories(userId: string): Promise<any[]> {
-    return db
-      .select({
+    try {
+      const result = await db.select({
         id: series.id,
         title: series.title,
         description: series.description,
@@ -1579,16 +1601,21 @@ export class DatabaseStorage implements IStorage {
         genre: series.genre,
         tags: series.tags,
         isCompleted: series.isCompleted,
+        viewsCount: series.viewsCount,
+        likesCount: series.likesCount,
         chaptersCount: series.chaptersCount,
         followersCount: series.followersCount,
-        likesCount: series.likesCount,
-        viewsCount: series.viewsCount,
         createdAt: series.createdAt,
-        updatedAt: series.updatedAt,
       })
       .from(series)
       .where(eq(series.authorId, userId))
-      .orderBy(desc(series.updatedAt));
+      .orderBy(desc(series.createdAt));
+
+      return result;
+    } catch (error) {
+      console.error("Error fetching user stories:", error);
+      return [];
+    }
   }
 
   async deleteSeries(seriesId: string): Promise<void> {

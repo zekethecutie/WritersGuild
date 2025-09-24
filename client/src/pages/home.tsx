@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, TrendingUp, Flame, Music } from "lucide-react";
-import { AuthDialog } from "@/components/auth-dialog";
+import AuthDialog from "@/components/auth-dialog";
 import type { Post, User } from "@shared/schema";
 
 export default function Home() {

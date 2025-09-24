@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import Sidebar from "@/components/sidebar";
 import MobileNav from "@/components/mobile-nav";
-import { AuthDialog } from "@/components/auth-dialog";
+import AuthDialog from "@/components/auth-dialog";
 
 // Define interfaces for data types
 interface TrendingTopic {
