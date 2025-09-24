@@ -273,12 +273,14 @@ export default function PostCard({ post }: PostCardProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/trending/posts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users", post.authorId, "posts"] });
       toast({
         title: "Post deleted",
         description: "Your post has been deleted successfully.",
       });
     },
     onError: (error: Error) => {
+      console.error("Delete post error:", error);
       toast({
         title: "Delete failed",
         description: "There was an error deleting your post.",
@@ -479,9 +481,9 @@ export default function PostCard({ post }: PostCardProps) {
           </div>
 
           {/* Post Title */}
-          {post.title && (
+          {post.title && post.title.trim() && (
             <div className="mb-4">
-              <h2 className="text-2xl font-bold leading-tight text-foreground mb-2 break-words">
+              <h2 className="text-xl font-bold leading-tight text-foreground break-words" data-testid="post-title">
                 {post.title}
               </h2>
             </div>

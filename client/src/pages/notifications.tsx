@@ -241,9 +241,9 @@ export default function NotificationsPage() {
                     <div className="flex items-start gap-3">
                       <div className="relative">
                         <Avatar className="h-10 w-10">
-                          <AvatarImage src={notification.actor.profileImageUrl} />
+                          <AvatarImage src={notification.actor?.profileImageUrl} />
                           <AvatarFallback>
-                            {notification.actor.displayName.slice(0, 2).toUpperCase()}
+                            {notification.actor?.displayName?.slice(0, 2)?.toUpperCase() || "??"}
                           </AvatarFallback>
                         </Avatar>
                         <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-1">
@@ -253,12 +253,12 @@ export default function NotificationsPage() {
                       
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium">{notification.actor.displayName}</span>
-                          {notification.actor.isVerified && (
+                          <span className="font-medium">{notification.actor?.displayName || "Unknown User"}</span>
+                          {notification.actor?.isVerified && (
                             <Badge variant="secondary" className="h-4 w-4 p-0">✓</Badge>
                           )}
                           <span className="text-sm text-muted-foreground">
-                            @{notification.actor.username}
+                            @{notification.actor?.username || "unknown"}
                           </span>
                           <span className="text-sm text-muted-foreground">
                             {getNotificationText(notification)}

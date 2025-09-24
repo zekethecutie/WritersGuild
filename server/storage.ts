@@ -1935,6 +1935,49 @@ export class DatabaseStorage implements IStorage {
     return topAuthors;
   }
 
+  // Delete post method
+  async deletePost(postId: string): Promise<void> {
+    await db.delete(posts).where(eq(posts.id, postId));
+  }
+
+  // Update daily writing goals
+  async updateDailyWritingGoals(userId: string, wordCount: number, postsCount: number): Promise<void> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Check if goal exists for today
+    const existingGoal = await db
+      .select()
+      .from(writingGoals)
+      .where(and(
+        eq(writingGoals.userId, userId),
+        eq(writingGoals.date, today)
+      ))
+      .limit(1);
+
+    if (existingGoal.length > 0) {
+      // Update existing goal
+      await db
+        .update(writingGoals)
+        .set({
+          wordCount: existingGoal[0].wordCount + wordCount,
+          postsCount: existingGoal[0].postsCount + postsCount,
+        })
+        .where(eq(writingGoals.id, existingGoal[0].id));
+    } else {
+      // Create new goal
+      await db
+        .insert(writingGoals)
+        .values({
+          userId,
+          date: today,
+          wordCount,
+          postsCount,
+          goalMet: false,
+        });
+    }
+  }
+
   // Series likes methods
   async hasUserLikedSeries(userId: string, seriesId: string): Promise<boolean> {
     const like = await db

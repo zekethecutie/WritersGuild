@@ -314,6 +314,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const post = await storage.createPost(postData);
+
+      // Update daily word count and post count
+      const wordCount = postData.content.split(/\s+/).filter(word => word.length > 0).length;
+      await storage.updateDailyWritingGoals(userId, wordCount, 1);
+
       res.json(post);
     } catch (error) {
       console.error("Error creating post:", error);
@@ -535,28 +540,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const isAlreadyFollowing = await storage.isFollowing(followerId, followingId);
+      
       if (isAlreadyFollowing) {
-        return res.status(400).json({ message: "Already following user" });
+        // Unfollow if already following
+        await storage.unfollowUser(followerId, followingId);
+        res.json({ following: false, message: "Unfollowed user" });
+      } else {
+        // Follow if not following
+        const follow = await storage.followUser(followerId, followingId);
+
+        // Create and broadcast follow notification
+        const notification = await storage.createNotification({
+          userId: followingId,
+          type: 'follow',
+          actorId: followerId,
+          isRead: false,
+          postId: null,
+          data: {}
+        });
+
+        // Broadcast real-time notification
+        if ((app as any).broadcastNotification) {
+          (app as any).broadcastNotification(followingId, notification);
+        }
+
+        res.json({ following: true, follow, message: "Following user" });
       }
-
-      const follow = await storage.followUser(followerId, followingId);
-
-      // Create and broadcast follow notification
-      const notification = await storage.createNotification({
-        userId: followingId,
-        type: 'follow',
-        actorId: followerId,
-        isRead: false,
-        postId: null,
-        data: {}
-      });
-
-      // Broadcast real-time notification
-      if ((app as any).broadcastNotification) {
-        (app as any).broadcastNotification(followingId, notification);
-      }
-
-      res.json(follow);
     } catch (error) {
       console.error("Error following user:", error);
       res.status(500).json({ message: "Failed to follow user" });
@@ -685,6 +694,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Search routes
+  app.get('/api/users/search', async (req, res) => {
+    try {
+      const { q: query, limit = 10 } = req.query;
+      if (!query) {
+        return res.status(400).json({ message: "Query parameter required" });
+      }
+
+      const users = await storage.searchUsers(query as string, parseInt(limit as string));
+      res.json(users);
+    } catch (error) {
+      console.error("Error searching users:", error);
+      res.status(500).json({ message: "Failed to search users" });
+    }
+  });
+
   app.get('/api/search/users', async (req, res) => {
     try {
       const { q: query, limit = 10 } = req.query;
@@ -1262,6 +1286,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting post:", error);
       res.status(403).json({ message: (error as Error).message || 'Error deleting post' });
+    }
+  });
+
+  // Delete post route (for post owner)
+  app.delete('/api/posts/:id', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { id: postId } = req.params;
+
+      // Get post to verify ownership
+      const post = await storage.getPost(postId);
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      // Only allow post owner to delete
+      if (post.authorId !== userId) {
+        return res.status(403).json({ message: "You can only delete your own posts" });
+      }
+
+      await storage.deletePost(postId);
+      res.json({ message: "Post deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting post:", error);
+      res.status(500).json({ message: "Failed to delete post" });
     }
   });
 

@@ -93,20 +93,36 @@ export default function SeriesEdit() {
 
   const createSeriesMutation = useMutation({
     mutationFn: async (seriesData: any) => {
-      const formData = new FormData();
-      formData.append('title', seriesData.title);
-      formData.append('description', seriesData.description);
-      formData.append('genre', seriesData.genre);
-      formData.append('tags', JSON.stringify(seriesData.tags));
-      formData.append('isPublic', seriesData.isPublic.toString());
-      formData.append('status', seriesData.status);
-
+      // First upload cover image if exists
+      let coverImageUrl = "";
       if (coverImage) {
-        formData.append('coverImage', coverImage);
+        try {
+          const formData = new FormData();
+          formData.append('coverPhoto', coverImage);
+          
+          const uploadResponse = await fetch('/api/upload/series-cover', {
+            method: 'POST',
+            credentials: 'include',
+            body: formData,
+          });
+          
+          if (uploadResponse.ok) {
+            const uploadData = await uploadResponse.json();
+            coverImageUrl = uploadData.imageUrl;
+          }
+        } catch (error) {
+          console.error("Cover upload error:", error);
+        }
       }
 
-      return apiRequest("POST", "/api/series", formData, {
-        headers: {}
+      // Create series with data
+      return apiRequest("POST", "/api/series", {
+        title: seriesData.title,
+        description: seriesData.description,
+        genre: seriesData.genre,
+        tags: seriesData.tags,
+        isPrivate: !seriesData.isPublic,
+        coverImageUrl: coverImageUrl || undefined,
       });
     },
     onSuccess: (data) => {
