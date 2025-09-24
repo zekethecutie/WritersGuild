@@ -475,6 +475,18 @@ export const insertPostSchema = createInsertSchema(posts, {
   commentsCount: true,
   repostsCount: true,
   viewsCount: true,
+}).extend({
+  spotifyTrackData: z.object({
+    id: z.string(),
+    name: z.string(),
+    artist: z.string(),
+    album: z.string(),
+    image: z.string().optional(),
+    preview_url: z.string().optional(),
+    external_urls: z.object({
+      spotify: z.string()
+    }).optional()
+  }).optional(),
 });
 
 export const insertCommentSchema = createInsertSchema(comments).omit({

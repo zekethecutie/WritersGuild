@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,14 +13,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
+import {
   Image as ImageIcon,
   Music,
   Type,
@@ -121,7 +120,7 @@ export default function PostModal({ trigger, isOpen, onClose }: PostModalProps) 
 
       if (file.size > maxSize) {
         toast({
-          title: "File too large", 
+          title: "File too large",
           description: `${file.name} is larger than 10MB.`,
           variant: "destructive",
         });
@@ -206,10 +205,11 @@ export default function PostModal({ trigger, isOpen, onClose }: PostModalProps) 
       imageUrls: selectedImages.length > 0 ? selectedImages : undefined,
       spotifyTrackId: selectedTrack?.id,
       spotifyTrackData: selectedTrack ? {
+        id: selectedTrack.id,
         name: selectedTrack.name,
         artist: selectedTrack.artists[0]?.name,
-        album: selectedTrack.album?.name,
-        image: selectedTrack.album?.images[0]?.url,
+        album: selectedTrack.album.name,
+        image: selectedTrack.album.images[0]?.url,
         preview_url: selectedTrack.preview_url,
         external_urls: selectedTrack.external_urls
       } : undefined,
@@ -259,7 +259,7 @@ export default function PostModal({ trigger, isOpen, onClose }: PostModalProps) 
             Share your thoughts, stories, and creative content with the community.
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="space-y-4">
           <div className="flex space-x-3">
             <img
@@ -438,7 +438,7 @@ export default function PostModal({ trigger, isOpen, onClose }: PostModalProps) 
                     onClick={() => document.getElementById('modal-image-upload')?.click()}
                     disabled={isUploadingImages || selectedImages.length >= 4}
                     className={`p-2 rounded-lg transition-colors ${
-                      isUploadingImages ? "text-blue-400 bg-blue-400/10" : 
+                      isUploadingImages ? "text-blue-400 bg-blue-400/10" :
                       selectedImages.length >= 4 ? "text-muted-foreground/50 cursor-not-allowed" :
                       "text-muted-foreground hover:text-primary hover:bg-primary/10"
                     }`}

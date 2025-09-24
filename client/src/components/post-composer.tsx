@@ -221,13 +221,21 @@ export default function PostComposer() {
       return;
     }
 
+    // Mocking uploadedImages, mentions, and hashtags as they are not defined in the provided snippet
+    // In a real scenario, these would be managed state variables.
+    const uploadedImages = selectedImages; 
+    const mentions = new Set<string>(); // Placeholder
+    const hashtags = new Set<string>(); // Placeholder
+
     const postData = {
       title: title.trim() || undefined,
       content: content.trim(),
       postType,
-      genre: genre || undefined,
-      imageUrls: selectedImages.length > 0 ? selectedImages : undefined,
-      spotifyTrackId: selectedTrack?.id,
+      privacy,
+      imageUrls: uploadedImages,
+      mentions: Array.from(mentions),
+      hashtags: Array.from(hashtags),
+      collaborators: collaborators.length > 0 ? collaborators : undefined,
       spotifyTrackData: selectedTrack ? {
         name: selectedTrack.name,
         artist: selectedTrack.artists[0]?.name,
@@ -236,7 +244,6 @@ export default function PostComposer() {
         preview_url: selectedTrack.preview_url,
         external_urls: selectedTrack.external_urls
       } : undefined,
-      isPrivate: privacy === "private",
     };
 
     createPostMutation.mutate(postData);
