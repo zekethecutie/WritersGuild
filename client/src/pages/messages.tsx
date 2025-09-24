@@ -98,10 +98,10 @@ export default function Messages() {
   };
 
   // Filter conversations based on search
-  const filteredConversations = (conversations || []).filter((conv: any) =>
-    conv.otherParticipant.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    conv.otherParticipant.username.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredConversations = Array.isArray(conversations) ? conversations.filter((conv: any) =>
+    conv.otherParticipant?.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    conv.otherParticipant?.username?.toLowerCase().includes(searchQuery.toLowerCase())
+  ) : [];
 
   if (!isAuthenticated) {
     return (
