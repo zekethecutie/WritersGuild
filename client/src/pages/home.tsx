@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -7,13 +8,15 @@ import Sidebar from "@/components/sidebar";
 import PostModal from "@/components/post-modal";
 import PostCard from "@/components/post-card";
 import MobileNav from "@/components/mobile-nav";
+import LoadingScreen from "@/components/loading-screen";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, TrendingUp, Flame, Music } from "lucide-react";
+import { Search, TrendingUp, Flame, Music, ExternalLink, Users } from "lucide-react";
 import AuthDialog from "@/components/auth-dialog";
+import { getProfileImageUrl } from "@/lib/defaultImages";
 import type { Post, User } from "@shared/schema";
 
 export default function Home() {
@@ -21,7 +24,7 @@ export default function Home() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("for-you");
   const [showAuthDialog, setShowAuthDialog] = useState(false);
-  const [showPostModal, setShowPostModal] = useState(false); // State for controlling the Post Modal
+  const [showPostModal, setShowPostModal] = useState(false);
 
   // Show login prompt if not authenticated but don't force redirect
   useEffect(() => {
@@ -50,7 +53,7 @@ export default function Home() {
     getNextPageParam: (lastPage: any, pages) => {
       return lastPage.length === 20 ? pages.length * 20 : undefined;
     },
-    enabled: !!user || !isAuthenticated, // Enable for guests as well
+    enabled: !!user || !isAuthenticated,
   });
 
   // Fetch trending posts
@@ -78,10 +81,20 @@ export default function Home() {
     queryFn: async () => {
       const res = await fetch("/api/suggested/users?limit=3");
       const data = await res.json();
-      // Return empty array if API returns error or non-array data
       return Array.isArray(data) ? data : [];
     },
     enabled: !!user,
+  });
+
+  // Fetch popular Spotify tracks from posts
+  const { data: popularTracks } = useQuery({
+    queryKey: ["/api/posts/popular-music"],
+    queryFn: async () => {
+      const res = await fetch("/api/posts/popular-music?limit=3");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!isAuthenticated,
   });
 
   // Handle post errors
@@ -117,16 +130,7 @@ export default function Home() {
   const allPosts = postsData?.pages.flat() || [];
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-primary rounded-xl flex items-center justify-center mb-4 mx-auto">
-            <div className="w-8 h-8 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-          </div>
-          <p className="text-muted-foreground">Loading Writers Guild...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen title="Loading Writers Guild..." subtitle="Preparing your creative space" />;
   }
 
   return (
@@ -186,7 +190,6 @@ export default function Home() {
                     <Button variant="outline" onClick={() => setShowAuthDialog(true)}>
                       Sign In
                     </Button>
-                    {/* Guest Access Button */}
                     <Button variant="ghost" onClick={() => { /* No-op for guest, as they are already viewing */ }} className="mt-4">
                       Continue as Guest
                     </Button>
@@ -197,7 +200,6 @@ export default function Home() {
               {/* Posts Feed */}
               <div className="space-y-0">
                 {postsLoading ? (
-                  // Loading skeletons
                   Array.from({ length: 5 }).map((_, i) => (
                     <div key={i} className="border-b border-border p-6">
                       <div className="flex space-x-3">
@@ -257,6 +259,7 @@ export default function Home() {
                         placeholder="Search writers, posts, genres..." 
                         className="pl-10 bg-input border-border focus:border-primary"
                         data-testid="input-search"
+                        onClick={() => window.location.href = "/search"}
                       />
                     </div>
                   </CardContent>
@@ -300,7 +303,7 @@ export default function Home() {
                       <div key={suggestedUser.id} className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
                           <img 
-                            src={suggestedUser.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${suggestedUser.username}`}
+                            src={getProfileImageUrl(suggestedUser.profileImageUrl)}
                             alt={suggestedUser.displayName}
                             className="w-10 h-10 rounded-full"
                           />
@@ -378,33 +381,55 @@ export default function Home() {
                 </CardContent>
               </Card>
 
-              {/* Recently Played Music */}
+              {/* Popular Music from Posts */}
               <Card className="bg-card border-border">
                 <CardContent className="p-4">
                   <div className="flex items-center space-x-2 mb-4">
                     <Music className="w-5 h-5 text-green-500" />
-                    <h3 className="font-bold text-lg">Writing Soundtrack</h3>
+                    <h3 className="font-bold text-lg">Popular Soundtrack</h3>
                   </div>
                   <div className="space-y-3">
-                    {[
-                      { artist: "Ludovico Einaudi", track: "Nuvole Bianche" },
-                      { artist: "Ólafur Arnalds", track: "Near Light" },
-                      { artist: "Max Richter", track: "On The Nature of Daylight" },
-                    ].map((music, index) => (
-                      <div 
-                        key={index}
-                        className="flex items-center space-x-3 p-2 rounded-lg hover:bg-secondary/50 cursor-pointer transition-colors"
-                        data-testid={`music-${index}`}
-                      >
-                        <div className="w-8 h-8 bg-green-600 rounded flex items-center justify-center">
-                          <Music className="w-4 h-4 text-white" />
+                    {popularTracks && popularTracks.length > 0 ? (
+                      popularTracks.map((track: any, index: number) => (
+                        <div 
+                          key={index}
+                          className="flex items-center space-x-3 p-2 rounded-lg hover:bg-secondary/50 cursor-pointer transition-colors"
+                          data-testid={`music-${index}`}
+                          onClick={() => track.external_urls?.spotify && window.open(track.external_urls.spotify, '_blank')}
+                        >
+                          <div className="w-8 h-8 bg-green-600 rounded flex items-center justify-center">
+                            <Music className="w-4 h-4 text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{track.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{track.artist}</p>
+                          </div>
+                          {track.external_urls?.spotify && (
+                            <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                          )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{music.artist}</p>
-                          <p className="text-xs text-muted-foreground truncate">{music.track}</p>
+                      ))
+                    ) : (
+                      [
+                        { artist: "Ludovico Einaudi", track: "Nuvole Bianche" },
+                        { artist: "Ólafur Arnalds", track: "Near Light" },
+                        { artist: "Max Richter", track: "On The Nature of Daylight" },
+                      ].map((music, index) => (
+                        <div 
+                          key={index}
+                          className="flex items-center space-x-3 p-2 rounded-lg hover:bg-secondary/50 cursor-pointer transition-colors"
+                          data-testid={`music-${index}`}
+                        >
+                          <div className="w-8 h-8 bg-green-600 rounded flex items-center justify-center">
+                            <Music className="w-4 h-4 text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{music.artist}</p>
+                            <p className="text-xs text-muted-foreground truncate">{music.track}</p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -426,8 +451,8 @@ export default function Home() {
       {/* Auth Dialog */}
       {showAuthDialog && (
         <AuthDialog 
-          isOpen={showAuthDialog} 
-          onClose={() => setShowAuthDialog(false)} 
+          open={showAuthDialog} 
+          onOpenChange={setShowAuthDialog} 
         />
       )}
     </div>

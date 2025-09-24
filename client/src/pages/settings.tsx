@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { 
   Settings, 
@@ -36,13 +38,17 @@ import {
   Monitor,
   Smartphone,
   Save,
-  X
+  X,
+  PenTool,
+  BookOpen,
+  Upload
 } from "lucide-react";
 
 const WRITING_GENRES = [
   'Poetry', 'Fiction', 'Non-Fiction', 'Fantasy', 'Romance', 'Mystery', 
   'Science Fiction', 'Horror', 'Young Adult', 'Literary Fiction', 
-  'Memoir', 'Creative Writing', 'Short Stories', 'Flash Fiction'
+  'Memoir', 'Creative Writing', 'Short Stories', 'Flash Fiction',
+  'Historical Fiction', 'Thriller', 'Adventure', 'Drama'
 ];
 
 export default function SettingsPage() {
@@ -57,7 +63,9 @@ export default function SettingsPage() {
     bio: user?.bio || '',
     location: user?.location || '',
     website: user?.website || '',
-    genres: user?.genres || []
+    genres: user?.genres || [],
+    userRole: user?.userRole || 'reader',
+    preferredGenres: user?.preferredGenres || []
   });
 
   // Privacy settings state
@@ -91,7 +99,6 @@ export default function SettingsPage() {
 
   const [isUploadingProfile, setIsUploadingProfile] = useState(false);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
-
 
   if (!isAuthenticated) {
     return (
@@ -341,6 +348,15 @@ export default function SettingsPage() {
     }));
   };
 
+  const handlePreferredGenreToggle = (genre: string) => {
+    setProfileForm(prev => ({
+      ...prev,
+      preferredGenres: prev.preferredGenres.includes(genre)
+        ? prev.preferredGenres.filter(g => g !== genre)
+        : [...prev.preferredGenres, genre]
+    }));
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
@@ -402,17 +418,80 @@ export default function SettingsPage() {
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <Button variant="outline" className="flex items-center gap-2">
-                          <Camera className="w-4 h-4" />
-                          Change Photo
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <label htmlFor="profile-picture-upload">
+                            <Button variant="outline" className="flex items-center gap-2" asChild>
+                              <span>
+                                <Camera className="w-4 h-4" />
+                                Change Photo
+                              </span>
+                            </Button>
+                          </label>
+                          <input
+                            id="profile-picture-upload"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleProfilePictureUpload}
+                            className="hidden"
+                          />
+                        </div>
                         <p className="text-xs text-muted-foreground mt-1">
                           JPG, PNG or GIF. Max size 10MB.
                         </p>
                       </div>
                     </div>
 
+                    {/* Cover Photo */}
+                    <div>
+                      <Label className="text-sm font-medium">Cover Photo</Label>
+                      <div className="mt-2 flex items-center gap-2">
+                        <label htmlFor="cover-photo-upload">
+                          <Button variant="outline" className="flex items-center gap-2" asChild>
+                            <span>
+                              <Upload className="w-4 h-4" />
+                              Upload Cover Photo
+                            </span>
+                          </Button>
+                        </label>
+                        <input
+                          id="cover-photo-upload"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleCoverPhotoUpload}
+                          className="hidden"
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Recommended size: 1920x1080px. Max size 10MB.
+                      </p>
+                    </div>
+
                     <Separator />
+
+                    {/* User Role */}
+                    <div>
+                      <Label className="text-sm font-medium mb-3 block">I am primarily a...</Label>
+                      <RadioGroup
+                        value={profileForm.userRole}
+                        onValueChange={(value) => setProfileForm(prev => ({ ...prev, userRole: value }))}
+                        className="flex gap-4"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="writer" id="role-writer" />
+                          <Label htmlFor="role-writer" className="flex items-center gap-2 cursor-pointer">
+                            <PenTool className="w-4 h-4" />
+                            Writer
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="reader" id="role-reader" />
+                          <Label htmlFor="role-reader" className="flex items-center gap-2 cursor-pointer">
+                            <BookOpen className="w-4 h-4" />
+                            Reader
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
 
                     {/* Basic Info */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -482,20 +561,43 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
-                    {/* Writing Genres */}
+                    {/* Writing Genres - only for writers */}
+                    {profileForm.userRole === 'writer' && (
+                      <div>
+                        <Label>Writing Genres</Label>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Select the genres you write in
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {WRITING_GENRES.map((genre) => (
+                            <Button
+                              key={genre}
+                              type="button"
+                              variant={profileForm.genres.includes(genre) ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => handleGenreToggle(genre)}
+                            >
+                              {genre}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Content Preferences */}
                     <div>
-                      <Label>Writing Genres</Label>
+                      <Label>Content Preferences</Label>
                       <p className="text-sm text-muted-foreground mb-3">
-                        Select the genres you write in
+                        Select the types of content you'd like to see in your feed
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {WRITING_GENRES.map((genre) => (
                           <Button
                             key={genre}
                             type="button"
-                            variant={profileForm.genres.includes(genre) ? "default" : "outline"}
+                            variant={profileForm.preferredGenres.includes(genre) ? "default" : "outline"}
                             size="sm"
-                            onClick={() => handleGenreToggle(genre)}
+                            onClick={() => handlePreferredGenreToggle(genre)}
                           >
                             {genre}
                           </Button>
@@ -687,6 +789,7 @@ export default function SettingsPage() {
                         {user?.isSuperAdmin && <Badge variant="destructive">Super Admin</Badge>}
                         {user?.isAdmin && !user?.isSuperAdmin && <Badge variant="secondary">Admin</Badge>}
                         {user?.isVerified && <Badge variant="default">Verified</Badge>}
+                        <Badge variant="outline">{profileForm.userRole === 'writer' ? 'Writer' : 'Reader'}</Badge>
                         {!user?.isVerified && !user?.isAdmin && <Badge variant="outline">Standard</Badge>}
                       </div>
                     </div>
