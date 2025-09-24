@@ -985,18 +985,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Upload user cover photo endpoint
-  app.post("/api/upload/cover-photo", requireAuth, upload.single('coverPhoto'), async (req, res) => {
+  // Upload user cover photo endpoint - separate from series covers
+  app.post("/api/upload/user-cover", requireAuth, upload.single('coverPhoto'), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: "No file uploaded" });
       }
 
       const userId = req.session.userId;
-      const filename = `user-cover-${userId}-${Date.now()}.webp`;
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(7);
+      const filename = `user-cover-${userId}-${timestamp}-${randomId}.webp`;
       const filepath = path.join(uploadsDir, filename);
 
-      // Resize to 1080p (1920x1080 for cover photos)
+      // Resize to banner aspect ratio (1920x1080 for user profile covers)
       await sharp(req.file.buffer)
         .resize(1920, 1080, {
           fit: 'cover',
@@ -1017,35 +1019,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Upload series cover photo endpoint
-  app.post("/api/upload/series-cover-photo", requireAuth, upload.single('coverPhoto'), async (req, res) => {
+  // Upload series cover photo endpoint - separate from user covers
+  app.post("/api/upload/series-cover", requireAuth, upload.single('coverPhoto'), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: "No file uploaded" });
       }
 
       const userId = req.session.userId;
-      const filename = `series-cover-${userId}-${Date.now()}.webp`;
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(7);
+      const filename = `series-cover-${userId}-${timestamp}-${randomId}.webp`;
       const filepath = path.join(uploadsDir, filename);
 
-      // Resize to 1080p (1920x1080 for cover photos)
+      // Resize to book cover aspect ratio (3:4 or 9:16)
       await sharp(req.file.buffer)
-        .resize(1920, 1080, {
+        .resize(720, 960, {
           fit: 'cover',
           position: 'center',
         })
-        .webp({ quality: 85 })
+        .webp({ quality: 90 })
         .toFile(filepath);
 
       const imageUrl = `/uploads/${filename}`;
 
-      // Update series cover image URL
-      // Assuming there's a storage method to update series cover image, e.g., storage.updateSeriesCover(seriesId, imageUrl)
-      // For now, we'll just return the URL. This part might need adjustment based on your storage implementation.
       res.json({ imageUrl });
     } catch (error) {
-      console.error("Error uploading series cover photo:", error);
-      res.status(500).json({ error: "Failed to upload series cover photo" });
+      console.error("Error uploading series cover:", error);
+      res.status(500).json({ error: "Failed to upload series cover" });
     }
   });
 

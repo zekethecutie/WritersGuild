@@ -1717,7 +1717,7 @@ export class DatabaseStorage implements IStorage {
 
   // Leaderboard methods
   async getTopPostsByLikes(limit: number = 20): Promise<any[]> {
-    const topPosts = await this.db
+    const topPosts = await db
       .select({
         id: posts.id,
         title: posts.title,
@@ -1757,7 +1757,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTopStoriesByLikes(limit: number = 20): Promise<any[]> {
-    const topStories = await this.db
+    const topStories = await db
       .select({
         id: series.id,
         title: series.title,
@@ -1795,7 +1795,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTopAuthorsByStoryLikes(limit: number = 20): Promise<any[]> {
-    const topAuthors = await this.db
+    const topAuthors = await db
       .select({
         id: users.id,
         username: users.username,
@@ -1823,7 +1823,7 @@ export class DatabaseStorage implements IStorage {
 
   // Series likes methods
   async hasUserLikedSeries(userId: string, seriesId: string): Promise<boolean> {
-    const like = await this.db
+    const like = await db
       .select()
       .from(seriesLikes)
       .where(and(
@@ -1843,12 +1843,12 @@ export class DatabaseStorage implements IStorage {
       createdAt: new Date()
     };
 
-    await this.db.insert(seriesLikes).values(like);
+    await db.insert(seriesLikes).values(like);
     return like;
   }
 
   async unlikeSeries(userId: string, seriesId: string): Promise<void> {
-    await this.db
+    await db
       .delete(seriesLikes)
       .where(and(
         eq(seriesLikes.userId, userId),

@@ -245,7 +245,7 @@ export default function Profile() {
       const formData = new FormData();
       formData.append('coverPhoto', file);
 
-      const response = await fetch('/api/upload/cover-photo', {
+      const response = await fetch('/api/upload/user-cover', {
         method: 'POST',
         credentials: 'include',
         body: formData,

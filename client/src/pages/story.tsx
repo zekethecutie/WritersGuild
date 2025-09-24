@@ -321,11 +321,11 @@ export default function StoryPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
             {/* Cover Image */}
             <div className="lg:col-span-1">
-              <div className="aspect-[9/16] bg-gradient-to-br from-primary/20 to-accent/20 rounded-xl overflow-hidden">
-                {story.coverImageUrl ? (
+              <div className="aspect-[3/4] bg-gradient-to-br from-primary/20 to-accent/20 rounded-xl overflow-hidden shadow-lg">
+                {story?.coverImageUrl ? (
                   <img 
                     src={story.coverImageUrl} 
-                    alt={story.title}
+                    alt={story.title || "Story cover"}
                     className="w-full h-full object-cover"
                   />
                 ) : (

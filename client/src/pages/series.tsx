@@ -271,7 +271,7 @@ export default function SeriesPage() {
 
     setIsUploadingCover(true);
     try {
-      const response = await fetch("/api/upload/series-cover-photo", {
+      const response = await fetch("/api/upload/series-cover", {
         method: "POST",
         body: formData,
         credentials: "include",
