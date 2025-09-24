@@ -278,6 +278,9 @@ export default function PostCard({ post }: PostCardProps) {
       ? post.content.substring(0, 300) + "..."
       : post.content;
 
+    // Check if content contains HTML tags (indicates rich text editor was used)
+    const isRichText = /<[^>]*>/g.test(post.content);
+
     if (post.postType === "poetry") {
       return (
         <div className={`rounded-xl p-6 mb-4 ${getPostTypeStyle()}`}>
@@ -289,11 +292,18 @@ export default function PostCard({ post }: PostCardProps) {
             </div>
           )}
           <div className="poetry-container space-y-3 text-foreground/90">
-            {displayContent.split('\n').map((line, index) => (
-              <p key={index} className="poetry-line break-words overflow-hidden">
-                {line || <br />}
-              </p>
-            ))}
+            {isRichText ? (
+              <div 
+                className="prose prose-sm max-w-none break-words overflow-hidden"
+                dangerouslySetInnerHTML={{ __html: displayContent }}
+              />
+            ) : (
+              displayContent.split('\n').map((line, index) => (
+                <p key={index} className="poetry-line break-words overflow-hidden">
+                  {line || <br />}
+                </p>
+              ))
+            )}
           </div>
         </div>
       );
@@ -312,9 +322,16 @@ export default function PostCard({ post }: PostCardProps) {
           </p>
 
           <div className={`rounded-xl p-5 font-serif ${getPostTypeStyle()}`}>
-            <p className="italic text-foreground/90 leading-relaxed break-words overflow-hidden">
-              "{displayContent}"
-            </p>
+            {isRichText ? (
+              <div 
+                className="prose prose-sm max-w-none italic text-foreground/90 leading-relaxed break-words overflow-hidden"
+                dangerouslySetInnerHTML={{ __html: `"${displayContent}"` }}
+              />
+            ) : (
+              <p className="italic text-foreground/90 leading-relaxed break-words overflow-hidden">
+                "{displayContent}"
+              </p>
+            )}
           </div>
         </div>
       );
@@ -322,9 +339,16 @@ export default function PostCard({ post }: PostCardProps) {
 
     return (
       <div className="mb-4">
-        <p className="text-base leading-relaxed whitespace-pre-wrap break-words overflow-hidden">
-          {displayContent}
-        </p>
+        {isRichText ? (
+          <div 
+            className="prose prose-sm max-w-none text-base leading-relaxed break-words overflow-hidden"
+            dangerouslySetInnerHTML={{ __html: displayContent }}
+          />
+        ) : (
+          <p className="text-base leading-relaxed whitespace-pre-wrap break-words overflow-hidden">
+            {displayContent}
+          </p>
+        )}
         {shouldExpand && (
           <Button
             variant="link"
