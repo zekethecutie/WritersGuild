@@ -10,6 +10,8 @@ import {
   boolean,
   uuid,
   unique,
+  real, // Make sure 'real' is imported if used, though original uses integer for likesCount.
+  uniqueIndex, // Import uniqueIndex
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";

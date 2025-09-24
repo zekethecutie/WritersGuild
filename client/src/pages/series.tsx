@@ -98,7 +98,7 @@ function MyStoriesSection() {
         <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
         <h3 className="text-lg font-semibold mb-2">No stories yet</h3>
         <p className="text-muted-foreground mb-4">Start your writing journey by creating your first series</p>
-        <Button onClick={() => setShowCreateDialog(true)}>
+        <Button>
           <Plus className="w-4 h-4 mr-2" />
           Create Your First Story
         </Button>

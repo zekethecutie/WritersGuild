@@ -13,9 +13,17 @@ interface AuthDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
+  title?: string;
+  description?: string;
 }
 
-export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
+export function AuthDialog({ 
+  open, 
+  onOpenChange, 
+  onSuccess, 
+  title = "Join Writers Guild",
+  description 
+}: AuthDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
   const { toast } = useToast();
@@ -116,7 +124,8 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Join Writers Guild</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
+          {description && <p className="text-sm text-muted-foreground mt-2">{description}</p>}
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>

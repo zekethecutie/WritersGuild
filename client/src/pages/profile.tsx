@@ -301,6 +301,10 @@ export default function Profile() {
       }
       coverPhotoMutation.mutate(file);
     }
+    // Reset input value so the same file can be selected again
+    if (event.target) {
+      event.target.value = '';
+    }
   };
 
   if (authLoading || profileLoading) {
@@ -615,13 +619,7 @@ export default function Profile() {
               >
                 Stories
               </TabsTrigger>
-              <TabsTrigger 
-                value="analytics" 
-                className="flex-1 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent"
-                data-testid="tab-analytics"
-              >
-                Analytics
-              </TabsTrigger>
+              
               {isOwnProfile && (
                 <TabsTrigger 
                   value="bookmarks" 
@@ -699,120 +697,7 @@ export default function Profile() {
               <UserStoriesSection userId={profileUser.id} isOwnProfile={isOwnProfile} />
             </TabsContent>
 
-            <TabsContent value="analytics" className="mt-0">
-                <div className="p-6 space-y-6" data-testid="analytics-tab">
-                  {isOwnProfile && isAuthenticated ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {/* Total Posts */}
-                      <div className="bg-card rounded-lg p-4 border">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-muted-foreground">Total Posts</p>
-                            <p className="text-2xl font-bold">{profileUser.postsCount || 0}</p>
-                          </div>
-                          <Edit3 className="w-8 h-8 text-blue-500" />
-                        </div>
-                      </div>
-
-                      {/* Total Likes Received */}
-                      <div className="bg-card rounded-lg p-4 border">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-muted-foreground">Likes Received</p>
-                            <p className="text-2xl font-bold">{userStats?.likesCount || 0}</p>
-                          </div>
-                          <Heart className="w-8 h-8 text-red-500" />
-                        </div>
-                      </div>
-
-                      {/* Total Comments */}
-                      <div className="bg-card rounded-lg p-4 border">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-muted-foreground">Comments Made</p>
-                            <p className="text-2xl font-bold">{profileUser.commentsCount || 0}</p>
-                          </div>
-                          <MessageCircle className="w-8 h-8 text-green-500" />
-                        </div>
-                      </div>
-
-                      {/* Followers */}
-                      <div className="bg-card rounded-lg p-4 border">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-muted-foreground">Followers</p>
-                            <p className="text-2xl font-bold">{userStats?.followersCount || 0}</p>
-                          </div>
-                          <Users className="w-8 h-8 text-purple-500" />
-                        </div>
-                      </div>
-
-                      {/* Writing Streak */}
-                      <div className="bg-card rounded-lg p-4 border">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-muted-foreground">Writing Streak</p>
-                            <p className="text-2xl font-bold">{profileUser.writingStreak || 0}</p>
-                          </div>
-                          <Edit3 className="w-8 h-8 text-orange-500" />
-                        </div>
-                      </div>
-
-                      {/* Account Age */}
-                      <div className="bg-card rounded-lg p-4 border">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-muted-foreground">Member Since</p>
-                            <p className="text-sm font-bold">
-                              {new Date(profileUser.createdAt).toLocaleDateString('en-US', { 
-                                month: 'short', 
-                                year: 'numeric' 
-                              })}
-                            </p>
-                          </div>
-                          <Calendar className="w-8 h-8 text-blue-400" />
-                        </div>
-                      </div>
-
-                      {/* Profile Views Placeholder */}
-                      <div className="bg-card rounded-lg p-4 border">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-muted-foreground">Profile Views</p>
-                            <p className="text-2xl font-bold">N/A</p>
-                          </div>
-                          <Eye className="w-8 h-8 text-cyan-500" />
-                        </div>
-                      </div>
-
-                      {/* Engagement Rate Placeholder */}
-                      <div className="bg-card rounded-lg p-4 border">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-muted-foreground">Avg. Engagement</p>
-                            <p className="text-2xl font-bold">
-                              {profileUser.postsCount > 0 
-                                ? Math.round(((userStats?.likesCount || 0) / profileUser.postsCount) * 10) / 10 
-                                : 0}
-                            </p>
-                          </div>
-                          <BarChart3 className="w-8 h-8 text-yellow-500" />
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-12 text-center">
-                      <div className="w-16 h-16 bg-muted rounded-xl flex items-center justify-between mb-4 mx-auto">
-                        <BarChart3 className="w-8 h-8 text-muted-foreground" />
-                      </div>
-                      <h3 className="text-lg font-semibold mb-2">Analytics Not Available</h3>
-                      <p className="text-muted-foreground">
-                        Analytics are only visible to the profile owner.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
+            
 
             {isOwnProfile && (
               <TabsContent value="bookmarks" className="mt-0">

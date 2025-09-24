@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
-import { 
+import {
   Feather,
   Home,
   Compass,
@@ -18,7 +18,8 @@ import {
   Edit, // Added Edit icon for compose button
   HelpCircle, // Added HelpCircle icon for help center
   Shield, // Added Shield icon for rules
-  ExternalLink // Added ExternalLink icon for external links
+  ExternalLink, // Added ExternalLink icon for external links
+  Trophy // Added Trophy icon for leaderboard
 } from "lucide-react";
 import { getProfileImageUrl } from "@/lib/defaultImages";
 import { Link, useLocation } from "wouter";
@@ -46,17 +47,20 @@ export default function Sidebar() {
     enabled: isAuthenticated,
   });
 
-  const unreadCount = notifications?.filter((n: any) => !n.isRead).length || 0; 
+  const unreadCount = notifications?.filter((n: any) => !n.isRead).length || 0;
 
   const navigationItems = [
     { icon: Home, label: "Home", path: "/", active: location === "/" },
     { icon: Compass, label: "Explore", path: "/explore", active: location === "/explore" },
     // Add Stories navigation item
     { icon: BookOpen, label: "Stories", path: "/series", active: location === "/series" },
+    // Add Leaderboard navigation item
+    { icon: Trophy, label: "Leaderboard", path: "/leaderboard", active: location === "/leaderboard" },
     { icon: MessageSquare, label: "Messages", path: "/messages", active: location === "/messages" },
     { icon: Bell, label: "Notifications", path: "/notifications", active: location === "/notifications", badge: unreadCount > 0 ? unreadCount : undefined },
     { icon: Bookmark, label: "Bookmarks", path: "/bookmarks", active: location === "/bookmarks" },
-    { icon: BarChart3, label: "Analytics", path: "/analytics", active: location === "/analytics" },
+    // Remove Analytics button
+    // { icon: BarChart3, label: "Analytics", path: "/analytics", active: location === "/analytics" },
     { icon: User, label: "Profile", path: `/profile/${user?.username || user?.id}`, active: location.startsWith("/profile") },
     { icon: Cog, label: "Settings", path: "/settings", active: location === "/settings" },
   ];
@@ -81,8 +85,8 @@ export default function Sidebar() {
             <Link key={item.path} href={item.path}>
               <div
                 className={`flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-colors cursor-pointer ${
-                  item.active 
-                    ? "bg-primary text-primary-foreground" 
+                  item.active
+                    ? "bg-primary text-primary-foreground"
                     : "hover:bg-secondary text-foreground hover:text-foreground"
                 }`}
                 data-testid={`nav-${item.label.toLowerCase()}`}
@@ -100,8 +104,8 @@ export default function Sidebar() {
         </nav>
 
         {/* Compose Button */}
-        <Button 
-            size="lg" 
+        <Button
+            size="lg"
             className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
             onClick={() => {
               if (isAuthenticated) {
@@ -185,9 +189,9 @@ export default function Sidebar() {
       </div>
       {/* Post Modal */}
       {showPostModal && (
-        <PostModal 
-          isOpen={showPostModal} 
-          onClose={() => setShowPostModal(false)} 
+        <PostModal
+          isOpen={showPostModal}
+          onClose={() => setShowPostModal(false)}
         />
       )}
     </div>

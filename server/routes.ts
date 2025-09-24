@@ -1420,6 +1420,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Leaderboard routes (public access)
+  app.get('/api/leaderboard/posts', async (req, res) => {
+    try {
+      const { limit = 20 } = req.query;
+      const topPosts = await storage.getTopPostsByLikes(parseInt(limit as string));
+      res.json(topPosts);
+    } catch (error: any) {
+      console.error("Error fetching top posts:", error);
+      res.status(500).json({ message: "Failed to fetch top posts" });
+    }
+  });
+
+  app.get('/api/leaderboard/stories', async (req, res) => {
+    try {
+      const { limit = 20 } = req.query;
+      const topStories = await storage.getTopStoriesByLikes(parseInt(limit as string));
+      res.json(topStories);
+    } catch (error: any) {
+      console.error("Error fetching top stories:", error);
+      res.status(500).json({ message: "Failed to fetch top stories" });
+    }
+  });
+
+  app.get('/api/leaderboard/authors', async (req, res) => {
+    try {
+      const { limit = 20 } = req.query;
+      const topAuthors = await storage.getTopAuthorsByStoryLikes(parseInt(limit as string));
+      res.json(topAuthors);
+    } catch (error: any) {
+      console.error("Error fetching top authors:", error);
+      res.status(500).json({ message: "Failed to fetch top authors" });
+    }
+  });
+
+  // Series like route
+  app.post('/api/series/:id/like', requireAuth, writeLimiter, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { id: seriesId } = req.params;
+
+      const hasLiked = await storage.hasUserLikedSeries(userId, seriesId);
+
+      if (hasLiked) {
+        await storage.unlikeSeries(userId, seriesId);
+        res.json({ liked: false, message: "Series unliked" });
+      } else {
+        await storage.likeSeries(userId, seriesId);
+        res.json({ liked: true, message: "Series liked" });
+      }
+    } catch (error) {
+      console.error("Error toggling series like:", error);
+      res.status(500).json({ message: "Failed to toggle series like" });
+    }
+  });
+
   // Explore routes (public access)
   app.get('/api/explore/trending-topics', async (req, res) => {
     try {

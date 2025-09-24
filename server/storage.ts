@@ -14,6 +14,8 @@ import {
   series,
   chapters,
   seriesFollowers,
+  seriesLikes,
+  readingProgress,
   type User,
   type UpsertUser,
   type InsertPost,
@@ -102,6 +104,33 @@ export interface IStorage {
   getConversationMessages(conversationId: string, limit?: number, offset?: number): Promise<Message[]>;
   markMessageAsRead(messageId: string): Promise<void>;
   markConversationAsRead(conversationId: string, userId: string): Promise<void>;
+
+  // Series management methods
+  createSeries(seriesData: any): Promise<any>;
+  getPublicSeries(limit?: number, offset?: number, genre?: string): Promise<any[]>;
+  getSeriesById(seriesId: string): Promise<any>;
+  createChapter(chapterData: any): Promise<any>;
+  getSeriesChapters(seriesId: string): Promise<any[]>;
+  followSeries(userId: string, seriesId: string): Promise<any>;
+  unfollowSeries(userId: string, seriesId: string): Promise<void>;
+  isFollowingSeries(userId: string, seriesId: string): Promise<boolean>;
+  getUserStories(userId: string): Promise<any[]>;
+  deleteSeries(seriesId: string): Promise<void>;
+  updateReadingProgress(userId: string, seriesId: string, chapterIndex: number): Promise<void>;
+
+  // Leaderboard methods
+  getTopPostsByLikes(limit?: number): Promise<any[]>;
+  getTopStoriesByLikes(limit?: number): Promise<any[]>;
+  getTopAuthorsByStoryLikes(limit?: number): Promise<any[]>;
+
+  // Series likes methods
+  hasUserLikedSeries(userId: string, seriesId: string): Promise<boolean>;
+  likeSeries(userId: string, seriesId: string): Promise<any>;
+  unlikeSeries(userId: string, seriesId: string): Promise<void>;
+
+  // Guest access restriction
+  isGuestReadable(entityType: string, entityId: string, userId?: string): Promise<boolean>;
+  isGuestInteractable(entityType: string, entityId: string, userId?: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1564,6 +1593,193 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSeries(seriesId: string): Promise<void> {
     await db.delete(series).where(eq(series.id, seriesId));
+  }
+
+  async updateReadingProgress(userId: string, seriesId: string, chapterIndex: number): Promise<void> {
+    await this.db
+      .insert(readingProgress)
+      .values({
+        id: crypto.randomUUID(),
+        userId,
+        seriesId,
+        lastChapterIndex: chapterIndex,
+        progressPercentage: 0, // Calculate based on total chapters
+        lastReadAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      .onConflictDoUpdate({
+        target: [readingProgress.userId, readingProgress.seriesId],
+        set: {
+          lastChapterIndex: chapterIndex,
+          lastReadAt: new Date(),
+          updatedAt: new Date()
+        }
+      });
+  }
+
+  // Leaderboard methods
+  async getTopPostsByLikes(limit: number = 20): Promise<any[]> {
+    const topPosts = await this.db
+      .select({
+        id: posts.id,
+        title: posts.title,
+        content: posts.content,
+        postType: posts.postType,
+        genre: posts.genre,
+        imageUrls: posts.imageUrls,
+        spotifyTrackData: posts.spotifyTrackData,
+        createdAt: posts.createdAt,
+        authorId: posts.authorId,
+        likesCount: sql<number>`COUNT(${likes.id})`,
+        commentsCount: sql<number>`(
+          SELECT COUNT(*) FROM ${comments} WHERE ${comments.postId} = ${posts.id}
+        )`,
+        repostsCount: sql<number>`(
+          SELECT COUNT(*) FROM ${reposts} WHERE ${reposts.postId} = ${posts.id}
+        )`,
+        author: {
+          id: users.id,
+          username: users.username,
+          displayName: users.displayName,
+          profileImageUrl: users.profileImageUrl,
+          isVerified: users.isVerified,
+          isAdmin: users.isAdmin,
+          isSuperAdmin: users.isSuperAdmin
+        }
+      })
+      .from(posts)
+      .leftJoin(likes, eq(likes.postId, posts.id))
+      .leftJoin(users, eq(users.id, posts.authorId))
+      .groupBy(posts.id, users.id)
+      .having(sql`COUNT(${likes.id}) > 0`)
+      .orderBy(desc(sql`COUNT(${likes.id})`))
+      .limit(limit);
+
+    return topPosts;
+  }
+
+  async getTopStoriesByLikes(limit: number = 20): Promise<any[]> {
+    const topStories = await this.db
+      .select({
+        id: series.id,
+        title: series.title,
+        description: series.description,
+        genre: series.genre,
+        tags: series.tags,
+        coverImageUrl: series.coverImageUrl,
+        isCompleted: series.isCompleted,
+        createdAt: series.createdAt,
+        likesCount: sql<number>`COUNT(${seriesLikes.id})`,
+        chaptersCount: sql<number>`(
+          SELECT COUNT(*) FROM ${chapters} WHERE ${chapters.seriesId} = ${series.id}
+        )`,
+        followersCount: sql<number>`(
+          SELECT COUNT(*) FROM ${seriesFollows} WHERE ${seriesFollows.seriesId} = ${series.id}
+        )`,
+        viewsCount: sql<number>`COALESCE(${series.viewsCount}, 0)`,
+        author: {
+          id: users.id,
+          username: users.username,
+          displayName: users.displayName,
+          profileImageUrl: users.profileImageUrl,
+          isVerified: users.isVerified
+        }
+      })
+      .from(series)
+      .leftJoin(seriesLikes, eq(seriesLikes.seriesId, series.id))
+      .leftJoin(users, eq(users.id, series.authorId))
+      .groupBy(series.id, users.id)
+      .having(sql`COUNT(${seriesLikes.id}) > 0`)
+      .orderBy(desc(sql`COUNT(${seriesLikes.id})`))
+      .limit(limit);
+
+    return topStories;
+  }
+
+  async getTopAuthorsByStoryLikes(limit: number = 20): Promise<any[]> {
+    const topAuthors = await this.db
+      .select({
+        id: users.id,
+        username: users.username,
+        displayName: users.displayName,
+        profileImageUrl: users.profileImageUrl,
+        bio: users.bio,
+        isVerified: users.isVerified,
+        followersCount: sql<number>`(
+          SELECT COUNT(*) FROM ${follows} WHERE ${follows.followingId} = ${users.id}
+        )`,
+        storiesCount: sql<number>`COUNT(DISTINCT ${series.id})`,
+        totalLikes: sql<number>`COUNT(${seriesLikes.id})`,
+        avgLikesPerStory: sql<number>`ROUND(CAST(COUNT(${seriesLikes.id}) AS FLOAT) / NULLIF(COUNT(DISTINCT ${series.id}), 0), 1)`
+      })
+      .from(users)
+      .leftJoin(series, eq(series.authorId, users.id))
+      .leftJoin(seriesLikes, eq(seriesLikes.seriesId, series.id))
+      .groupBy(users.id)
+      .having(sql`COUNT(${seriesLikes.id}) > 0`)
+      .orderBy(desc(sql`COUNT(${seriesLikes.id})`))
+      .limit(limit);
+
+    return topAuthors;
+  }
+
+  // Series likes methods
+  async hasUserLikedSeries(userId: string, seriesId: string): Promise<boolean> {
+    const like = await this.db
+      .select()
+      .from(seriesLikes)
+      .where(and(
+        eq(seriesLikes.userId, userId),
+        eq(seriesLikes.seriesId, seriesId)
+      ))
+      .limit(1);
+
+    return like.length > 0;
+  }
+
+  async likeSeries(userId: string, seriesId: string): Promise<any> {
+    const like = {
+      id: crypto.randomUUID(),
+      userId,
+      seriesId,
+      createdAt: new Date()
+    };
+
+    await this.db.insert(seriesLikes).values(like);
+    return like;
+  }
+
+  async unlikeSeries(userId: string, seriesId: string): Promise<void> {
+    await this.db
+      .delete(seriesLikes)
+      .where(and(
+        eq(seriesLikes.userId, userId),
+        eq(seriesLikes.seriesId, seriesId)
+      ));
+  }
+
+  // Guest access restriction methods
+  async isGuestReadable(entityType: string, entityId: string, userId?: string): Promise<boolean> {
+    if (userId) return true; // Logged-in users can always read
+
+    switch (entityType) {
+      case 'post':
+        const [post] = await db.select({ isPrivate: posts.isPrivate }).from(posts).where(eq(posts.id, entityId));
+        return !post?.isPrivate;
+      case 'series':
+        const [series] = await db.select({ isPrivate: series.isPrivate }).from(series).where(eq(series.id, entityId));
+        return !series?.isPrivate;
+      default:
+        return true; // Default to readable if not specified
+    }
+  }
+
+  async isGuestInteractable(entityType: string, entityId: string, userId?: string): Promise<boolean> {
+    if (userId) return true; // Logged-in users can interact
+
+    // Guests cannot interact with any social features
+    return false;
   }
 }
 

@@ -16,6 +16,7 @@ import Notifications from "./pages/notifications";
 import Bookmarks from "./pages/bookmarks";
 import SearchPage from "./pages/search";
 import SettingsPage from "./pages/settings";
+import { lazy } from "react";
 
 function AppRouter() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -48,7 +49,8 @@ function AppRouter() {
       <Route path="/bookmarks" component={isAuthenticated ? Bookmarks : Explore} />
       <Route path="/profile/:username" component={Profile} />
       <Route path="/settings" component={SettingsPage} />
-      <Route path="/:rest*" component={NotFound} />
+      <Route path="/leaderboard" component={lazy(() => import("./pages/leaderboard"))} />
+      <Route component={NotFound} />
     </Router>
   );
 }

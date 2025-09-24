@@ -12,7 +12,7 @@ import CommentThread from "@/components/comment-thread";
 import ReportPostButton from "@/components/report-post-button";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import type { Post, User } from "@shared/schema";
 import { getProfileImageUrl } from "@/lib/defaultImages";
+import AuthDialog from "@/components/auth-dialog";
 
 interface PostCardProps {
   post: Post & {
@@ -57,6 +58,7 @@ export default function PostCard({ post }: PostCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showAuthDialog, setShowAuthDialog] = useState(false); // State for auth dialog
   const postRef = useRef<HTMLDivElement>(null);
 
   // Use author data from post or fallback for display
@@ -89,6 +91,10 @@ export default function PostCard({ post }: PostCardProps) {
 
   const likeMutation = useMutation({
     mutationFn: async () => {
+      if (!user) {
+        setShowAuthDialog(true);
+        return Promise.reject(new Error("User not logged in"));
+      }
       if (post.isLiked) {
         return apiRequest("DELETE", `/api/posts/${post.id}/like`);
       } else {
@@ -111,16 +117,22 @@ export default function PostCard({ post }: PostCardProps) {
         }, 500);
         return;
       }
-      toast({
-        title: "Action failed",
-        description: "There was an error processing your request.",
-        variant: "destructive",
-      });
+      if (error.message !== "User not logged in") {
+        toast({
+          title: "Action failed",
+          description: "There was an error processing your request.",
+          variant: "destructive",
+        });
+      }
     },
   });
 
   const repostMutation = useMutation({
     mutationFn: async (comment?: string) => {
+      if (!user) {
+        setShowAuthDialog(true);
+        return Promise.reject(new Error("User not logged in"));
+      }
       return apiRequest("POST", `/api/posts/${post.id}/repost`, { comment });
     },
     onSuccess: (response: any) => {
@@ -145,16 +157,22 @@ export default function PostCard({ post }: PostCardProps) {
         }, 500);
         return;
       }
-      toast({
-        title: "Repost failed",
-        description: "There was an error reposting this post.",
-        variant: "destructive",
-      });
+      if (error.message !== "User not logged in") {
+        toast({
+          title: "Repost failed",
+          description: "There was an error reposting this post.",
+          variant: "destructive",
+        });
+      }
     },
   });
 
   const bookmarkMutation = useMutation({
     mutationFn: async () => {
+      if (!user) {
+        setShowAuthDialog(true);
+        return Promise.reject(new Error("User not logged in"));
+      }
       return apiRequest("POST", `/api/posts/${post.id}/bookmark`);
     },
     onSuccess: (response: any) => {
@@ -179,11 +197,13 @@ export default function PostCard({ post }: PostCardProps) {
         }, 500);
         return;
       }
-      toast({
-        title: "Bookmark failed",
-        description: "There was an error bookmarking this post.",
-        variant: "destructive",
-      });
+      if (error.message !== "User not logged in") {
+        toast({
+          title: "Bookmark failed",
+          description: "There was an error bookmarking this post.",
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -210,6 +230,10 @@ export default function PostCard({ post }: PostCardProps) {
 
   const reportPostMutation = useMutation({
     mutationFn: async ({ reason }: { reason: string }) => {
+      if (!user) {
+        setShowAuthDialog(true);
+        return Promise.reject(new Error("User not logged in"));
+      }
       return apiRequest("POST", `/api/posts/${post.id}/report`, { reason });
     },
     onSuccess: () => {
@@ -230,11 +254,13 @@ export default function PostCard({ post }: PostCardProps) {
         }, 500);
         return;
       }
-      toast({
-        title: "Report failed",
-        description: "There was an error reporting this post.",
-        variant: "destructive",
-      });
+      if (error.message !== "User not logged in") {
+        toast({
+          title: "Report failed",
+          description: "There was an error reporting this post.",
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -293,7 +319,7 @@ export default function PostCard({ post }: PostCardProps) {
           )}
           <div className="poetry-container space-y-3 text-foreground/90">
             {isRichText ? (
-              <div 
+              <div
                 className="prose prose-sm max-w-none break-words overflow-hidden"
                 dangerouslySetInnerHTML={{ __html: displayContent }}
               />
@@ -323,7 +349,7 @@ export default function PostCard({ post }: PostCardProps) {
 
           <div className={`rounded-xl p-5 font-serif ${getPostTypeStyle()}`}>
             {isRichText ? (
-              <div 
+              <div
                 className="prose prose-sm max-w-none italic text-foreground/90 leading-relaxed break-words overflow-hidden"
                 dangerouslySetInnerHTML={{ __html: `"${displayContent}"` }}
               />
@@ -340,7 +366,7 @@ export default function PostCard({ post }: PostCardProps) {
     return (
       <div className="mb-4">
         {isRichText ? (
-          <div 
+          <div
             className="prose prose-sm max-w-none text-base leading-relaxed break-words overflow-hidden"
             dangerouslySetInnerHTML={{ __html: displayContent }}
           />
@@ -571,7 +597,7 @@ export default function PostCard({ post }: PostCardProps) {
             {/* Admin Actions & User Actions */}
             <div className="flex items-center">
               <PostDownload post={post} postRef={postRef} />
-              
+
               <SavePostImage postRef={postRef} postId={post.id} disabled={!user} />
 
               {/* User's own post delete button */}
@@ -625,8 +651,8 @@ export default function PostCard({ post }: PostCardProps) {
                 </Button>
               )}
 
-              <ReportPostButton 
-                postId={post.id} 
+              <ReportPostButton
+                postId={post.id}
                 disabled={reportPostMutation.isPending}
                 onReport={(reason) => reportPostMutation.mutate({ reason })}
               />
@@ -676,6 +702,15 @@ export default function PostCard({ post }: PostCardProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Auth Dialog for guests */}
+      <AuthDialog
+        open={showAuthDialog}
+        onOpenChange={setShowAuthDialog}
+        title="Join to Interact"
+        description="Sign up or log in to like, comment, and interact with posts"
+        onSuccess={() => window.location.reload()}
+      />
     </article>
   );
 }

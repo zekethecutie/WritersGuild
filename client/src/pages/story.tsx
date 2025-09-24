@@ -106,6 +106,14 @@ export default function StoryPage() {
     },
   });
 
+  // Like mutation
+  const likeMutation = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/series/${storyId}/like`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/series", storyId] });
+    },
+  });
+
   // Reaction mutation
   const reactionMutation = useMutation({
     mutationFn: (reaction: string) => apiRequest("POST", `/api/series/${storyId}/react`, { reaction }),
@@ -402,6 +410,16 @@ export default function StoryPage() {
 
                 {isAuthenticated && (
                   <>
+                    <Button 
+                      variant="outline"
+                      onClick={() => likeMutation.mutate()}
+                      disabled={likeMutation.isPending}
+                      className={`flex items-center gap-2 ${story.isLiked ? "text-red-500 border-red-500" : ""}`}
+                    >
+                      <Heart className={`w-4 h-4 ${story.isLiked ? "fill-current" : ""}`} />
+                      {story.likesCount || 0}
+                    </Button>
+
                     <Button 
                       variant="outline"
                       onClick={() => followMutation.mutate()}
