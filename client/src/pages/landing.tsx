@@ -67,9 +67,9 @@ export default function Landing() {
               </Button>
 
               <Button
-                variant="ghost"
+                variant="outline"
                 size="lg"
-                className="text-muted-foreground hover:text-foreground px-8 py-3 text-lg"
+                className="border-primary text-primary hover:bg-primary/10 px-8 py-3 text-lg"
                 data-testid="button-continue-guest"
                 onClick={() => window.location.href = '/explore'}
               >
@@ -190,9 +190,9 @@ export default function Landing() {
             </Button>
 
             <Button
-              variant="ghost"
+              variant="outline"
               size="lg"
-              className="text-muted-foreground hover:text-foreground px-8 py-3 text-lg"
+              className="border-primary text-primary hover:bg-primary/10 px-8 py-3 text-lg"
               data-testid="button-browse-guest"
               onClick={() => window.location.href = '/explore'}
             >
