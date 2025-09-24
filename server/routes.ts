@@ -780,9 +780,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get my stories (user's own stories) - must come before /:id route
-  app.get("/api/series/my-stories", requireAuth, async (req, res) => {
+  app.get("/api/series/my-stories", requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user!.id;
+      const userId = req.session.userId;
       const userStories = await storage.getUserStories(userId);
       res.json(userStories);
     } catch (error) {
@@ -792,10 +792,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get series by ID
-  app.get("/api/series/:id", async (req, res) => {
+  app.get("/api/series/:id", async (req: any, res) => {
     try {
       const { id } = req.params;
-      const series = await storage.getSeriesById(id);
+      const userId = req.session?.userId;
+      const series = await storage.getSeriesById(id, userId);
       if (!series) {
         return res.status(404).json({ error: "Series not found" });
       }
@@ -1383,6 +1384,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating chapter:", error);
       res.status(500).json({ message: "Failed to create chapter" });
+    }
+  });
+
+  // Get chapter by ID
+  app.get('/api/chapters/:id', async (req, res) => {
+    try {
+      const { id: chapterId } = req.params;
+      const chapter = await storage.getChapterById(chapterId);
+      
+      if (!chapter) {
+        return res.status(404).json({ message: "Chapter not found" });
+      }
+
+      res.json(chapter);
+    } catch (error) {
+      console.error("Error fetching chapter:", error);
+      res.status(500).json({ message: "Failed to fetch chapter" });
+    }
+  });
+
+  // Update chapter
+  app.put('/api/chapters/:id', requireAuth, writeLimiter, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { id: chapterId } = req.params;
+      const { title, content, chapterNumber } = req.body;
+
+      // Get chapter and verify ownership through series
+      const chapter = await storage.getChapterById(chapterId);
+      if (!chapter) {
+        return res.status(404).json({ message: "Chapter not found" });
+      }
+
+      const series = await storage.getSeriesById(chapter.seriesId);
+      if (!series || series.authorId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const updatedChapter = await storage.updateChapter(chapterId, {
+        title,
+        content,
+        chapterNumber,
+        wordCount: content.split(/\s+/).length
+      });
+
+      res.json(updatedChapter);
+    } catch (error) {
+      console.error("Error updating chapter:", error);
+      res.status(500).json({ message: "Failed to update chapter" });
     }
   });
 

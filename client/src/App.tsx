@@ -42,6 +42,8 @@ function AppRouter() {
       <Route path="/series" component={SeriesPage} />
       <Route path="/story/:id" component={StoryPage} />
       <Route path="/story/:id/chapter/:chapterId" component={StoryPage} />
+      <Route path="/story/:id/edit" component={lazy(() => import("./pages/chapter-editor"))} />
+      <Route path="/story/:id/chapter/:chapterId/edit" component={lazy(() => import("./pages/chapter-editor"))} />
       <Route path="/messages" component={Messages} />
       <Route path="/search" component={isAuthenticated ? SearchPage : Explore} />
       <Route path="/notifications" component={isAuthenticated ? Notifications : Explore} />

@@ -322,37 +322,52 @@ export default function StoryPage() {
             {/* Cover Image */}
             <div className="lg:col-span-1">
               <div className="aspect-[3/4] bg-gradient-to-br from-primary/20 to-accent/20 rounded-xl overflow-hidden shadow-lg">
-                {story?.coverImageUrl ? (
+                {story.coverImageUrl ? (
                   <img 
                     src={story.coverImageUrl} 
                     alt={story.title || "Story cover"}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                    }}
                   />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <BookOpen className="w-16 h-16 text-muted-foreground" />
-                  </div>
-                )}
+                ) : null}
+                <div className={`w-full h-full flex items-center justify-center ${story.coverImageUrl ? 'hidden' : ''}`}>
+                  <BookOpen className="w-16 h-16 text-muted-foreground" />
+                </div>
               </div>
 
               {/* Author Info */}
-              <div className="flex items-center gap-3 mt-4 p-3 bg-card rounded-lg">
-                <Avatar className="w-12 h-12">
-                  <AvatarImage src={getProfileImageUrl(story.author?.profileImageUrl)} />
-                  <AvatarFallback>{story.author?.displayName?.[0] || 'U'}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="font-semibold">{story.author?.displayName || 'Unknown Author'}</p>
-                  <p className="text-sm text-muted-foreground">@{story.author?.username || 'unknown'}</p>
+              {story.author && (
+                <div className="flex items-center gap-3 mt-4 p-3 bg-card rounded-lg">
+                  <Avatar className="w-12 h-12">
+                    <AvatarImage src={getProfileImageUrl(story.author.profileImageUrl)} />
+                    <AvatarFallback>{story.author.displayName?.[0] || story.author.username?.[0] || 'U'}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-semibold">{story.author.displayName || story.author.username || 'Unknown Author'}</p>
+                    <p className="text-sm text-muted-foreground">@{story.author.username || 'unknown'}</p>
+                    {story.author.isVerified && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
+                          <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <span className="text-xs text-blue-500">Verified</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Story Details */}
             <div className="lg:col-span-2">
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h1 className="text-4xl font-bold mb-2">{story.title}</h1>
+                  <h1 className="text-4xl font-bold mb-2">{story.title || 'Untitled Story'}</h1>
                   {story.genre && (
                     <Badge variant="outline" className="mb-4">
                       {story.genre}
@@ -367,9 +382,11 @@ export default function StoryPage() {
                 )}
               </div>
 
-              <p className="text-lg text-muted-foreground leading-relaxed mb-6">
-                {story.description}
-              </p>
+              {story.description && (
+                <p className="text-lg text-muted-foreground leading-relaxed mb-6">
+                  {story.description}
+                </p>
+              )}
 
               {/* Stats */}
               <div className="flex items-center gap-6 mb-6 text-sm text-muted-foreground">
@@ -482,18 +499,18 @@ export default function StoryPage() {
               </div>
 
               {/* Reading Progress */}
-              {progress && (
+              {progress && progress.progressPercentage !== undefined && (
                 <div className="bg-card p-4 rounded-lg mb-6">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm font-medium">Reading Progress</span>
                     <span className="text-sm text-muted-foreground">
-                      {Math.round(progress.progressPercentage)}%
+                      {Math.round(progress.progressPercentage || 0)}%
                     </span>
                   </div>
                   <div className="w-full bg-secondary rounded-full h-2">
                     <div 
                       className="bg-primary h-2 rounded-full transition-all duration-300" 
-                      style={{ width: `${progress.progressPercentage}%` }} 
+                      style={{ width: `${Math.round(progress.progressPercentage || 0)}%` }} 
                     />
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">

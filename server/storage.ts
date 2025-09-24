@@ -108,7 +108,7 @@ export interface IStorage {
   // Series management methods
   createSeries(seriesData: any): Promise<any>;
   getPublicSeries(limit?: number, offset?: number, genre?: string): Promise<any[]>;
-  getSeriesById(seriesId: string): Promise<any>;
+  getSeriesById(seriesId: string, userId?: string): Promise<any>;
   createChapter(chapterData: any): Promise<any>;
   getSeriesChapters(seriesId: string): Promise<any[]>;
   followSeries(userId: string, seriesId: string): Promise<any>;
@@ -1498,7 +1498,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getSeriesById(seriesId: string): Promise<any> {
+  async getSeriesById(seriesId: string, userId?: string): Promise<any> {
     try {
       const [result] = await db.select({
         id: series.id,
@@ -1520,7 +1520,18 @@ export class DatabaseStorage implements IStorage {
           displayName: users.displayName,
           profileImageUrl: users.profileImageUrl,
           isVerified: users.isVerified,
-        }
+        },
+        isLiked: userId ? sql<boolean>`EXISTS (
+          SELECT 1 FROM ${seriesLikes} 
+          WHERE ${seriesLikes.userId} = ${userId} 
+          AND ${seriesLikes.seriesId} = ${series.id}
+        )` : sql<boolean>`false`,
+        isFollowing: userId ? sql<boolean>`EXISTS (
+          SELECT 1 FROM ${seriesFollowers} 
+          WHERE ${seriesFollowers.userId} = ${userId} 
+          AND ${seriesFollowers.seriesId} = ${series.id}
+        )` : sql<boolean>`false`,
+        isBookmarked: userId ? sql<boolean>`false` : sql<boolean>`false` // TODO: Implement series bookmarks
       })
       .from(series)
       .leftJoin(users, eq(series.authorId, users.id))
@@ -1543,6 +1554,29 @@ export class DatabaseStorage implements IStorage {
       .where(eq(series.id, chapterData.seriesId));
 
     return newChapter;
+  }
+
+  async getChapterById(chapterId: string): Promise<any> {
+    try {
+      const [chapter] = await db.select()
+        .from(chapters)
+        .where(eq(chapters.id, chapterId));
+
+      return chapter;
+    } catch (error) {
+      console.error("Error fetching chapter by ID:", error);
+      return null;
+    }
+  }
+
+  async updateChapter(chapterId: string, chapterData: any): Promise<any> {
+    const [updatedChapter] = await db
+      .update(chapters)
+      .set({ ...chapterData, updatedAt: new Date() })
+      .where(eq(chapters.id, chapterId))
+      .returning();
+
+    return updatedChapter;
   }
 
   async getSeriesChapters(seriesId: string): Promise<any[]> {
