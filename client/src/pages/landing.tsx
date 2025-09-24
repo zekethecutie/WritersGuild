@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { AuthDialog } from "@/components/auth-dialog";
+import AuthDialog from "@/components/auth-dialog";
 import { Feather, Users, Edit3, Heart, Music, Image, Quote } from "lucide-react";
 
 export default function Landing() {

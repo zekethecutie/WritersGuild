@@ -2,7 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { authService, type AuthState } from "@/lib/auth";
 
-export function useAuth(): AuthState {
+export function useAuth(): AuthState & { login: typeof authService.login } {
   const { data: user, isLoading } = useQuery({
     queryKey: ["/api/auth/user"],
     queryFn: () => authService.getCurrentUser(),
@@ -14,5 +14,6 @@ export function useAuth(): AuthState {
     user,
     isLoading,
     isAuthenticated: !!user,
+    login: authService.login.bind(authService),
   };
 }
