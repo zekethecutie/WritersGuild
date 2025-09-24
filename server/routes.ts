@@ -1436,6 +1436,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete chapter
+  app.delete('/api/chapters/:id', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { id: chapterId } = req.params;
+
+      // Get chapter and verify ownership through series
+      const chapter = await storage.getChapterById(chapterId);
+      if (!chapter) {
+        return res.status(404).json({ message: "Chapter not found" });
+      }
+
+      const series = await storage.getSeriesById(chapter.seriesId);
+      if (!series || series.authorId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      await storage.deleteChapter(chapterId);
+      res.json({ message: "Chapter deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting chapter:", error);
+      res.status(500).json({ message: "Failed to delete chapter" });
+    }
+  });
+
+  // Update series
+  app.put('/api/series/:id', requireAuth, writeLimiter, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { id: seriesId } = req.params;
+      const updateData = req.body;
+
+      // Check if user owns the series
+      const series = await storage.getSeriesById(seriesId);
+      if (!series || series.authorId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const updatedSeries = await storage.updateSeries(seriesId, updateData);
+      res.json(updatedSeries);
+    } catch (error) {
+      console.error("Error updating series:", error);
+      res.status(500).json({ message: "Failed to update series" });
+    }
+  });
+
   app.get('/api/series/:id/chapters', async (req, res) => {
     try {
       const { id: seriesId } = req.params;

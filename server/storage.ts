@@ -1751,6 +1751,73 @@ export class DatabaseStorage implements IStorage {
     // For now, do nothing - implement series bookmarks later
   }
 
+  async updateSeries(seriesId: string, updateData: any): Promise<any> {
+    try {
+      const updated = await this.db.update(series)
+        .set({
+          title: updateData.title,
+          description: updateData.description,
+          genre: updateData.genre,
+          tags: updateData.tags,
+          coverImageUrl: updateData.coverImageUrl,
+          isCompleted: updateData.isCompleted,
+          isPrivate: updateData.isPrivate,
+          updatedAt: new Date()
+        })
+        .where(eq(series.id, seriesId))
+        .returning();
+      
+      return updated[0];
+    } catch (error) {
+      console.error("Error updating series:", error);
+      throw error;
+    }
+  }
+
+  async deleteChapter(chapterId: string): Promise<void> {
+    try {
+      await this.db.delete(chapters)
+        .where(eq(chapters.id, chapterId));
+    } catch (error) {
+      console.error("Error deleting chapter:", error);
+      throw error;
+    }
+  }
+
+  async getChapterById(chapterId: string): Promise<any> {
+    try {
+      const chapter = await this.db.select()
+        .from(chapters)
+        .where(eq(chapters.id, chapterId))
+        .limit(1);
+      
+      return chapter[0] || null;
+    } catch (error) {
+      console.error("Error fetching chapter:", error);
+      throw error;
+    }
+  }
+
+  async updateChapter(chapterId: string, updateData: any): Promise<any> {
+    try {
+      const updated = await this.db.update(chapters)
+        .set({
+          title: updateData.title,
+          content: updateData.content,
+          chapterNumber: updateData.chapterNumber,
+          wordCount: updateData.wordCount,
+          updatedAt: new Date()
+        })
+        .where(eq(chapters.id, chapterId))
+        .returning();
+      
+      return updated[0];
+    } catch (error) {
+      console.error("Error updating chapter:", error);
+      throw error;
+    }
+  }
+
   async reactToSeries(userId: string, seriesId: string, reaction: string): Promise<any> {
     // For now, return a placeholder - implement series reactions later
     return {

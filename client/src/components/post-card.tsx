@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { useGuestPermissions } from "@/hooks/useGuestPermissions";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -53,11 +54,12 @@ interface PostCardProps {
 
 export default function PostCard({ post }: PostCardProps) {
   const { user } = useAuth();
+  const permissions = useGuestPermissions();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isExpanded, setIsExpanded] = useState(false);
   const [showComments, setShowComments] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  
   const [showAuthDialog, setShowAuthDialog] = useState(false); // State for auth dialog
   const postRef = useRef<HTMLDivElement>(null);
 
@@ -532,7 +534,13 @@ export default function PostCard({ post }: PostCardProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => likeMutation.mutate()}
+              onClick={() => {
+                if (permissions.showAuthPrompt('like')) {
+                  setShowAuthDialog(true);
+                } else {
+                  likeMutation.mutate();
+                }
+              }}
               disabled={likeMutation.isPending}
               className={`engagement-btn ${post.isLiked ? "text-red-400" : ""} hover:text-red-400 group`}
               data-testid="button-like-post"
@@ -559,7 +567,13 @@ export default function PostCard({ post }: PostCardProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => repostMutation.mutate("")}
+              onClick={() => {
+                if (permissions.showAuthPrompt('repost')) {
+                  setShowAuthDialog(true);
+                } else {
+                  repostMutation.mutate("");
+                }
+              }}
               disabled={repostMutation.isPending}
               className={`engagement-btn ${post.isReposted ? "text-green-400" : ""} hover:text-green-400 group`}
               data-testid="button-repost"
@@ -584,7 +598,13 @@ export default function PostCard({ post }: PostCardProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => bookmarkMutation.mutate()}
+              onClick={() => {
+                if (permissions.showAuthPrompt('bookmark')) {
+                  setShowAuthDialog(true);
+                } else {
+                  bookmarkMutation.mutate();
+                }
+              }}
               disabled={bookmarkMutation.isPending}
               className={`engagement-btn ${post.isBookmarked ? "text-yellow-400" : ""} hover:text-yellow-400 group`}
               data-testid="button-bookmark-post"
@@ -600,15 +620,15 @@ export default function PostCard({ post }: PostCardProps) {
 
               <SavePostImage postRef={postRef} postId={post.id} disabled={!user} />
 
-              {/* User's own post delete button */}
-              {user?.id === author.id && (
+              {/* Delete button - for post owner or admin */}
+              {(user?.id === author.id || (user as any)?.isAdmin) && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button
                       variant="ghost"
                       size="sm"
                       className="engagement-btn hover:text-red-400 group"
-                      data-testid="button-delete-own-post"
+                      data-testid="button-delete-post"
                     >
                       <div className="p-2 rounded-full group-hover:bg-red-400/10 transition-colors">
                         <Trash2 className="w-5 h-5" />
@@ -619,13 +639,19 @@ export default function PostCard({ post }: PostCardProps) {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete Post</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Are you sure you want to delete this post? This action cannot be undone.
+                        Are you sure you want to delete this post? This action cannot be undone and will permanently remove the post and all its comments.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction
-                        onClick={() => deletePostMutation.mutate()}
+                        onClick={() => {
+                          if (user?.id === author.id) {
+                            deletePostMutation.mutate();
+                          } else if ((user as any)?.isAdmin) {
+                            adminDeleteMutation.mutate();
+                          }
+                        }}
                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       >
                         Delete Post
@@ -633,22 +659,6 @@ export default function PostCard({ post }: PostCardProps) {
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-              )}
-
-              {/* Admin delete button */}
-              {(user as any)?.isAdmin && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowDeleteConfirm(true)}
-                  disabled={adminDeleteMutation.isPending}
-                  className="engagement-btn hover:text-red-400 group"
-                  data-testid="button-admin-delete"
-                >
-                  <div className="p-2 rounded-full group-hover:bg-red-400/10 transition-colors">
-                    <Trash2 className="w-5 h-5" />
-                  </div>
-                </Button>
               )}
 
               <ReportPostButton
@@ -679,29 +689,7 @@ export default function PostCard({ post }: PostCardProps) {
         </div>
       )}
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Post</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this post? This action cannot be undone and will permanently remove the post and all its comments.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                adminDeleteMutation.mutate();
-                setShowDeleteConfirm(false);
-              }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete Post
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      
 
       {/* Auth Dialog for guests */}
       <AuthDialog

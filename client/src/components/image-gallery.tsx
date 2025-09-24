@@ -9,11 +9,11 @@ interface ImageGalleryProps {
   maxHeight?: number;
 }
 
-export default function ImageGallery({ 
-  images, 
-  onRemove, 
-  className = "", 
-  maxHeight = 300 
+export default function ImageGallery({
+  images,
+  onRemove,
+  className = "",
+  maxHeight = 300
 }: ImageGalleryProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
@@ -42,10 +42,10 @@ export default function ImageGallery({
            style={{
              display: 'grid',
              gap: '0.5rem',
-             gridTemplateColumns: images.length === 1 ? '1fr' : 
+             gridTemplateColumns: images.length === 1 ? '1fr' :
                                  images.length === 2 ? '1fr 1fr' :
                                  images.length === 3 ? '1fr 1fr 1fr' : '1fr 1fr',
-             gridTemplateRows: images.length <= 2 ? '1fr' : 
+             gridTemplateRows: images.length <= 2 ? '1fr' :
                               images.length === 3 ? '1fr' : '1fr 1fr',
              maxHeight: '400px',
              width: '100%'
@@ -55,10 +55,10 @@ export default function ImageGallery({
             <img
               src={image}
               alt={`Gallery image ${index + 1}`}
-              className={`w-full cursor-pointer transition-opacity hover:opacity-90 ${
+              className={`w-full h-auto object-contain cursor-pointer transition-opacity hover:opacity-90 ${
                 images.length === 1 ? 'h-auto object-cover' : 'h-full object-cover'
               }`}
-              style={{ 
+              style={{
                 maxHeight: images.length === 1 ? maxHeight : 200,
                 aspectRatio: images.length === 1 ? '16/9' : undefined,
                 borderRadius: '0.75rem'
@@ -66,10 +66,10 @@ export default function ImageGallery({
               onClick={() => handleImageClick(image)}
               data-testid={`gallery-image-${index}`}
             />
-            
+
             {/* Show count overlay for 4+ images on last image */}
             {index === 3 && images.length > 4 && (
-              <div 
+              <div
                 className="absolute inset-0 bg-black/60 flex items-center justify-center cursor-pointer"
                 onClick={() => handleImageClick(image)}
               >
@@ -78,7 +78,7 @@ export default function ImageGallery({
                 </span>
               </div>
             )}
-            
+
             {/* Remove button for editing mode */}
             {onRemove && (
               <Button
@@ -100,7 +100,7 @@ export default function ImageGallery({
 
       {/* Lightbox Modal */}
       {selectedImage && (
-        <div 
+        <div
           className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
           onClick={() => setSelectedImage(null)}
           data-testid="image-lightbox"
@@ -118,7 +118,8 @@ export default function ImageGallery({
             <img
               src={selectedImage}
               alt="Full size"
-              className="max-w-full max-h-full object-contain"
+              className="w-full h-auto object-contain"
+              style={{ maxHeight: '90vh' }}
               onClick={(e) => e.stopPropagation()}
             />
           </div>
