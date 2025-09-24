@@ -617,7 +617,7 @@ export default function PostCard({ post }: PostCardProps) {
                   <MoreHorizontal className="w-5 h-5" />
                 </div>
               </Button>
-            </div></div>
+            </div>
           </div>
         </div>
       </div>
