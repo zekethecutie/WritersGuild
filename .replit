@@ -15,10 +15,6 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 40649
-externalPort = 3001
-
-[[ports]]
 localPort = 43639
 externalPort = 3000
 
@@ -49,10 +45,10 @@ args = "Start application"
 name = "Start application"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev"
-waitForPort = 5000
-
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "SPOTIFY_CLIENT_ID='cbd233e02df54d6b95e0ffbe2441cc56' SPOTIFY_API_SECRET='f0d4531ebb354509b3b18c301e80ba3' DATABASE_URL='postgresql://postgres.scuhjflbhyyhipxpuunv:whispernetworkontop01@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres' npm run dev"
+waitForPort = 5000
