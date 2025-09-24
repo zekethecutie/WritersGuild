@@ -398,8 +398,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         
         // Broadcast real-time notification
-        if (app && typeof app.broadcastNotification === 'function') {
-          app.broadcastNotification(post.authorId, notification);
+        if ((app as any).broadcastNotification) {
+          (app as any).broadcastNotification(post.authorId, notification);
         }
       }
       
@@ -451,8 +451,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         
         // Broadcast real-time notification
-        if (app && typeof app.broadcastNotification === 'function') {
-          app.broadcastNotification(post.authorId, notification);
+        if ((app as any).broadcastNotification) {
+          (app as any).broadcastNotification(post.authorId, notification);
         }
       }
       
@@ -553,8 +553,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Broadcast real-time notification
-      if (app && typeof app.broadcastNotification === 'function') {
-        app.broadcastNotification(followingId, notification);
+      if ((app as any).broadcastNotification) {
+        (app as any).broadcastNotification(followingId, notification);
       }
       
       res.json(follow);
@@ -607,8 +607,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           
           // Broadcast real-time notification
-          if (app && typeof app.broadcastNotification === 'function') {
-            app.broadcastNotification(post.authorId, notification);
+          if ((app as any).broadcastNotification) {
+            (app as any).broadcastNotification(post.authorId, notification);
           }
         }
         
