@@ -436,7 +436,7 @@ export default function PostCard({ post }: PostCardProps) {
           )}
 
           {/* Post Content */}
-          {renderFormattedContent() as React.ReactNode}
+          <div>{renderFormattedContent()}</div>
 
           {/* Images */}
           {post.imageUrls && post.imageUrls.length > 0 && (
