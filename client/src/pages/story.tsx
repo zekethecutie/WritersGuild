@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useRoute } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -51,10 +50,10 @@ export default function StoryPage() {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
+
   const storyId = params?.id || params2?.id;
   const chapterId = params2?.chapterId;
-  
+
   const [showReader, setShowReader] = useState(!!chapterId);
   const [currentChapterIndex, setCurrentChapterIndex] = useState(0);
   const [showComments, setShowComments] = useState(false);
@@ -228,14 +227,14 @@ export default function StoryPage() {
                 <ChevronLeft className="w-4 h-4" />
                 Back to Story
               </Button>
-              
+
               <div className="text-center">
                 <h1 className="font-semibold">{story.title}</h1>
                 <p className="text-sm text-muted-foreground">
                   Chapter {currentChapterIndex + 1} of {chapters.length}
                 </p>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <Button 
                   variant="ghost" 
@@ -279,11 +278,11 @@ export default function StoryPage() {
                 <ChevronLeft className="w-4 h-4" />
                 Previous Chapter
               </Button>
-              
+
               <span className="text-sm text-muted-foreground">
                 {currentChapterIndex + 1} / {chapters.length}
               </span>
-              
+
               <Button 
                 onClick={nextChapter}
                 disabled={currentChapterIndex === chapters.length - 1}
@@ -302,7 +301,7 @@ export default function StoryPage() {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-      
+
       <div className="lg:ml-64 min-h-screen">
         <div className="max-w-6xl mx-auto px-4 py-6">
           {/* Story Header */}
@@ -322,7 +321,7 @@ export default function StoryPage() {
                   </div>
                 )}
               </div>
-              
+
               {/* Author Info */}
               <div className="flex items-center gap-3 mt-4 p-3 bg-card rounded-lg">
                 <Avatar className="w-12 h-12">
@@ -347,7 +346,7 @@ export default function StoryPage() {
                     </Badge>
                   )}
                 </div>
-                
+
                 {story.isCompleted && (
                   <Badge className="bg-green-500/10 text-green-500 border-green-500/30">
                     Complete
@@ -428,7 +427,7 @@ export default function StoryPage() {
                       >
                         <Heart className="w-4 h-4" />
                       </Button>
-                      
+
                       {showReactions && (
                         <div className="absolute top-full mt-2 bg-popover border rounded-lg p-2 flex gap-1 z-10">
                           {reactions.map((reaction) => (
@@ -608,7 +607,7 @@ export default function StoryPage() {
           </div>
         </div>
       </div>
-      
+
       <MobileNav />
     </div>
   );
