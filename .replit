@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web"]
+modules = ["nodejs-20", "web", "postgresql-16"]
 run = "npm run dev"
 hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
@@ -13,10 +13,6 @@ run = ["npm", "run", "start"]
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 41819
-externalPort = 3001
 
 [[ports]]
 localPort = 43639
@@ -54,5 +50,5 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "SPOTIFY_CLIENT_ID='cbd233e02df54d6b95e0ffbe2441cc56' SPOTIFY_API_SECRET='f0d4531ebb354509b3b18c301e80ba3' DATABASE_URL='postgresql://postgres.scuhjflbhyyhipxpuunv:whispernetworkontop01@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres' npm run dev"
+args = "npm run dev"
 waitForPort = 5000

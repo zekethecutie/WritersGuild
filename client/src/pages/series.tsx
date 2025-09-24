@@ -59,7 +59,10 @@ function MyStoriesSection() {
 
   const { data: myStories = [], isLoading } = useQuery({
     queryKey: ["/api/series/my-stories"],
-    queryFn: () => apiRequest("GET", "/api/series/my-stories"),
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/series/my-stories");
+      return Array.isArray(response) ? response : [];
+    },
   });
 
   const deleteSeriesMutation = useMutation({

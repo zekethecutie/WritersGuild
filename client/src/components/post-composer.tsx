@@ -8,6 +8,7 @@ import RichTextEditor from "@/components/rich-text-editor";
 import SpotifyPlayer from "@/components/spotify-player";
 import ImageGallery from "@/components/image-gallery";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +42,7 @@ export default function PostComposer() {
   const queryClient = useQueryClient();
 
   const [content, setContent] = useState("");
+  const [title, setTitle] = useState("");
   const [postType, setPostType] = useState<"text" | "poetry" | "story" | "challenge">("text");
   const [genre, setGenre] = useState("");
   const [privacy, setPrivacy] = useState<"public" | "followers" | "private">("public");
@@ -70,6 +72,7 @@ export default function PostComposer() {
     onSuccess: () => {
       // Clear form
       setContent("");
+      setTitle("");
       setPostType("text");
       setGenre("");
       setPrivacy("public");
@@ -219,6 +222,7 @@ export default function PostComposer() {
     }
 
     const postData = {
+      title: title.trim() || undefined,
       content: content.trim(),
       postType,
       genre: genre || undefined,
@@ -322,6 +326,20 @@ export default function PostComposer() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Title Input */}
+            {(postType === "story" || postType === "poetry") && (
+              <div className="mb-4">
+                <Input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder={`${postType === "story" ? "Story" : "Poem"} title (optional)`}
+                  className="text-lg font-medium bg-transparent border-none outline-none placeholder-muted-foreground"
+                  data-testid="input-post-title"
+                  maxLength={255}
+                />
+              </div>
+            )}
 
             {/* Editor */}
             {isRichEditor ? (

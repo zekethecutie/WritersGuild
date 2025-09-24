@@ -771,8 +771,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "User not authenticated" });
       }
 
-      // For now, return empty array since we don't have series implementation yet
-      res.json([]);
+      const userSeries = await storage.getUserStories(userId);
+      res.json(userSeries);
     } catch (error) {
       console.error("Error fetching my stories:", error);
       res.status(500).json({ error: "Failed to fetch my stories" });
