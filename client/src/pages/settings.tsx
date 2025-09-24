@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -89,6 +88,10 @@ export default function SettingsPage() {
     newPassword: '',
     confirmPassword: ''
   });
+
+  const [isUploadingProfile, setIsUploadingProfile] = useState(false);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+
 
   if (!isAuthenticated) {
     return (
@@ -198,6 +201,108 @@ export default function SettingsPage() {
     },
   });
 
+  const profilePictureMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('profilePicture', file);
+
+      const response = await fetch('/api/upload/profile-picture', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload profile picture');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      toast({
+        title: "Success",
+        description: "Profile picture updated successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to upload profile picture",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const coverPhotoMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('coverPhoto', file);
+
+      const response = await fetch('/api/upload/user-cover', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload cover photo');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      toast({
+        title: "Success",
+        description: "Cover photo updated successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to upload cover photo",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleProfilePictureUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        toast({
+          title: "Error",
+          description: "File size must be less than 10MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      setIsUploadingProfile(true);
+      profilePictureMutation.mutate(file);
+    }
+  };
+
+  const handleCoverPhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        toast({
+          title: "Error",
+          description: "File size must be less than 10MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      setIsUploadingCover(true);
+      coverPhotoMutation.mutate(file);
+    }
+    // Reset input value
+    if (event.target) {
+      event.target.value = '';
+    }
+  };
+
   const handleProfileSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     updateProfileMutation.mutate(profileForm);
@@ -205,7 +310,7 @@ export default function SettingsPage() {
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       toast({
         title: "Passwords don't match",
@@ -239,7 +344,7 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-      
+
       <div className="lg:ml-64 min-h-screen">
         <div className="max-w-4xl mx-auto p-6">
           {/* Header */}
@@ -320,7 +425,7 @@ export default function SettingsPage() {
                           placeholder="Your display name"
                         />
                       </div>
-                      
+
                       <div>
                         <Label htmlFor="username">Username</Label>
                         <Input
@@ -362,7 +467,7 @@ export default function SettingsPage() {
                           placeholder="City, Country"
                         />
                       </div>
-                      
+
                       <div>
                         <Label htmlFor="website" className="flex items-center gap-2">
                           <LinkIcon className="w-4 h-4" />
@@ -533,7 +638,7 @@ export default function SettingsPage() {
                           required
                         />
                       </div>
-                      
+
                       <div>
                         <Label htmlFor="newPassword">New Password</Label>
                         <Input
@@ -544,7 +649,7 @@ export default function SettingsPage() {
                           required
                         />
                       </div>
-                      
+
                       <div>
                         <Label htmlFor="confirmPassword">Confirm New Password</Label>
                         <Input
@@ -585,14 +690,14 @@ export default function SettingsPage() {
                         {!user?.isVerified && !user?.isAdmin && <Badge variant="outline">Standard</Badge>}
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center justify-between">
                       <span>Member Since</span>
                       <span className="text-muted-foreground">
                         {new Date(user?.createdAt || '').toLocaleDateString()}
                       </span>
                     </div>
-                    
+
                     <div className="flex items-center justify-between">
                       <span>Posts Written</span>
                       <span className="text-muted-foreground">{user?.postsCount || 0}</span>
@@ -692,7 +797,7 @@ export default function SettingsPage() {
           </Tabs>
         </div>
       </div>
-      
+
       <MobileNav />
     </div>
   );

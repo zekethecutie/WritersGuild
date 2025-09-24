@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { getProfileImageUrl } from "@/lib/defaultImages";
+import LoadingScreen from "@/components/loading-screen";
 
 const reactions = [
   { name: "like", icon: ThumbsUp, color: "text-blue-500" },
@@ -60,7 +61,15 @@ export default function StoryPage() {
   // Fetch story details
   const { data: story, isLoading: storyLoading } = useQuery({
     queryKey: ["/api/series", storyId],
-    queryFn: () => apiRequest("GET", `/api/series/${storyId}`),
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("GET", `/api/series/${storyId}`);
+        return response;
+      } catch (error) {
+        console.error("Error fetching story:", error);
+        throw error;
+      }
+    },
     enabled: !!storyId,
   });
 
@@ -82,7 +91,15 @@ export default function StoryPage() {
   // Fetch comments
   const { data: comments = [], isLoading: commentsLoading } = useQuery({
     queryKey: ["/api/series", storyId, "comments"],
-    queryFn: () => apiRequest("GET", `/api/series/${storyId}/comments`),
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("GET", `/api/series/${storyId}/comments`);
+        return Array.isArray(response) ? response : [];
+      } catch (error) {
+        console.error("Error fetching comments:", error);
+        return [];
+      }
+    },
     enabled: !!storyId,
   });
 
@@ -203,14 +220,7 @@ export default function StoryPage() {
   };
 
   if (storyLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading story...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen title="Loading Story..." subtitle="Preparing your reading experience" />;
   }
 
   if (!story) {
@@ -435,6 +445,18 @@ export default function StoryPage() {
                     : "Start Reading"
                   }
                 </Button>
+
+                {/* Edit button for authors */}
+                {isAuthenticated && user?.id === story?.authorId && (
+                  <Button 
+                    variant="outline"
+                    onClick={() => window.location.href = `/story/${storyId}/edit`}
+                    className="flex items-center gap-2"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                    Edit Story
+                  </Button>
+                )}
 
                 {isAuthenticated && (
                   <>

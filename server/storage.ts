@@ -37,6 +37,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, sql, count, exists, asc, ne, isNotNull, gte, ilike } from "drizzle-orm";
+import crypto from 'crypto'; // Import crypto for UUID generation
 
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
@@ -938,16 +939,16 @@ export class DatabaseStorage implements IStorage {
       genre: posts.genre,
       count: sql<number>`count(*)::int`,
     })
-    .from(posts)
-    .where(
-      and(
-        eq(posts.isPrivate, false),
-        sql`${posts.createdAt} >= NOW() - INTERVAL '7 days'`
+      .from(posts)
+      .where(
+        and(
+          eq(posts.isPrivate, false),
+          sql`${posts.createdAt} >= NOW() - INTERVAL '7 days'`
+        )
       )
-    )
-    .groupBy(posts.genre)
-    .orderBy(sql`count(*) DESC`)
-    .limit(10);
+      .groupBy(posts.genre)
+      .orderBy(sql`count(*) DESC`)
+      .limit(10);
 
     // Format the results to match the expected structure
     return topicData.map((item, index) => ({
@@ -958,36 +959,36 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async getUserStats(userId: string): Promise<{ 
-    followersCount: number; 
-    followingCount: number; 
-    postsCount: number; 
-    likesReceived: number; 
+  async getUserStats(userId: string): Promise<{
+    followersCount: number;
+    followingCount: number;
+    postsCount: number;
+    likesReceived: number;
   }> {
-    const [followersResult] = await db.select({ 
-      count: sql<number>`count(*)::int` 
+    const [followersResult] = await db.select({
+      count: sql<number>`count(*)::int`
     })
-    .from(follows)
-    .where(eq(follows.followingId, userId));
+      .from(follows)
+      .where(eq(follows.followingId, userId));
 
-    const [followingResult] = await db.select({ 
-      count: sql<number>`count(*)::int` 
+    const [followingResult] = await db.select({
+      count: sql<number>`count(*)::int`
     })
-    .from(follows)
-    .where(eq(follows.followerId, userId));
+      .from(follows)
+      .where(eq(follows.followerId, userId));
 
-    const [postsResult] = await db.select({ 
-      count: sql<number>`count(*)::int` 
+    const [postsResult] = await db.select({
+      count: sql<number>`count(*)::int`
     })
-    .from(posts)
-    .where(eq(posts.authorId, userId));
+      .from(posts)
+      .where(eq(posts.authorId, userId));
 
-    const [likesResult] = await db.select({ 
-      count: sql<number>`count(*)::int` 
+    const [likesResult] = await db.select({
+      count: sql<number>`count(*)::int`
     })
-    .from(likes)
-    .innerJoin(posts, eq(likes.postId, posts.id))
-    .where(eq(posts.authorId, userId));
+      .from(likes)
+      .innerJoin(posts, eq(likes.postId, posts.id))
+      .where(eq(posts.authorId, userId));
 
     return {
       followersCount: followersResult?.count || 0,
@@ -1024,16 +1025,16 @@ export class DatabaseStorage implements IStorage {
       );
 
     // Get this week's posts
-    const [weeklyPosts] = await db.select({ 
-      count: sql<number>`count(*)::int` 
+    const [weeklyPosts] = await db.select({
+      count: sql<number>`count(*)::int`
     })
-    .from(posts)
-    .where(
-      and(
-        eq(posts.authorId, userId),
-        sql`${posts.createdAt} >= ${startOfWeek.toISOString()}`
-      )
-    );
+      .from(posts)
+      .where(
+        and(
+          eq(posts.authorId, userId),
+          sql`${posts.createdAt} >= ${startOfWeek.toISOString()}`
+        )
+      );
 
     const dailyWordGoal = user.wordCountGoal || 500;
     const weeklyPostGoal = user.weeklyPostsGoal || 5;
@@ -1171,7 +1172,7 @@ export class DatabaseStorage implements IStorage {
         lastMessage: messages,
       })
       .from(conversations)
-      .leftJoin(users, 
+      .leftJoin(users,
         or(
           and(eq(conversations.participantOneId, userId), eq(users.id, conversations.participantTwoId)),
           and(eq(conversations.participantTwoId, userId), eq(users.id, conversations.participantOneId))
@@ -1238,7 +1239,7 @@ export class DatabaseStorage implements IStorage {
   async markMessageAsRead(messageId: string): Promise<void> {
     await db
       .update(messages)
-      .set({ 
+      .set({
         isRead: true,
         readAt: new Date(),
         updatedAt: new Date(),
@@ -1249,7 +1250,7 @@ export class DatabaseStorage implements IStorage {
   async markConversationAsRead(conversationId: string, userId: string): Promise<void> {
     await db
       .update(messages)
-      .set({ 
+      .set({
         isRead: true,
         readAt: new Date(),
         updatedAt: new Date(),
@@ -1446,7 +1447,16 @@ export class DatabaseStorage implements IStorage {
   // Series management methods
   async createSeries(seriesData: any): Promise<any> {
     try {
-      const [newSeries] = await db.insert(series).values(seriesData).returning();
+      const [newSeries] = await db.insert(series).values({
+        ...seriesData,
+        authorId: seriesData.authorId,
+        isPrivate: seriesData.isPrivate || false,
+        chaptersCount: 0,
+        followersCount: 0,
+        likesCount: 0,
+        viewsCount: 0
+      }).returning();
+
       return newSeries;
     } catch (error) {
       console.error("Error creating series:", error);
@@ -1478,9 +1488,9 @@ export class DatabaseStorage implements IStorage {
           isVerified: users.isVerified,
         }
       })
-      .from(series)
-      .leftJoin(users, eq(series.authorId, users.id))
-      .where(eq(series.isPrivate, false));
+        .from(series)
+        .leftJoin(users, eq(series.authorId, users.id))
+        .where(eq(series.isPrivate, false));
 
       if (genre) {
         query = query.where(and(eq(series.isPrivate, false), eq(series.genre, genre)));
@@ -1509,11 +1519,13 @@ export class DatabaseStorage implements IStorage {
         genre: series.genre,
         tags: series.tags,
         isCompleted: series.isCompleted,
+        isPrivate: series.isPrivate,
         viewsCount: series.viewsCount,
         likesCount: series.likesCount,
         chaptersCount: series.chaptersCount,
         followersCount: series.followersCount,
         createdAt: series.createdAt,
+        updatedAt: series.updatedAt,
         author: {
           id: users.id,
           username: users.username,
@@ -1536,6 +1548,10 @@ export class DatabaseStorage implements IStorage {
       .from(series)
       .leftJoin(users, eq(series.authorId, users.id))
       .where(eq(series.id, seriesId));
+
+      if (!result) {
+        return null;
+      }
 
       return result;
     } catch (error) {
@@ -1641,9 +1657,9 @@ export class DatabaseStorage implements IStorage {
         followersCount: series.followersCount,
         createdAt: series.createdAt,
       })
-      .from(series)
-      .where(eq(series.authorId, userId))
-      .orderBy(desc(series.createdAt));
+        .from(series)
+        .where(eq(series.authorId, userId))
+        .orderBy(desc(series.createdAt));
 
       return result;
     } catch (error) {
@@ -1661,8 +1677,8 @@ export class DatabaseStorage implements IStorage {
     const totalChapters = await db.select({ count: sql<number>`count(*)` })
       .from(chapters)
       .where(eq(chapters.seriesId, seriesId));
-    
-    const progressPercentage = totalChapters[0]?.count > 0 
+
+    const progressPercentage = totalChapters[0]?.count > 0
       ? Math.round(((chapterIndex + 1) / totalChapters[0].count) * 100)
       : 0;
 
@@ -1693,7 +1709,7 @@ export class DatabaseStorage implements IStorage {
         eq(readingProgress.userId, userId),
         eq(readingProgress.seriesId, seriesId)
       ));
-    
+
     return progress;
   }
 
@@ -1703,10 +1719,7 @@ export class DatabaseStorage implements IStorage {
     return [];
   }
 
-  async getSeriesComments(seriesId: string): Promise<any[]> {
-    // For now, return empty array - implement series comments later
-    return [];
-  }
+  // Duplicate getSeriesComments removed
 
   async createSeriesComment(userId: string, seriesId: string, content: string): Promise<any> {
     // For now, return a placeholder - implement series comments later
@@ -1806,7 +1819,7 @@ export class DatabaseStorage implements IStorage {
           SELECT COUNT(*) FROM ${chapters} WHERE ${chapters.seriesId} = ${series.id}
         )`,
         followersCount: sql<number>`(
-          SELECT COUNT(*) FROM ${seriesFollows} WHERE ${seriesFollows.seriesId} = ${series.id}
+          SELECT COUNT(*) FROM ${seriesFollowers} WHERE ${seriesFollowers.seriesId} = ${series.id}
         )`,
         viewsCount: sql<number>`COALESCE(${series.viewsCount}, 0)`,
         author: {

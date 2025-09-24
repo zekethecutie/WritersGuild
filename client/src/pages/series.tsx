@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { getProfileImageUrl } from "@/lib/defaultImages";
+import LoadingScreen from "@/components/loading-screen";
 
 interface Series {
   id: string;
@@ -82,19 +83,7 @@ function MyStoriesSection() {
   });
 
   if (isLoading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Card key={i} className="animate-pulse">
-            <div className="aspect-[3/4] bg-muted rounded-t-lg" />
-            <CardContent className="p-4">
-              <div className="h-4 bg-muted rounded mb-2" />
-              <div className="h-3 bg-muted rounded w-3/4" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
+    return <LoadingScreen title="Loading Stories..." subtitle="Discovering amazing tales" />;
   }
 
   if (!Array.isArray(myStories)) {
@@ -356,82 +345,121 @@ export default function SeriesPage() {
                     Create Series
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-sm">
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>Create New Series</DialogTitle>
+                    <DialogTitle className="text-2xl">Create New Series</DialogTitle>
                     <DialogDescription>
-                      Create a new story series with chapters, cover image, and details.
+                      Start your writing journey! Create a captivating story series with chapters, cover art, and rich details.
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Title *</label>
-                      <Input
-                        value={newSeries.title}
-                        onChange={(e) => setNewSeries(prev => ({ ...prev, title: e.target.value }))}
-                        placeholder="Enter series title"
-                      />
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Title *</label>
+                          <Input
+                            value={newSeries.title}
+                            onChange={(e) => setNewSeries(prev => ({ ...prev, title: e.target.value }))}
+                            placeholder="Enter your story title..."
+                            className="text-lg"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Genre</label>
+                          <Select value={newSeries.genre} onValueChange={(value) => setNewSeries(prev => ({ ...prev, genre: value }))}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select genre" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {genres.map(genre => (
+                                <SelectItem key={genre} value={genre}>{genre}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Tags</label>
+                          <Input
+                            value={newSeries.tags}
+                            onChange={(e) => setNewSeries(prev => ({ ...prev, tags: e.target.value }))}
+                            placeholder="romance, fantasy, magic (comma separated)"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Help readers discover your story with relevant tags
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Cover Image (9:16 ratio recommended)</label>
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            onChange={(e) => e.target.files?.[0] && handleCoverUpload(e.target.files[0])}
+                            className="hidden"
+                            id="cover-upload"
+                          />
+                          <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
+                            {newSeries.coverImageUrl ? (
+                              <div className="space-y-3">
+                                <div className="w-24 h-32 mx-auto rounded border overflow-hidden">
+                                  <img 
+                                    src={newSeries.coverImageUrl} 
+                                    alt="Cover preview"
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                                <Button 
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => document.getElementById('cover-upload')?.click()}
+                                  disabled={isUploadingCover}
+                                >
+                                  Change Cover
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                <BookOpen className="w-12 h-12 text-muted-foreground mx-auto" />
+                                <div>
+                                  <Button 
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => document.getElementById('cover-upload')?.click()}
+                                    disabled={isUploadingCover}
+                                    className="mb-2"
+                                  >
+                                    {isUploadingCover ? "Uploading..." : "Upload Cover"}
+                                  </Button>
+                                  <p className="text-xs text-muted-foreground">
+                                    JPG, PNG or WebP (max 10MB)
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     </div>
+
                     <div>
                       <label className="block text-sm font-medium mb-2">Description *</label>
                       <Textarea
                         value={newSeries.description}
                         onChange={(e) => setNewSeries(prev => ({ ...prev, description: e.target.value }))}
-                        placeholder="Describe your series"
-                        rows={3}
+                        placeholder="Write a compelling description of your story..."
+                        rows={4}
+                        className="resize-none"
                       />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        This will be shown to readers on your story page
+                      </p>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Cover Image (9:16 ratio recommended)</label>
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        onChange={(e) => e.target.files?.[0] && handleCoverUpload(e.target.files[0])}
-                        className="hidden"
-                        id="cover-upload"
-                      />
-                      <div className="flex items-center gap-3">
-                        <Button 
-                          type="button"
-                          variant="outline"
-                          onClick={() => document.getElementById('cover-upload')?.click()}
-                          disabled={isUploadingCover}
-                          className="flex items-center gap-2"
-                        >
-                          {isUploadingCover ? "Uploading..." : "Upload Cover"}
-                        </Button>
-                        {newSeries.coverImageUrl && (
-                          <div className="w-12 h-16 rounded border overflow-hidden">
-                            <img 
-                              src={newSeries.coverImageUrl} 
-                              alt="Cover preview"
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Genre</label>
-                      <Select value={newSeries.genre} onValueChange={(value) => setNewSeries(prev => ({ ...prev, genre: value }))}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select genre" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {genres.map(genre => (
-                            <SelectItem key={genre} value={genre}>{genre}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Tags</label>
-                      <Input
-                        value={newSeries.tags}
-                        onChange={(e) => setNewSeries(prev => ({ ...prev, tags: e.target.value }))}
-                        placeholder="romance, fantasy, magic (comma separated)"
-                      />
-                    </div>
+                    
                     <div className="flex gap-2 pt-4">
                       <Button onClick={() => setShowCreateDialog(false)} variant="outline" className="flex-1">
                         Cancel

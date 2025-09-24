@@ -31,6 +31,7 @@ import {
 import { getProfileImageUrl, getCoverImageUrl } from "@/lib/defaultImages";
 import { formatDistanceToNow } from "date-fns";
 import type { Post, User } from "@shared/schema";
+import LoadingScreen from "@/components/loading-screen";
 
 // User Stories Section Component
 function UserStoriesSection({ userId, isOwnProfile }: { userId: string; isOwnProfile: boolean }) {
@@ -308,27 +309,7 @@ export default function Profile() {
   };
 
   if (authLoading || profileLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Sidebar />
-        <div className="lg:ml-64 min-h-screen">
-          <div className="max-w-4xl mx-auto">
-            {/* Profile header skeleton */}
-            <div className="relative">
-              <Skeleton className="h-48 w-full" />
-              <div className="absolute -bottom-16 left-6">
-                <Skeleton className="w-32 h-32 rounded-full border-4 border-background" />
-              </div>
-            </div>
-            <div className="pt-20 px-6 pb-6">
-              <Skeleton className="h-8 w-48 mb-2" />
-              <Skeleton className="h-4 w-32 mb-4" />
-              <Skeleton className="h-16 w-full" />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingScreen title="Loading Profile..." subtitle="Preparing writer's workspace" />;
   }
 
   if (!profileUser) {
