@@ -16,21 +16,6 @@ import {
   ExternalLink
 } from "lucide-react";
 
-interface SpotifyTrack {
-  id: string;
-  name: string;
-  artists: { name: string }[];
-  album: {
-    name: string;
-    images: { url: string }[];
-  };
-  preview_url: string | null;
-  external_urls: {
-    spotify: string;
-  };
-  duration_ms: number;
-}
-
 interface SpotifyPlayerProps {
   track?: any;
   onTrackSelect?: (track: SpotifyTrack) => void;
@@ -131,7 +116,7 @@ export default function SpotifyPlayer({
               <div className="flex items-center justify-center py-8">
                 <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
               </div>
-            ) : searchResults?.tracks?.items?.length > 0 ? (
+            ) : searchResults?.tracks?.items && searchResults.tracks.items.length > 0 ? (
               <div className="space-y-2">
                 {searchResults.tracks.items.map((track: SpotifyTrack) => (
                   <div

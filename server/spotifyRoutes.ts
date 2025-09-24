@@ -15,7 +15,8 @@ router.get("/search", isAuthenticated, async (req, res) => {
     }
 
     const spotify = await getSpotifyClient();
-    const results = await spotify.search(q, [type as any], 'US', parseInt(limit as string));
+    const parsedLimit = Math.min(50, Math.max(1, Number(limit) || 10));
+    const results = await spotify.search(q, [type as any], 'US', parsedLimit);
     
     res.json(results);
   } catch (error) {
