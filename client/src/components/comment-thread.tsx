@@ -26,7 +26,14 @@ export default function CommentThread({ postId, initialCount = 0 }: CommentThrea
   // Fetch comments for the post
   const { data: comments = [], isLoading, error } = useQuery({
     queryKey: ["/api/posts", postId, "comments"],
-    queryFn: () => fetch(`/api/posts/${postId}/comments`).then(res => res.json()),
+    queryFn: async () => {
+      const response = await fetch(`/api/posts/${postId}/comments`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch comments');
+      }
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    },
   });
 
   // Like comment mutation
@@ -55,6 +62,10 @@ export default function CommentThread({ postId, initialCount = 0 }: CommentThrea
 
   // Build recursive comment tree
   const buildCommentTree = (comments: Comment[]): TreeComment[] => {
+    if (!Array.isArray(comments) || comments.length === 0) {
+      return [];
+    }
+
     const commentMap = new Map<string, TreeComment>();
     
     // First pass: create map of all comments with replies array
@@ -85,10 +96,12 @@ export default function CommentThread({ postId, initialCount = 0 }: CommentThrea
     
     // Sort replies recursively
     const sortReplies = (comment: TreeComment) => {
-      comment.replies.sort((a, b) => 
-        new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
-      );
-      comment.replies.forEach(sortReplies);
+      if (Array.isArray(comment.replies)) {
+        comment.replies.sort((a, b) => 
+          new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+        );
+        comment.replies.forEach(sortReplies);
+      }
     };
     
     rootComments.forEach(sortReplies);

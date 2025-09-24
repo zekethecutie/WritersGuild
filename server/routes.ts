@@ -763,9 +763,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get current user's stories (my stories)
-  app.get("/api/series/my-stories", requireAuth, async (req, res) => {
+  app.get("/api/series/my-stories", requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user!.id;
+      const userId = req.session.userId;
       const stories = await storage.getUserStories(userId);
       res.json(stories);
     } catch (error) {
@@ -775,10 +775,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete series
-  app.delete("/api/series/:id", requireAuth, async (req, res) => {
+  app.delete("/api/series/:id", requireAuth, async (req: any, res) => {
     try {
       const seriesId = req.params.id;
-      const userId = req.user!.id;
+      const userId = req.session.userId;
 
       // Check if user owns the series
       const seriesData = await storage.getSeriesById(seriesId);

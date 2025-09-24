@@ -9,8 +9,19 @@ import ImageGallery from "@/components/image-gallery";
 import PostDownload from "@/components/post-download";
 import SavePostImage from "@/components/save-post-image";
 import CommentThread from "@/components/comment-thread";
+import ReportPostButton from "@/components/report-post-button";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { formatDistanceToNow } from "date-fns";
 import {
   Heart,
@@ -44,6 +55,7 @@ export default function PostCard({ post }: PostCardProps) {
   const queryClient = useQueryClient();
   const [isExpanded, setIsExpanded] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const postRef = useRef<HTMLDivElement>(null);
 
   // Use author data from post or fallback for display
@@ -196,8 +208,8 @@ export default function PostCard({ post }: PostCardProps) {
   });
 
   const reportPostMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest("POST", `/api/posts/${post.id}/report`);
+    mutationFn: async ({ reason }: { reason: string }) => {
+      return apiRequest("POST", `/api/posts/${post.id}/report`, { reason });
     },
     onSuccess: () => {
       toast({
@@ -510,50 +522,44 @@ export default function PostCard({ post }: PostCardProps) {
               </div>
             </Button>
 
-            <PostDownload post={post} postRef={postRef} />
+            {/* Admin Actions & User Actions */}
+            <div className="flex items-center">
+              <PostDownload post={post} postRef={postRef} />
+              
+              <SavePostImage postRef={postRef} postId={post.id} disabled={!user} />
 
-            <SavePostImage postRef={postRef} postId={post.id} disabled={!user} />
+              {(user as any)?.isAdmin && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  disabled={adminDeleteMutation.isPending}
+                  className="engagement-btn hover:text-red-400 group"
+                  data-testid="button-admin-delete"
+                >
+                  <div className="p-2 rounded-full group-hover:bg-red-400/10 transition-colors">
+                    <Trash2 className="w-5 h-5" />
+                  </div>
+                </Button>
+              )}
 
-            {(user as any)?.isAdmin && (
+              <ReportPostButton 
+                postId={post.id} 
+                disabled={reportPostMutation.isPending}
+                onReport={(reason) => reportPostMutation.mutate({ reason })}
+              />
+
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => adminDeleteMutation.mutate()}
-                disabled={adminDeleteMutation.isPending}
-                className="engagement-btn hover:text-red-400 group"
-                data-testid="button-admin-delete"
+                className="engagement-btn hover:text-muted-foreground group"
+                data-testid="button-post-menu"
               >
-                <div className="p-2 rounded-full group-hover:bg-red-400/10 transition-colors">
-                  <Trash2 className="w-5 h-5" />
+                <div className="p-2 rounded-full group-hover:bg-muted/10 transition-colors">
+                  <MoreHorizontal className="w-5 h-5" />
                 </div>
               </Button>
-            )}
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => reportPostMutation.mutate()}
-              disabled={reportPostMutation.isPending}
-              className="engagement-btn hover:text-orange-400 group"
-              data-testid="button-report-post"
-            >
-              <div className="p-2 rounded-full group-hover:bg-orange-400/10 transition-colors">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-              </div>
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              className="engagement-btn hover:text-muted-foreground group"
-              data-testid="button-post-menu"
-            >
-              <div className="p-2 rounded-full group-hover:bg-muted/10 transition-colors">
-                <MoreHorizontal className="w-5 h-5" />
-              </div>
-            </Button>
+            </div></div>
           </div>
         </div>
       </div>
@@ -564,6 +570,30 @@ export default function PostCard({ post }: PostCardProps) {
           <CommentThread postId={post.id} initialCount={post.commentsCount || 0} />
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Post</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this post? This action cannot be undone and will permanently remove the post and all its comments.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                adminDeleteMutation.mutate();
+                setShowDeleteConfirm(false);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Post
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </article>
   );
 }
