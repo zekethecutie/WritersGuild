@@ -26,9 +26,7 @@ import {
   MessageCircle,
   Play,
   ThumbsUp,
-  Smile,
   Laugh,
-  Angry,
   Frown,
   AlertCircle
 } from "lucide-react";
@@ -41,7 +39,6 @@ const reactions = [
   { name: "laugh", icon: Laugh, color: "text-yellow-500" },
   { name: "surprise", icon: AlertCircle, color: "text-purple-500" },
   { name: "sad", icon: Frown, color: "text-gray-500" },
-  { name: "angry", icon: Angry, color: "text-red-600" },
 ];
 
 export default function StoryPage() {

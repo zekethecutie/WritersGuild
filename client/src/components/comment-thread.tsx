@@ -60,28 +60,22 @@ export default function CommentThread({ postId, initialCount = 0 }: CommentThrea
     isLiked?: boolean;
   };
 
-  // Build recursive comment tree
-  const buildCommentTree = (comments: Comment[]): TreeComment[] => {
-    if (!Array.isArray(comments) || comments.length === 0) {
-      return [];
-    }
+  // Build comment tree
+  const buildCommentTree = (comments2: Comment[]): TreeComment[] => {
+    if (!Array.isArray(comments2)) return [];
 
     const commentMap = new Map<string, TreeComment>();
-    
-    // First pass: create map of all comments with replies array
-    comments.forEach(comment => {
-      commentMap.set(comment.id, {
-        ...comment,
-        replies: []
-      });
-    });
-    
-    // Second pass: build parent-child relationships
     const rootComments: TreeComment[] = [];
-    
-    comments.forEach(comment => {
+
+    // First pass: create all comment nodes
+    (comments2 || []).forEach(comment => {
+      commentMap.set(comment.id, { ...comment, replies: [] });
+    });
+
+    // Second pass: build parent-child relationships
+    comments2.forEach(comment => {
       const commentWithReplies = commentMap.get(comment.id)!;
-      
+
       if (!comment.parentId) {
         // Top-level comment
         rootComments.push(commentWithReplies);
@@ -93,7 +87,7 @@ export default function CommentThread({ postId, initialCount = 0 }: CommentThrea
         }
       }
     });
-    
+
     // Sort replies recursively
     const sortReplies = (comment: TreeComment) => {
       if (Array.isArray(comment.replies)) {
@@ -103,7 +97,7 @@ export default function CommentThread({ postId, initialCount = 0 }: CommentThrea
         comment.replies.forEach(sortReplies);
       }
     };
-    
+
     rootComments.forEach(sortReplies);
     return rootComments;
   };
@@ -168,7 +162,7 @@ export default function CommentThread({ postId, initialCount = 0 }: CommentThrea
           <MessageCircle className="w-5 h-5" />
           Comments ({comments.length})
         </h3>
-        
+
         {comments.length > 0 && (
           <Tabs value={sortBy} onValueChange={(value: any) => setSortBy(value)} className="w-auto">
             <TabsList className="grid w-full grid-cols-3">

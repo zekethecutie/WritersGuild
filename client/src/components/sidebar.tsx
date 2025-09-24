@@ -14,16 +14,30 @@ import {
   Settings,
   MoreHorizontal,
   Cog, // Added Cog icon for settings
-  BookOpen // Added BookOpen icon for stories
+  BookOpen, // Added BookOpen icon for stories
+  Edit, // Added Edit icon for compose button
+  HelpCircle, // Added HelpCircle icon for help center
+  Shield, // Added Shield icon for rules
+  ExternalLink // Added ExternalLink icon for external links
 } from "lucide-react";
 import { getProfileImageUrl } from "@/lib/defaultImages";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import PostModal from "@/components/post-modal";
+import { cn } from "@/lib/utils";
 
 
 export default function Sidebar() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
+  const { toast } = useToast();
   const [location] = useLocation();
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [showPostModal, setShowPostModal] = useState(false);
 
   // Fetch real notification count
   const { data: notifications } = useQuery({
@@ -87,24 +101,55 @@ export default function Sidebar() {
 
         {/* Compose Button */}
         <Button 
-          className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-semibold hover:bg-primary/90 transition-colors mb-8"
-          data-testid="button-compose"
-        >
-          <Feather className="w-5 h-5 mr-2" />
-          Compose
-        </Button>
+            size="lg" 
+            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
+            onClick={() => {
+              if (isAuthenticated) {
+                setShowPostModal(true);
+              } else {
+                toast({
+                  title: "Sign in required",
+                  description: "Please sign in to create a post",
+                  variant: "destructive",
+                });
+              }
+            }}
+          >
+            <Edit className="w-5 h-5 mr-2" />
+            Compose
+          </Button>
 
         {/* More Options - Settings is now in the navigation menu */}
-        <div className="space-y-2">
-          {/* Removed the standalone Settings button as it's now in the navigation */}
-          <Button 
-            variant="ghost" 
-            className="w-full justify-start px-4 py-3 rounded-xl"
-            data-testid="button-more"
-          >
-            <MoreHorizontal className="w-5 h-5 mr-3" />
-            More
-          </Button>
+        <div className="space-y-2 mt-2">
+          <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="w-full justify-start text-left font-normal h-12 px-3">
+                  <div className="flex items-center gap-3">
+                    <MoreHorizontal className="w-6 h-6" />
+                    <span className="text-xl">More</span>
+                  </div>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48">
+                <DropdownMenuItem onClick={() => window.location.href = "/rules"}>
+                  <Shield className="w-4 h-4 mr-2" />
+                  Rules & Guidelines
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => window.location.href = "/help"}>
+                  <HelpCircle className="w-4 h-4 mr-2" />
+                  Help Center
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => window.open("https://github.com/replit", "_blank")}>
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  About Writers Guild
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => window.open("https://replit.com", "_blank")}>
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Built with Replit
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
         </div>
       </div>
 
@@ -138,6 +183,13 @@ export default function Sidebar() {
           </div>
         </div>
       </div>
+      {/* Post Modal */}
+      {showPostModal && (
+        <PostModal 
+          isOpen={showPostModal} 
+          onClose={() => setShowPostModal(false)} 
+        />
+      )}
     </div>
   );
 }

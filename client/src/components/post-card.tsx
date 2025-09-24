@@ -21,6 +21,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -232,6 +233,27 @@ export default function PostCard({ post }: PostCardProps) {
       toast({
         title: "Report failed",
         description: "There was an error reporting this post.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deletePostMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("DELETE", `/api/posts/${post.id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/trending/posts"] });
+      toast({
+        title: "Post deleted",
+        description: "Your post has been deleted successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Delete failed",
+        description: "There was an error deleting your post.",
         variant: "destructive",
       });
     },
@@ -528,6 +550,42 @@ export default function PostCard({ post }: PostCardProps) {
               
               <SavePostImage postRef={postRef} postId={post.id} disabled={!user} />
 
+              {/* User's own post delete button */}
+              {user?.id === author.id && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="engagement-btn hover:text-red-400 group"
+                      data-testid="button-delete-own-post"
+                    >
+                      <div className="p-2 rounded-full group-hover:bg-red-400/10 transition-colors">
+                        <Trash2 className="w-5 h-5" />
+                      </div>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Post</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete this post? This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => deletePostMutation.mutate()}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Delete Post
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+
+              {/* Admin delete button */}
               {(user as any)?.isAdmin && (
                 <Button
                   variant="ghost"

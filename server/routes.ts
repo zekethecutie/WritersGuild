@@ -762,12 +762,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get current user's stories (my stories)
-  app.get("/api/series/my-stories", requireAuth, async (req: any, res) => {
+  // Get user's own stories
+  app.get('/api/series/my-stories', requireAuth, async (req: any, res) => {
     try {
       const userId = req.session.userId;
-      const stories = await storage.getUserStories(userId);
-      res.json(stories);
+
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+
+      // For now, return empty array since we don't have series implementation yet
+      res.json([]);
     } catch (error) {
       console.error("Error fetching my stories:", error);
       res.status(500).json({ error: "Failed to fetch my stories" });

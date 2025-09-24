@@ -464,7 +464,7 @@ export class DatabaseStorage implements IStorage {
       .from(commentLikes)
       .where(and(
         eq(commentLikes.userId, userId),
-        sql`${commentLikes.commentId} = ANY(ARRAY[${commentIds.join(',')}])`
+        sql`${commentLikes.commentId}::text = ANY(ARRAY[${commentIds.map(id => `'${id}'`).join(',')}])`
       ));
 
     const likedCommentIds = new Set(userLikes.map(like => like.commentId));
