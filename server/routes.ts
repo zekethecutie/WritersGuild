@@ -342,6 +342,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Popular music posts route - must come before general :id route
+  app.get('/api/posts/popular-music', async (req: any, res) => {
+    try {
+      const { limit = 20 } = req.query;
+      const userId = req.session?.userId;
+      const posts = await storage.getPopularMusicPosts(parseInt(limit as string), userId);
+      res.json(posts);
+    } catch (error) {
+      console.error("Error fetching popular music posts:", error);
+      res.status(500).json({ message: "Failed to fetch popular music posts" });
+    }
+  });
+
   app.get('/api/posts/:id', async (req, res) => {
     try {
       const { id } = req.params;

@@ -90,9 +90,9 @@ export default function Messages() {
   // Create conversation mutation
   const createConversationMutation = useMutation({
     mutationFn: async (participantId: string) => {
-      return apiRequest("POST", "/api/conversations", { participantId });
+      return apiRequest("POST", "/api/conversations", { participantId }) as Promise<ConversationWithDetails>;
     },
-    onSuccess: (conversation) => {
+    onSuccess: (conversation: ConversationWithDetails) => {
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
       setSelectedConversation(conversation);
     },

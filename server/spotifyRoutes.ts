@@ -16,7 +16,7 @@ router.get("/search", isAuthenticated, async (req, res) => {
 
     const spotify = await getSpotifyClient();
     const parsedLimit = Math.min(50, Math.max(1, Number(limit) || 10));
-    const results = await spotify.search(q, [type as any], 'US', parsedLimit);
+    const results = await spotify.search(q, [type as any], 'US', parsedLimit as any);
     
     res.json(results);
   } catch (error) {
@@ -71,7 +71,7 @@ router.get("/album/:id", isAuthenticated, async (req, res) => {
 router.get("/featured-playlists", isAuthenticated, async (req, res) => {
   try {
     const spotify = await getSpotifyClient();
-    const playlists = await spotify.browse.getFeaturedPlaylists('US', 20);
+    const playlists = await spotify.browse.getFeaturedPlaylists('US', 20 as any);
     
     res.json(playlists);
   } catch (error) {

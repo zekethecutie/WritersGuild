@@ -1417,6 +1417,89 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
+  async getPopularMusicPosts(limit: number = 20, userId?: string): Promise<(Post & { author?: User; isLiked?: boolean; isBookmarked?: boolean; isReposted?: boolean })[]> {
+    // Posts with Spotify tracks and highest engagement in the last 7 days
+    const result = await db
+      .select({
+        id: posts.id,
+        authorId: posts.authorId,
+        title: posts.title,
+        content: posts.content,
+        formattedContent: posts.formattedContent,
+        postType: posts.postType,
+        genre: posts.genre,
+        spotifyTrackId: posts.spotifyTrackId,
+        spotifyTrackData: posts.spotifyTrackData,
+        imageUrls: posts.imageUrls,
+        isPrivate: posts.isPrivate,
+        likesCount: posts.likesCount,
+        commentsCount: posts.commentsCount,
+        repostsCount: posts.repostsCount,
+        viewsCount: posts.viewsCount,
+        createdAt: posts.createdAt,
+        updatedAt: posts.updatedAt,
+        author: {
+          id: users.id,
+          username: users.username,
+          displayName: users.displayName,
+          profileImageUrl: users.profileImageUrl,
+          isVerified: users.isVerified,
+        },
+        isLiked: userId ? sql<boolean>`EXISTS (
+          SELECT 1 FROM ${likes} 
+          WHERE ${likes.userId} = ${userId} 
+          AND ${likes.postId} = ${posts.id}
+        )` : sql<boolean>`false`,
+        isBookmarked: userId ? sql<boolean>`EXISTS (
+          SELECT 1 FROM ${bookmarks} 
+          WHERE ${bookmarks.userId} = ${userId} 
+          AND ${bookmarks.postId} = ${posts.id}
+        )` : sql<boolean>`false`,
+        isReposted: userId ? sql<boolean>`EXISTS (
+          SELECT 1 FROM ${reposts} 
+          WHERE ${reposts.userId} = ${userId} 
+          AND ${reposts.postId} = ${posts.id}
+        )` : sql<boolean>`false`,
+      })
+      .from(posts)
+      .innerJoin(users, eq(posts.authorId, users.id))
+      .where(
+        and(
+          eq(posts.isPrivate, false),
+          isNotNull(posts.spotifyTrackData), // Only posts with Spotify track data
+          gte(posts.createdAt, sql`NOW() - INTERVAL '7 days'`)
+        )
+      )
+      .orderBy(
+        desc(sql`${posts.likesCount} + ${posts.commentsCount} + ${posts.repostsCount}`)
+      )
+      .limit(limit);
+
+    return result.map(row => ({
+      id: row.id,
+      authorId: row.authorId,
+      title: row.title,
+      content: row.content,
+      formattedContent: row.formattedContent,
+      postType: row.postType as any,
+      genre: row.genre,
+      spotifyTrackId: row.spotifyTrackId,
+      spotifyTrackData: row.spotifyTrackData,
+      imageUrls: row.imageUrls,
+      isPrivate: row.isPrivate,
+      likesCount: row.likesCount,
+      commentsCount: row.commentsCount,
+      repostsCount: row.repostsCount,
+      viewsCount: row.viewsCount,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      author: row.author,
+      isLiked: row.isLiked,
+      isBookmarked: row.isBookmarked,
+      isReposted: row.isReposted,
+    }));
+  }
+
   async searchContent(query: string): Promise<{ users: any[]; posts: any[] }> {
     const searchTerm = `%${query.toLowerCase()}%`;
 
