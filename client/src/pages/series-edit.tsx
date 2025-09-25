@@ -289,26 +289,35 @@ export default function SeriesEditPage() {
     });
   };
 
-  const handleChapterSubmit = () => {
+  const handleChapterSubmit = async () => {
     if (!chapterTitle.trim() || !chapterContent.trim()) {
       toast({
         title: "Error",
-        description: "Chapter title and content are required",
+        description: "Please fill in both title and content",
         variant: "destructive",
       });
       return;
     }
 
     const chapterData = {
-      title: chapterTitle.trim(),
-      content: chapterContent.trim(),
-      chapterNumber,
+      title: chapterTitle,
+      content: chapterContent,
+      chapterNumber: chapterNumber,
+      wordCount: chapterContent.split(/\s+/).filter(word => word.length > 0).length
     };
 
-    if (editingChapter) {
-      updateChapterMutation.mutate(chapterData);
-    } else {
-      createChapterMutation.mutate(chapterData);
+    try {
+      if (editingChapter) {
+        await updateChapterMutation.mutateAsync(chapterData);
+      } else {
+        await createChapterMutation.mutateAsync(chapterData);
+      }
+      setShowNewChapter(false);
+      setEditingChapter(null);
+      setChapterTitle("");
+      setChapterContent("");
+    } catch (error) {
+      console.error("Error saving chapter:", error);
     }
   };
 
@@ -402,7 +411,7 @@ export default function SeriesEditPage() {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-      
+
       <div className="lg:ml-64 min-h-screen">
         {/* Header */}
         <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b">

@@ -312,7 +312,12 @@ export default function StoryPage() {
                           <Button 
                             size="lg" 
                             className="flex-1"
-                            onClick={() => setLocation(`/story/${id}/chapter/${chapters[lastChapterRead]?.id || chapters[0]?.id}`)}
+                            onClick={() => {
+                              const targetChapter = chapters[lastChapterRead] || chapters[0];
+                              if (targetChapter?.id) {
+                                setLocation(`/chapter/${targetChapter.id}`);
+                              }
+                            }}
                           >
                             {readingProgressPercentage > 0 ? "Continue Reading" : "Start Reading"}
                           </Button>
@@ -395,7 +400,7 @@ export default function StoryPage() {
                         <Card 
                           key={chapter.id} 
                           className="hover:shadow-md transition-shadow cursor-pointer"
-                          onClick={() => setLocation(`/story/${id}/chapter/${chapter.id}`)}
+                          onClick={() => setLocation(`/chapter/${chapter.id}`)}
                         >
                           <CardContent className="p-4">
                             <div className="flex items-center justify-between">
@@ -420,7 +425,7 @@ export default function StoryPage() {
                           <CardContent className="p-4 text-center">
                             <Button 
                               variant="outline" 
-                              onClick={() => setLocation(`/story/${id}/chapter/new`)}
+                              onClick={() => setLocation(`/story/${id}/edit`)}
                             >
                               <Plus className="w-4 h-4 mr-2" />
                               Add New Chapter
@@ -437,7 +442,7 @@ export default function StoryPage() {
                         {isOwner ? "Start writing your first chapter!" : "Check back later for updates!"}
                       </p>
                       {isOwner && (
-                        <Button onClick={() => setLocation(`/story/${id}/chapter/new`)}>
+                        <Button onClick={() => setLocation(`/story/${id}/edit`)}>
                           <Plus className="w-4 h-4 mr-2" />
                           Write First Chapter
                         </Button>

@@ -48,6 +48,7 @@ function AppRouter() {
       <Route path="/bookmarks" component={isAuthenticated ? Bookmarks : Explore} />
       <Route path="/profile/:username" component={Profile} />
       <Route path="/settings" component={isAuthenticated ? SettingsPage : Landing} />
+      <Route path="/chapter/:id" component={lazy(() => import("@/pages/chapter"))} />
       <Route component={NotFound} />
     </Router>
   );
