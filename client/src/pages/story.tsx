@@ -247,12 +247,20 @@ export default function StoryPage() {
                         <div>
                           <h1 className="text-3xl font-bold mb-2">{story.title}</h1>
                           <div className="flex items-center gap-2 mb-3">
-                            <Avatar className="w-6 h-6">
+                            <Avatar 
+                              className="w-6 h-6 cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => setLocation(`/profile/${story.author?.username}`)}
+                            >
                               <AvatarImage src={getProfileImageUrl(story.author?.profileImageUrl)} />
                               <AvatarFallback>{story.author?.displayName?.[0]}</AvatarFallback>
                             </Avatar>
                             <span className="text-muted-foreground">
-                              by {story.author?.displayName || "Unknown Author"}
+                              by <span 
+                                className="hover:underline cursor-pointer"
+                                onClick={() => setLocation(`/profile/${story.author?.username}`)}
+                              >
+                                {story.author?.displayName || "Unknown Author"}
+                              </span>
                             </span>
                             {story.author?.isVerified && (
                               <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
@@ -270,7 +278,7 @@ export default function StoryPage() {
                           <Button 
                             variant="outline" 
                             size="sm"
-                            onClick={() => setLocation(`/story/${id}/edit`)}
+                            onClick={() => setLocation(`/series/${id}/edit`)}
                           >
                             <Edit className="w-4 h-4 mr-2" />
                             Edit
@@ -510,20 +518,33 @@ export default function StoryPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center gap-3 mb-3">
-                    <Avatar className="w-12 h-12">
+                    <Avatar 
+                      className="w-12 h-12 cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={() => setLocation(`/profile/${story.author?.username}`)}
+                    >
                       <AvatarImage src={getProfileImageUrl(story.author?.profileImageUrl)} />
                       <AvatarFallback>{story.author?.displayName?.[0]}</AvatarFallback>
                     </Avatar>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-medium">{story.author?.displayName}</span>
+                        <span 
+                          className="font-medium hover:underline cursor-pointer"
+                          onClick={() => setLocation(`/profile/${story.author?.username}`)}
+                        >
+                          {story.author?.displayName}
+                        </span>
                         {story.author?.isVerified && (
                           <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
                             <span className="text-white text-xs">✓</span>
                           </div>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground">@{story.author?.username}</p>
+                      <p 
+                        className="text-sm text-muted-foreground hover:underline cursor-pointer"
+                        onClick={() => setLocation(`/profile/${story.author?.username}`)}
+                      >
+                        @{story.author?.username}
+                      </p>
                     </div>
                   </div>
                   {story.author?.bio && (

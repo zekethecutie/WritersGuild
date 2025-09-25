@@ -347,7 +347,11 @@ export default function SearchPage() {
                         {searchResults.users?.length > 0 ? (
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {searchResults.users.map((user: any) => (
-                              <Card key={user.id}>
+                              <Card 
+                                key={user.id} 
+                                className="cursor-pointer hover:shadow-md transition-shadow"
+                                onClick={() => window.location.href = `/profile/${user.username}`}
+                              >
                                 <CardContent className="p-4">
                                   <div className="flex items-start gap-3">
                                     <Avatar>

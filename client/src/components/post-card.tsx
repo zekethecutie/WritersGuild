@@ -406,14 +406,18 @@ export default function PostCard({ post }: PostCardProps) {
         <img
           src={getProfileImageUrl(author.profileImageUrl)}
           alt={`${author.displayName} profile`}
-          className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+          className="w-12 h-12 rounded-full object-cover flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
           data-testid="img-post-author-avatar"
+          onClick={() => window.location.href = `/profile/${author.username}`}
         />
         <div className="flex-1 min-w-0 overflow-hidden">
           {/* Author Info */}
           <div className="flex items-center flex-wrap gap-2 mb-2">
             <div className="flex items-center space-x-2">
-              <span className="font-semibold hover:underline cursor-pointer">
+              <span 
+                className="font-semibold hover:underline cursor-pointer"
+                onClick={() => window.location.href = `/profile/${author.username}`}
+              >
                     {author.displayName}
                   </span>
               <span className="text-muted-foreground text-sm" data-testid="text-author-username">
