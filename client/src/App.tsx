@@ -11,6 +11,7 @@ import Profile from "@/pages/profile";
 import Explore from "./pages/explore";
 import SeriesPage from "./pages/series";
 import StoryPage from "./pages/story";
+import SeriesEditPage from "./pages/series-edit";
 import Messages from "./pages/messages";
 import Notifications from "./pages/notifications";
 import Bookmarks from "./pages/bookmarks";
@@ -35,6 +36,7 @@ function AppRouter() {
       <Route path="/" component={isAuthenticated ? Home : Landing} />
       <Route path="/explore" component={Explore} />
       <Route path="/series" component={SeriesPage} />
+      <Route path="/series/:id/edit" component={isAuthenticated ? SeriesEditPage : Landing} />
       <Route path="/story/:id" component={StoryPage} />
       <Route path="/story/:id/chapter/:chapterId" component={StoryPage} />
       <Route path="/story/:id/edit" component={lazy(() => import("./pages/chapter-editor"))} />

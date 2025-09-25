@@ -1,5 +1,3 @@
-
-```tsx
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -9,6 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import Sidebar from "@/components/sidebar";
 import MobileNav from "@/components/mobile-nav";
 import LoadingScreen from "@/components/loading-screen";
+import RichTextEditor from "@/components/rich-text-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -123,14 +122,14 @@ export default function SeriesEditPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/series", id] });
       toast({
-        title: "Series updated!",
-        description: "Your series has been successfully updated.",
+        title: "Success",
+        description: "Series updated successfully",
       });
     },
     onError: () => {
       toast({
-        title: "Update failed",
-        description: "There was an error updating your series.",
+        title: "Error",
+        description: "Failed to update series",
         variant: "destructive",
       });
     },
@@ -147,14 +146,14 @@ export default function SeriesEditPage() {
       setChapterTitle("");
       setChapterContent("");
       toast({
-        title: "Chapter added!",
-        description: "New chapter has been added to your series.",
+        title: "Success",
+        description: "Chapter created successfully",
       });
     },
     onError: () => {
       toast({
-        title: "Chapter creation failed",
-        description: "There was an error adding the chapter.",
+        title: "Error",
+        description: "Failed to create chapter",
         variant: "destructive",
       });
     },
@@ -162,8 +161,8 @@ export default function SeriesEditPage() {
 
   // Update chapter mutation
   const updateChapterMutation = useMutation({
-    mutationFn: async ({ chapterId, chapterData }: { chapterId: string; chapterData: any }) => {
-      return apiRequest("PUT", `/api/chapters/${chapterId}`, chapterData);
+    mutationFn: async (chapterData: any) => {
+      return apiRequest("PUT", `/api/chapters/${editingChapter.id}`, chapterData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/series", id, "chapters"] });
@@ -171,14 +170,14 @@ export default function SeriesEditPage() {
       setChapterTitle("");
       setChapterContent("");
       toast({
-        title: "Chapter updated!",
-        description: "Chapter has been successfully updated.",
+        title: "Success",
+        description: "Chapter updated successfully",
       });
     },
     onError: () => {
       toast({
-        title: "Update failed",
-        description: "There was an error updating the chapter.",
+        title: "Error",
+        description: "Failed to update chapter",
         variant: "destructive",
       });
     },
@@ -192,14 +191,14 @@ export default function SeriesEditPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/series", id, "chapters"] });
       toast({
-        title: "Chapter deleted",
-        description: "Chapter has been removed from your series.",
+        title: "Success",
+        description: "Chapter deleted successfully",
       });
     },
     onError: () => {
       toast({
-        title: "Delete failed",
-        description: "There was an error deleting the chapter.",
+        title: "Error",
+        description: "Failed to delete chapter",
         variant: "destructive",
       });
     },
@@ -212,49 +211,55 @@ export default function SeriesEditPage() {
     },
     onSuccess: () => {
       toast({
-        title: "Series deleted",
-        description: "Your series has been permanently deleted.",
+        title: "Success",
+        description: "Series deleted successfully",
       });
       setLocation("/series");
     },
     onError: () => {
       toast({
-        title: "Delete failed",
-        description: "There was an error deleting your series.",
+        title: "Error",
+        description: "Failed to delete series",
         variant: "destructive",
       });
     },
   });
 
-  // Cover image upload
-  const handleCoverUpload = async (files: FileList) => {
-    if (!files || files.length === 0) return;
-
-    const file = files[0];
-    const formData = new FormData();
-    formData.append('coverPhoto', file);
+  // Handle cover image upload
+  const handleCoverUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
     setIsUploadingCover(true);
+
     try {
-      const response = await fetch("/api/upload/series-cover", {
-        method: "POST",
+      const formData = new FormData();
+      formData.append('images', file);
+      formData.append('type', 'cover');
+
+      const response = await fetch('/api/upload/images', {
+        method: 'POST',
         body: formData,
-        credentials: "include",
       });
 
-      if (!response.ok) throw new Error('Upload failed');
-
-      const data = await response.json();
-      setCoverImageUrl(data.imageUrl);
-      
-      toast({
-        title: "Cover uploaded!",
-        description: "Series cover image has been updated.",
-      });
+      if (response.ok) {
+        const data = await response.json();
+        setCoverImageUrl(data.imageUrls[0]);
+        toast({
+          title: "Success",
+          description: "Cover image uploaded successfully",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to upload cover image",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       toast({
-        title: "Upload failed",
-        description: "There was an error uploading the cover image.",
+        title: "Error",
+        description: "Failed to upload cover image",
         variant: "destructive",
       });
     } finally {
@@ -262,14 +267,12 @@ export default function SeriesEditPage() {
     }
   };
 
-  // Handle series form submission
-  const handleSeriesSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  // Handle form submissions
+  const handleSeriesUpdate = () => {
     if (!title.trim() || !description.trim()) {
       toast({
-        title: "Missing information",
-        description: "Please fill in title and description.",
+        title: "Error",
+        description: "Title and description are required",
         variant: "destructive",
       });
       return;
@@ -286,14 +289,11 @@ export default function SeriesEditPage() {
     });
   };
 
-  // Handle chapter form submission
-  const handleChapterSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleChapterSubmit = () => {
     if (!chapterTitle.trim() || !chapterContent.trim()) {
       toast({
-        title: "Missing information",
-        description: "Please fill in chapter title and content.",
+        title: "Error",
+        description: "Chapter title and content are required",
         variant: "destructive",
       });
       return;
@@ -306,16 +306,13 @@ export default function SeriesEditPage() {
     };
 
     if (editingChapter) {
-      updateChapterMutation.mutate({
-        chapterId: editingChapter.id,
-        chapterData,
-      });
+      updateChapterMutation.mutate(chapterData);
     } else {
       createChapterMutation.mutate(chapterData);
     }
   };
 
-  // Handle tag addition
+  // Tag management
   const addTag = () => {
     if (newTag.trim() && !tags.includes(newTag.trim())) {
       setTags([...tags, newTag.trim()]);
@@ -323,78 +320,80 @@ export default function SeriesEditPage() {
     }
   };
 
-  // Handle tag removal
   const removeTag = (tagToRemove: string) => {
     setTags(tags.filter(tag => tag !== tagToRemove));
   };
 
-  // Start editing chapter
-  const startEditingChapter = (chapter: any) => {
-    setEditingChapter(chapter);
-    setChapterTitle(chapter.title);
-    setChapterContent(chapter.content);
-    setChapterNumber(chapter.chapterNumber);
+  // Chapter management
+  const startNewChapter = () => {
+    setEditingChapter(null);
+    setChapterTitle("");
+    setChapterContent("");
+    setChapterNumber(chapters.length + 1);
     setShowNewChapter(true);
   };
 
-  // Cancel editing
-  const cancelEditing = () => {
-    setEditingChapter(null);
-    setShowNewChapter(false);
-    setChapterTitle("");
-    setChapterContent("");
-    if (chapters.length > 0) {
-      const maxChapter = Math.max(...chapters.map((ch: any) => ch.chapterNumber || 0));
-      setChapterNumber(maxChapter + 1);
-    } else {
-      setChapterNumber(1);
-    }
+  const startEditChapter = (chapter: any) => {
+    setEditingChapter(chapter);
+    setShowNewChapter(true);
+    setChapterTitle(chapter.title);
+    setChapterContent(chapter.content);
+    const sortedChapters = chapters.sort((a: any, b: any) => a.chapterNumber - b.chapterNumber);
+    const chapterIndex = sortedChapters.findIndex((ch: any) => ch.id === chapter.id);
+    setChapterNumber(chapterIndex + 1);
   };
 
+  // Authentication check
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-2">Authentication Required</h2>
-          <p className="text-muted-foreground mb-4">Please sign in to edit your series.</p>
-          <Button onClick={() => setLocation("/")}>Sign In</Button>
+      <div className="min-h-screen bg-background">
+        <Sidebar />
+        <div className="lg:ml-64 min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold mb-2">Sign in to edit series</h2>
+            <p className="text-muted-foreground">You need to be logged in to edit a series.</p>
+          </div>
         </div>
       </div>
     );
   }
 
+  // Loading state
   if (seriesLoading || chaptersLoading) {
-    return <LoadingScreen title="Loading Series..." subtitle="Fetching series details and chapters" />;
+    return <LoadingScreen />;
   }
 
+  // Error state
   if (seriesError || !series) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-muted rounded-xl flex items-center justify-center mb-4 mx-auto">
-            <BookOpen className="w-8 h-8 text-muted-foreground" />
+      <div className="min-h-screen bg-background">
+        <Sidebar />
+        <div className="lg:ml-64 min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold mb-2">Series not found</h2>
+            <p className="text-muted-foreground">The series you're looking for doesn't exist or you don't have permission to edit it.</p>
+            <Button className="mt-4" onClick={() => setLocation("/series")}>
+              Back to Series
+            </Button>
           </div>
-          <h2 className="text-2xl font-bold mb-2">Series not found</h2>
-          <p className="text-muted-foreground mb-4">
-            The series you're looking for doesn't exist or you don't have permission to edit it.
-          </p>
-          <Button onClick={() => setLocation("/series")}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Series
-          </Button>
         </div>
       </div>
     );
   }
 
-  // Check if user owns the series
+  // Permission check
   if (series.authorId !== user?.id) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
-          <p className="text-muted-foreground mb-4">You can only edit your own series.</p>
-          <Button onClick={() => setLocation("/series")}>Back to Series</Button>
+      <div className="min-h-screen bg-background">
+        <Sidebar />
+        <div className="lg:ml-64 min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold mb-2">Access denied</h2>
+            <p className="text-muted-foreground">You don't have permission to edit this series.</p>
+            <Button className="mt-4" onClick={() => setLocation(`/story/${id}`)}>
+              View Series
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -403,83 +402,174 @@ export default function SeriesEditPage() {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-
+      
       <div className="lg:ml-64 min-h-screen">
         {/* Header */}
         <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b">
-          <div className="flex items-center justify-between p-4">
-            <div className="flex items-center gap-4">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setLocation(`/story/${id}`)}
+          <div className="flex items-center gap-4 p-4">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setLocation(`/story/${id}`)}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Series
+            </Button>
+            <div className="flex items-center gap-3 flex-1">
+              <BookOpen className="h-6 w-6" />
+              <h1 className="text-2xl font-bold">Edit Series</h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={handleSeriesUpdate}
+                disabled={updateSeriesMutation.isPending}
                 className="flex items-center gap-2"
               >
-                <ArrowLeft className="w-4 h-4" />
-                Back to Story
+                <Save className="w-4 h-4" />
+                Save Changes
               </Button>
-              <div>
-                <h1 className="text-xl font-bold">Edit Series</h1>
-                <p className="text-sm text-muted-foreground">{series.title}</p>
-              </div>
             </div>
-
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm" className="text-red-600 border-red-200">
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete Series
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Series</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to delete this series? This action cannot be undone and will permanently remove all chapters and associated data.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => deleteSeriesMutation.mutate()}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Delete Series
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
           </div>
         </div>
 
-        <div className="max-w-6xl mx-auto p-6">
-          <Tabs defaultValue="chapters" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="chapters" className="flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                Chapters ({chapters.length})
-              </TabsTrigger>
-              <TabsTrigger value="settings" className="flex items-center gap-2">
-                <Settings className="w-4 h-4" />
-                Settings
-              </TabsTrigger>
+        <div className="max-w-4xl mx-auto p-6">
+          <Tabs defaultValue="info" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="info">Series Info</TabsTrigger>
+              <TabsTrigger value="chapters">Chapters</TabsTrigger>
+              <TabsTrigger value="settings">Settings</TabsTrigger>
             </TabsList>
+
+            {/* Series Information Tab */}
+            <TabsContent value="info" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Basic Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Title */}
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Title *</Label>
+                    <Input
+                      id="title"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="Enter series title"
+                      data-testid="input-series-title"
+                    />
+                  </div>
+
+                  {/* Description */}
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Description *</Label>
+                    <Textarea
+                      id="description"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Describe your series"
+                      className="min-h-[120px]"
+                      data-testid="textarea-series-description"
+                    />
+                  </div>
+
+                  {/* Genre */}
+                  <div className="space-y-2">
+                    <Label htmlFor="genre">Genre</Label>
+                    <Select value={genre} onValueChange={setGenre}>
+                      <SelectTrigger data-testid="select-series-genre">
+                        <SelectValue placeholder="Select a genre" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="fiction">Fiction</SelectItem>
+                        <SelectItem value="non-fiction">Non-Fiction</SelectItem>
+                        <SelectItem value="poetry">Poetry</SelectItem>
+                        <SelectItem value="romance">Romance</SelectItem>
+                        <SelectItem value="mystery">Mystery</SelectItem>
+                        <SelectItem value="fantasy">Fantasy</SelectItem>
+                        <SelectItem value="science-fiction">Science Fiction</SelectItem>
+                        <SelectItem value="thriller">Thriller</SelectItem>
+                        <SelectItem value="horror">Horror</SelectItem>
+                        <SelectItem value="historical">Historical</SelectItem>
+                        <SelectItem value="young-adult">Young Adult</SelectItem>
+                        <SelectItem value="children">Children's</SelectItem>
+                        <SelectItem value="memoir">Memoir</SelectItem>
+                        <SelectItem value="biography">Biography</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Tags */}
+                  <div className="space-y-2">
+                    <Label>Tags</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={newTag}
+                        onChange={(e) => setNewTag(e.target.value)}
+                        placeholder="Add a tag"
+                        onKeyPress={(e) => e.key === 'Enter' && addTag()}
+                        data-testid="input-new-tag"
+                      />
+                      <Button type="button" onClick={addTag} variant="outline">
+                        Add
+                      </Button>
+                    </div>
+                    {tags.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {tags.map((tag) => (
+                          <Badge 
+                            key={tag} 
+                            variant="secondary" 
+                            className="cursor-pointer hover:bg-destructive hover:text-destructive-foreground"
+                            onClick={() => removeTag(tag)}
+                          >
+                            {tag} ×
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Cover Image */}
+                  <div className="space-y-2">
+                    <Label>Cover Image</Label>
+                    <div className="flex items-center gap-4">
+                      {coverImageUrl && (
+                        <img 
+                          src={coverImageUrl} 
+                          alt="Series cover" 
+                          className="w-20 h-28 object-cover rounded"
+                        />
+                      )}
+                      <div>
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleCoverUpload}
+                          disabled={isUploadingCover}
+                          className="mb-2"
+                          data-testid="input-cover-upload"
+                        />
+                        <p className="text-sm text-muted-foreground">
+                          Upload a cover image for your series
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
             {/* Chapters Tab */}
             <TabsContent value="chapters" className="space-y-6">
-              {/* Add Chapter Button */}
-              <Card>
-                <CardContent className="p-4">
-                  <Button
-                    onClick={() => setShowNewChapter(!showNewChapter)}
-                    className="w-full"
-                    variant={showNewChapter ? "secondary" : "default"}
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    {showNewChapter ? "Cancel" : "Add New Chapter"}
-                  </Button>
-                </CardContent>
-              </Card>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Chapters ({chapters.length})</h3>
+                <Button onClick={startNewChapter} className="flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  Add Chapter
+                </Button>
+              </div>
 
               {/* New/Edit Chapter Form */}
               {showNewChapter && (
@@ -489,124 +579,119 @@ export default function SeriesEditPage() {
                       {editingChapter ? "Edit Chapter" : "New Chapter"}
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <form onSubmit={handleChapterSubmit} className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="chapterNumber">Chapter Number</Label>
-                          <Input
-                            id="chapterNumber"
-                            type="number"
-                            value={chapterNumber}
-                            onChange={(e) => setChapterNumber(parseInt(e.target.value) || 1)}
-                            min={1}
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="chapterTitle">Chapter Title</Label>
-                          <Input
-                            id="chapterTitle"
-                            value={chapterTitle}
-                            onChange={(e) => setChapterTitle(e.target.value)}
-                            placeholder="Enter chapter title..."
-                            required
-                          />
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <Label htmlFor="chapterContent">Chapter Content</Label>
-                        <Textarea
-                          id="chapterContent"
-                          value={chapterContent}
-                          onChange={(e) => setChapterContent(e.target.value)}
-                          placeholder="Write your chapter content here..."
-                          rows={15}
-                          className="resize-none"
-                          required
-                        />
-                      </div>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="chapterTitle">Chapter Title</Label>
+                      <Input
+                        id="chapterTitle"
+                        value={chapterTitle}
+                        onChange={(e) => setChapterTitle(e.target.value)}
+                        placeholder="Enter chapter title"
+                        data-testid="input-chapter-title"
+                      />
+                    </div>
 
-                      <div className="flex gap-3">
-                        <Button 
-                          type="submit" 
-                          disabled={createChapterMutation.isPending || updateChapterMutation.isPending}
-                        >
-                          <Save className="w-4 h-4 mr-2" />
-                          {editingChapter ? "Update Chapter" : "Save Chapter"}
-                        </Button>
-                        <Button type="button" variant="outline" onClick={cancelEditing}>
-                          Cancel
-                        </Button>
-                      </div>
-                    </form>
+                    <div className="space-y-2">
+                      <Label htmlFor="chapterContent">Chapter Content</Label>
+                      <RichTextEditor
+                        content={chapterContent}
+                        onChange={setChapterContent}
+                        placeholder="Write your chapter content here..."
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Button
+                        onClick={handleChapterSubmit}
+                        disabled={createChapterMutation.isPending || updateChapterMutation.isPending}
+                        data-testid="button-save-chapter"
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        {editingChapter ? "Update Chapter" : "Create Chapter"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setShowNewChapter(false);
+                          setEditingChapter(null);
+                          setChapterTitle("");
+                          setChapterContent("");
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               )}
 
               {/* Chapters List */}
               <div className="space-y-4">
-                {chapters.length > 0 ? (
-                  chapters.map((chapter: any) => (
-                    <Card key={chapter.id}>
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <h3 className="font-semibold">
-                              Chapter {chapter.chapterNumber}: {chapter.title}
-                            </h3>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {chapter.wordCount} words • Created {new Date(chapter.createdAt).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => startEditingChapter(chapter)}
-                            >
-                              <Edit className="w-4 h-4 mr-2" />
-                              Edit
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="outline" size="sm" className="text-red-600">
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Chapter</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to delete "{chapter.title}"? This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => deleteChapterMutation.mutate(chapter.id)}
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  >
-                                    Delete Chapter
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
+                {chapters.map((chapter: any, index: number) => (
+                  <Card key={chapter.id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-semibold">
+                            Chapter {index + 1}: {chapter.title}
+                          </h4>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {chapter.wordCount || 0} words • 
+                            {chapter.isPublished ? " Published" : " Draft"}
+                          </p>
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                ) : (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => startEditChapter(chapter)}
+                            data-testid={`button-edit-chapter-${chapter.id}`}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Chapter</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete "{chapter.title}"? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => deleteChapterMutation.mutate(chapter.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+
+                {chapters.length === 0 && !showNewChapter && (
                   <Card>
                     <CardContent className="p-8 text-center">
-                      <BookOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">No chapters yet</h3>
+                      <FileText className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                      <h3 className="font-semibold mb-2">No chapters yet</h3>
                       <p className="text-muted-foreground mb-4">
-                        Start writing your story by adding your first chapter.
+                        Start writing your story by adding your first chapter
                       </p>
-                      <Button onClick={() => setShowNewChapter(true)}>
+                      <Button onClick={startNewChapter}>
                         <Plus className="w-4 h-4 mr-2" />
                         Add First Chapter
                       </Button>
@@ -618,175 +703,75 @@ export default function SeriesEditPage() {
 
             {/* Settings Tab */}
             <TabsContent value="settings" className="space-y-6">
-              <form onSubmit={handleSeriesSubmit} className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Series Information</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Series Settings</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Completion Status */}
+                  <div className="flex items-center justify-between">
                     <div>
-                      <Label htmlFor="title">Title</Label>
-                      <Input
-                        id="title"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        placeholder="Enter series title..."
-                        required
-                      />
+                      <Label htmlFor="completed">Mark as Completed</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Mark this series as completed if you've finished writing it
+                      </p>
                     </div>
+                    <Switch
+                      id="completed"
+                      checked={isCompleted}
+                      onCheckedChange={setIsCompleted}
+                      data-testid="switch-series-completed"
+                    />
+                  </div>
 
+                  {/* Privacy */}
+                  <div className="flex items-center justify-between">
                     <div>
-                      <Label htmlFor="description">Description</Label>
-                      <Textarea
-                        id="description"
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        placeholder="Describe your series..."
-                        rows={4}
-                        required
-                      />
+                      <Label htmlFor="private">Private Series</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Only you can view private series
+                      </p>
                     </div>
+                    <Switch
+                      id="private"
+                      checked={isPrivate}
+                      onCheckedChange={setIsPrivate}
+                      data-testid="switch-series-private"
+                    />
+                  </div>
 
-                    <div>
-                      <Label htmlFor="genre">Genre</Label>
-                      <Select value={genre} onValueChange={setGenre}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a genre" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="fantasy">Fantasy</SelectItem>
-                          <SelectItem value="sci-fi">Science Fiction</SelectItem>
-                          <SelectItem value="romance">Romance</SelectItem>
-                          <SelectItem value="mystery">Mystery</SelectItem>
-                          <SelectItem value="horror">Horror</SelectItem>
-                          <SelectItem value="thriller">Thriller</SelectItem>
-                          <SelectItem value="literary">Literary Fiction</SelectItem>
-                          <SelectItem value="historical">Historical Fiction</SelectItem>
-                          <SelectItem value="contemporary">Contemporary</SelectItem>
-                          <SelectItem value="young-adult">Young Adult</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <Label>Tags</Label>
-                      <div className="flex gap-2 mb-2">
-                        <Input
-                          value={newTag}
-                          onChange={(e) => setNewTag(e.target.value)}
-                          placeholder="Add a tag..."
-                          onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-                        />
-                        <Button type="button" variant="outline" onClick={addTag}>
-                          Add
+                  {/* Danger Zone */}
+                  <div className="border-t pt-6">
+                    <h4 className="font-semibold text-destructive mb-4">Danger Zone</h4>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" className="flex items-center gap-2">
+                          <Trash2 className="w-4 h-4" />
+                          Delete Series
                         </Button>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {tags.map((tag, index) => (
-                          <Badge key={index} variant="secondary" className="cursor-pointer">
-                            {tag}
-                            <button
-                              type="button"
-                              onClick={() => removeTag(tag)}
-                              className="ml-2 text-xs"
-                            >
-                              ×
-                            </button>
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Cover Image</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {coverImageUrl && (
-                      <div className="w-32 h-40 bg-muted rounded-lg overflow-hidden">
-                        <img 
-                          src={coverImageUrl} 
-                          alt="Series cover"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    )}
-                    
-                    <div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => e.target.files && handleCoverUpload(e.target.files)}
-                        className="hidden"
-                        id="cover-upload"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => document.getElementById('cover-upload')?.click()}
-                        disabled={isUploadingCover}
-                      >
-                        {isUploadingCover ? (
-                          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2" />
-                        ) : (
-                          <ImageIcon className="w-4 h-4 mr-2" />
-                        )}
-                        {coverImageUrl ? "Change Cover" : "Upload Cover"}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Publication Settings</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="completed">Mark as Completed</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Mark this series as finished
-                        </p>
-                      </div>
-                      <Switch
-                        id="completed"
-                        checked={isCompleted}
-                        onCheckedChange={setIsCompleted}
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="private">Private Series</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Only you can see this series
-                        </p>
-                      </div>
-                      <Switch
-                        id="private"
-                        checked={isPrivate}
-                        onCheckedChange={setIsPrivate}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Button 
-                  type="submit" 
-                  className="w-full" 
-                  disabled={updateSeriesMutation.isPending}
-                >
-                  {updateSeriesMutation.isPending ? (
-                    <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-2" />
-                  ) : (
-                    <Save className="w-4 h-4 mr-2" />
-                  )}
-                  Save Changes
-                </Button>
-              </form>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Series</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete this series? This will permanently delete 
+                            the series and all its chapters. This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deleteSeriesMutation.mutate()}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Delete Series
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
         </div>
@@ -796,4 +781,3 @@ export default function SeriesEditPage() {
     </div>
   );
 }
-```
