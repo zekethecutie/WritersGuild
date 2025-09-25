@@ -766,21 +766,21 @@ export class DatabaseStorage implements IStorage {
       isRead: notifications.isRead,
       data: notifications.data,
       createdAt: notifications.createdAt,
-      actor: {
+      actor: notifications.actorId ? {
         id: users.id,
         username: users.username,
         displayName: users.displayName,
         profileImageUrl: users.profileImageUrl,
         isVerified: users.isVerified,
-      },
+      } : null,
       post: notifications.postId ? {
         id: posts.id,
         content: posts.content,
       } : null,
     })
       .from(notifications)
-      .leftJoin(users, eq(notifications.actorId, users.id))
-      .leftJoin(posts, eq(notifications.postId, posts.id))
+      .leftJoin(users, and(eq(notifications.actorId, users.id), isNotNull(notifications.actorId)))
+      .leftJoin(posts, and(eq(notifications.postId, posts.id), isNotNull(notifications.postId)))
       .where(eq(notifications.userId, userId))
       .orderBy(desc(notifications.createdAt));
 

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -22,35 +22,79 @@ export default function FollowButton({
   const queryClient = useQueryClient();
   const [following, setFollowing] = useState(isFollowing);
 
+  // Check current follow status on mount
+  const { data: followStatus } = useQuery({
+    queryKey: ["follow-status", userId],
+    queryFn: async () => {
+      try {
+        const response = await fetch(`/api/users/${userId}/follow-status`, {
+          credentials: 'include'
+        });
+        if (response.ok) {
+          const data = await response.json();
+          return data.isFollowing || false;
+        }
+      } catch (error) {
+        console.error("Error checking follow status:", error);
+      }
+      return false;
+    },
+    enabled: !!userId,
+  });
+
+  // Update local state when follow status is fetched
+  useEffect(() => {
+    if (followStatus !== undefined) {
+      setFollowing(followStatus);
+    }
+  }, [followStatus]);
+
   const followMutation = useMutation({
     mutationFn: async () => {
-      const endpoint = following ? `/api/follows/${userId}` : "/api/follows";
-      const method = following ? "DELETE" : "POST";
-      const body = following ? undefined : { followingId: userId };
+      const endpoint = `/api/users/${userId}/follow`;
+      const method = "POST";
       
-      return apiRequest(method, endpoint, body);
+      const response = await fetch(endpoint, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to ${following ? 'unfollow' : 'follow'} user`);
+      }
+
+      return response.json();
     },
     onMutate: () => {
       // Optimistic update
       setFollowing(!following);
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Update state based on server response
+      setFollowing(data.following);
+      
       // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: ["follow-status", userId] });
       queryClient.invalidateQueries({ queryKey: ["/api/users/recommended"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users/trending"] });
       queryClient.invalidateQueries({ queryKey: ["/api/search"] });
       queryClient.invalidateQueries({ queryKey: ["/api/follows"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users", userId, "stats"] });
       
       toast({
-        title: following ? "Unfollowed" : "Following",
-        description: following 
-          ? "You have unfollowed this user" 
-          : "You are now following this user",
+        title: data.following ? "Following" : "Unfollowed",
+        description: data.following 
+          ? "You are now following this user" 
+          : "You have unfollowed this user",
       });
     },
-    onError: () => {
+    onError: (error) => {
       // Revert optimistic update
       setFollowing(following);
+      console.error("Follow error:", error);
       toast({
         title: "Error",
         description: "Failed to update follow status",

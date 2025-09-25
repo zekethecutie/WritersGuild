@@ -32,6 +32,7 @@ import { getProfileImageUrl, getCoverImageUrl } from "@/lib/defaultImages";
 import { formatDistanceToNow } from "date-fns";
 import type { Post, User } from "@shared/schema";
 import LoadingScreen from "@/components/loading-screen";
+import FollowButton from "@/components/follow-button";
 
 // User Stories Section Component
 function UserStoriesSection({ userId, isOwnProfile }: { userId: string; isOwnProfile: boolean }) {
@@ -418,15 +419,15 @@ export default function Profile() {
                     size="sm"
                     className="bg-background/80 backdrop-blur-sm"
                     data-testid="button-message"
+                    onClick={() => window.location.href = `/messages?user=${profileUser.id}`}
                   >
                     <MessageCircle className="w-4 h-4" />
                   </Button>
-                  <Button 
-                    className="bg-primary text-primary-foreground"
-                    data-testid="button-follow-user"
-                  >
-                    Follow
-                  </Button>
+                  <FollowButton 
+                    userId={profileUser.id}
+                    variant="default"
+                    size="sm"
+                  />
                 </div>
               )}
             </div>

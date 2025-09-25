@@ -643,6 +643,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check follow status
+  app.get('/api/users/:id/follow-status', requireAuth, async (req: any, res) => {
+    try {
+      const followerId = req.session.userId;
+      const { id: followingId } = req.params;
+
+      const isFollowing = await storage.isFollowing(followerId, followingId);
+      res.json({ isFollowing });
+    } catch (error) {
+      console.error("Error checking follow status:", error);
+      res.status(500).json({ message: "Failed to check follow status" });
+    }
+  });
+
   // Repost routes
   app.post('/api/posts/:id/repost', requireAuth, writeLimiter, async (req: any, res) => {
     try {
