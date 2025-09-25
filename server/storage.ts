@@ -404,8 +404,8 @@ export class DatabaseStorage implements IStorage {
     return post;
   }
 
-  async deletePost(id: string): Promise<void> {
-    await db.delete(posts).where(eq(posts.id, id));
+  async deletePost(postId: string): Promise<void> {
+    await db.delete(posts).where(eq(posts.id, postId));
   }
 
   // Engagement operations
@@ -1772,7 +1772,7 @@ export class DatabaseStorage implements IStorage {
         })
         .where(eq(series.id, seriesId))
         .returning();
-      
+
       return updated;
     } catch (error) {
       console.error("Error updating series:", error);
@@ -1784,7 +1784,7 @@ export class DatabaseStorage implements IStorage {
     try {
       // Get chapter info before deleting to update series count
       const chapter = await this.getChapterById(chapterId);
-      
+
       await db.delete(chapters)
         .where(eq(chapters.id, chapterId));
 
@@ -1806,7 +1806,7 @@ export class DatabaseStorage implements IStorage {
       const [chapter] = await db.select()
         .from(chapters)
         .where(eq(chapters.id, chapterId));
-      
+
       return chapter || null;
     } catch (error) {
       console.error("Error fetching chapter:", error);
@@ -1827,7 +1827,7 @@ export class DatabaseStorage implements IStorage {
         })
         .where(eq(chapters.id, chapterId))
         .returning();
-      
+
       return updated;
     } catch (error) {
       console.error("Error updating chapter:", error);

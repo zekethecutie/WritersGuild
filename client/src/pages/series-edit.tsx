@@ -89,7 +89,14 @@ export default function SeriesEditPage() {
     isLoading: chaptersLoading 
   } = useQuery({
     queryKey: ["/api/series", id, "chapters"],
-    queryFn: () => apiRequest("GET", `/api/series/${id}/chapters`),
+    queryFn: async () => {
+      const response = await fetch(`/api/series/${id}/chapters`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch chapters');
+      }
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    },
     enabled: !!id,
   });
 

@@ -34,7 +34,13 @@ export default function ChapterPage() {
     error: chapterError 
   } = useQuery({
     queryKey: ["/api/chapters", id],
-    queryFn: () => apiRequest("GET", `/api/chapters/${id}`),
+    queryFn: async () => {
+      const response = await fetch(`/api/chapters/${id}`);
+      if (!response.ok) {
+        throw new Error('Chapter not found');
+      }
+      return response.json();
+    },
     enabled: !!id,
   });
 
@@ -43,7 +49,13 @@ export default function ChapterPage() {
     data: series 
   } = useQuery({
     queryKey: ["/api/series", chapter?.seriesId],
-    queryFn: () => apiRequest("GET", `/api/series/${chapter.seriesId}`),
+    queryFn: async () => {
+      const response = await fetch(`/api/series/${chapter.seriesId}`);
+      if (!response.ok) {
+        throw new Error('Series not found');
+      }
+      return response.json();
+    },
     enabled: !!chapter?.seriesId,
   });
 
@@ -52,7 +64,13 @@ export default function ChapterPage() {
     data: allChapters = [] 
   } = useQuery({
     queryKey: ["/api/series", chapter?.seriesId, "chapters"],
-    queryFn: () => apiRequest("GET", `/api/series/${chapter.seriesId}/chapters`),
+    queryFn: async () => {
+      const response = await fetch(`/api/series/${chapter.seriesId}/chapters`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch chapters');
+      }
+      return response.json();
+    },
     enabled: !!chapter?.seriesId,
   });
 

@@ -1263,6 +1263,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Edit post route (for post owner)
+  app.put('/api/posts/:id', requireAuth, writeLimiter, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { id: postId } = req.params;
+      const { title, content } = req.body;
+
+      if (!content || !content.trim()) {
+        return res.status(400).json({ message: "Content is required" });
+      }
+
+      // Get post to verify ownership
+      const post = await storage.getPost(postId);
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      // Only allow post owner to edit
+      if (post.authorId !== userId) {
+        return res.status(403).json({ message: "You can only edit your own posts" });
+      }
+
+      const updatedPost = await storage.updatePost(postId, {
+        title: title?.trim() || null,
+        content: content.trim(),
+      });
+
+      res.json(updatedPost);
+    } catch (error) {
+      console.error("Error updating post:", error);
+      res.status(500).json({ message: "Failed to update post" });
+    }
+  });
+
   // Delete post route (for post owner)
   app.delete('/api/posts/:id', requireAuth, async (req: any, res) => {
     try {
