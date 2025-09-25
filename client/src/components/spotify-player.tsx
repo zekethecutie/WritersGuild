@@ -66,7 +66,7 @@ export default function SpotifyPlayer({
   }, [searchQuery]);
 
   // Search for tracks
-  const { data: searchResults, isLoading: isSearching } = useQuery({
+  const { data: searchResults, isLoading: isSearching, error: searchError } = useQuery({
     queryKey: ["/api/spotify/search", debouncedQuery],
     queryFn: async () => {
       if (!debouncedQuery.trim()) return { tracks: { items: [] } };
@@ -74,15 +74,36 @@ export default function SpotifyPlayer({
       try {
         const response = await fetch(`/api/spotify/search?q=${encodeURIComponent(debouncedQuery)}&type=track&limit=20`);
         if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error('Spotify authentication required');
+          }
           throw new Error(`Search failed: ${response.statusText}`);
         }
-        return await response.json();
+        const data = await response.json();
+        
+        // Validate response structure
+        if (!data || typeof data !== 'object') {
+          throw new Error('Invalid response format');
+        }
+        
+        return {
+          tracks: {
+            items: Array.isArray(data.tracks?.items) ? data.tracks.items : []
+          }
+        };
       } catch (error) {
         console.error('Spotify search error:', error);
-        return { tracks: { items: [] } };
+        throw error; // Let React Query handle the error state
       }
     },
     enabled: !!debouncedQuery.trim(),
+    retry: (failureCount, error) => {
+      // Don't retry auth errors
+      if (error?.message?.includes('authentication')) {
+        return false;
+      }
+      return failureCount < 2;
+    },
   });
 
   const tracks = searchResults?.tracks?.items || [];
@@ -105,18 +126,33 @@ export default function SpotifyPlayer({
 
     try {
       const audio = new Audio(trackToPlay.preview_url);
+      
       audio.addEventListener('ended', () => {
         setIsPlaying(false);
         setPlayingTrackId(null);
         setCurrentAudio(null);
       });
 
+      audio.addEventListener('error', (e) => {
+        console.error('Audio error:', e);
+        setIsPlaying(false);
+        setPlayingTrackId(null);
+        setCurrentAudio(null);
+      });
+
+      // Set loading state immediately to prevent double-clicks
+      setPlayingTrackId(trackToPlay.id);
+      setIsPlaying(false);
+
       await audio.play();
       setCurrentAudio(audio);
       setIsPlaying(true);
-      setPlayingTrackId(trackToPlay.id);
     } catch (error) {
       console.error('Failed to play preview:', error);
+      // Reset state on error
+      setIsPlaying(false);
+      setPlayingTrackId(null);
+      setCurrentAudio(null);
     }
   };
 
@@ -137,8 +173,18 @@ export default function SpotifyPlayer({
   };
 
   const getImageUrl = (images: { url: string; width: number; height: number }[]) => {
-    if (!images.length) return '';
-    return images.sort((a, b) => (b.width || 0) - (a.width || 0))[0]?.url || '';
+    if (!images || !Array.isArray(images) || !images.length) return '';
+    
+    try {
+      const sortedImages = images
+        .filter(img => img && img.url) // Filter out invalid entries
+        .sort((a, b) => (b.width || 0) - (a.width || 0));
+      
+      return sortedImages[0]?.url || '';
+    } catch (error) {
+      console.error('Error processing image URL:', error);
+      return '';
+    }
   };
 
   useEffect(() => {
@@ -246,14 +292,30 @@ export default function SpotifyPlayer({
             </div>
           )}
 
-          {debouncedQuery && !isSearching && tracks.length === 0 && (
+          {searchError && (
+            <div className="text-center py-8 text-red-500">
+              <p className="text-sm">
+                {searchError.message?.includes('authentication') 
+                  ? 'Spotify authentication required. Please check your settings.' 
+                  : 'Search failed. Please try again.'}
+              </p>
+            </div>
+          )}
+
+          {debouncedQuery && !isSearching && !searchError && tracks.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
               <p className="text-sm">No tracks found</p>
             </div>
           )}
 
           <div className="space-y-2">
-            {tracks.map((trackItem: SpotifyTrack) => (
+            {tracks.map((trackItem: SpotifyTrack) => {
+              // Validate track data
+              if (!trackItem || !trackItem.id || !trackItem.name || !trackItem.artists) {
+                return null;
+              }
+              
+              return (
               <div
                 key={trackItem.id}
                 className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
@@ -325,7 +387,8 @@ export default function SpotifyPlayer({
                   </Button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </ScrollArea>
       </CardContent>

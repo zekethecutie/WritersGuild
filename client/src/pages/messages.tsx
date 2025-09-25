@@ -204,8 +204,8 @@ export default function Messages() {
                     >
                       <Avatar className="w-12 h-12">
                         <AvatarImage
-                          src={getProfileImageUrl(conversation.otherParticipant.profileImageUrl)}
-                          alt={conversation.otherParticipant.displayName}
+                          src={getProfileImageUrl(conversation.otherParticipant?.profileImageUrl)}
+                          alt={conversation.otherParticipant?.displayName}
                         />
                         <AvatarFallback>
                           <UserIcon className="w-6 h-6" />
@@ -215,7 +215,7 @@ export default function Messages() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
                           <p className="font-medium truncate">
-                            {conversation.otherParticipant.displayName}
+                            {conversation.otherParticipant?.displayName}
                           </p>
                           {conversation.lastMessage && (
                             <span className="text-xs text-muted-foreground">
@@ -225,7 +225,7 @@ export default function Messages() {
                         </div>
 
                         <p className="text-sm text-muted-foreground truncate">
-                          @{conversation.otherParticipant.username}
+                          @{conversation.otherParticipant?.username}
                         </p>
 
                         {conversation.lastMessage && (
@@ -250,8 +250,8 @@ export default function Messages() {
                   <div className="flex items-center space-x-3">
                     <Avatar className="w-10 h-10">
                       <AvatarImage
-                        src={getProfileImageUrl(selectedConversation.otherParticipant.profileImageUrl)}
-                        alt={selectedConversation.otherParticipant.displayName}
+                        src={getProfileImageUrl(selectedConversation.otherParticipant?.profileImageUrl)}
+                        alt={selectedConversation.otherParticipant?.displayName}
                       />
                       <AvatarFallback>
                         <UserIcon className="w-5 h-5" />
@@ -259,10 +259,10 @@ export default function Messages() {
                     </Avatar>
                     <div>
                       <h2 className="font-semibold">
-                        {selectedConversation.otherParticipant.displayName}
+                        {selectedConversation.otherParticipant?.displayName}
                       </h2>
                       <p className="text-sm text-muted-foreground">
-                        @{selectedConversation.otherParticipant.username}
+                        @{selectedConversation.otherParticipant?.username}
                       </p>
                     </div>
                   </div>
