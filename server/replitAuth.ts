@@ -129,7 +129,18 @@ export async function setupAuth(app: Express) {
   });
 
   app.get("/api/logout", (req, res) => {
-    req.logout(() => {
+    req.logout((err) => {
+      if (err) {
+        console.error('Logout error:', err);
+        return res.status(500).json({ message: "Logout failed" });
+      }
+      
+      // For AJAX requests, return JSON response
+      if (req.headers.accept && req.headers.accept.includes('application/json')) {
+        return res.json({ message: "Logged out successfully", redirect: "/" });
+      }
+      
+      // For regular browser requests, redirect
       res.redirect(
         client.buildEndSessionUrl(config, {
           client_id: process.env.REPL_ID!,

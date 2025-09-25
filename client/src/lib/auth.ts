@@ -102,11 +102,24 @@ export class AuthService {
 
   async logout(): Promise<void> {
     try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
+      const response = await fetch('/api/logout', {
+        method: 'GET',
         credentials: 'include',
+        headers: {
+          'Accept': 'application/json'
+        }
       });
-      window.location.href = '/';
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.redirect) {
+          window.location.href = data.redirect;
+        } else {
+          window.location.href = '/';
+        }
+      } else {
+        window.location.href = '/';
+      }
     } catch (error) {
       console.error('Logout failed:', error);
       window.location.href = '/';
