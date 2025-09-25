@@ -1506,6 +1506,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/chapters/:id', async (req, res) => {
     try {
       const { id: chapterId } = req.params;
+      
+      // Basic UUID validation
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(chapterId)) {
+        return res.status(400).json({ message: "Invalid chapter ID format" });
+      }
+
       const chapter = await storage.getChapterById(chapterId);
 
       if (!chapter) {

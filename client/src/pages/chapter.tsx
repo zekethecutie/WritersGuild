@@ -35,13 +35,19 @@ export default function ChapterPage() {
   } = useQuery({
     queryKey: ["/api/chapters", id],
     queryFn: async () => {
+      if (!id) throw new Error('No chapter ID provided');
       const response = await fetch(`/api/chapters/${id}`);
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Chapter fetch error:', response.status, errorText);
         throw new Error('Chapter not found');
       }
-      return response.json();
+      const data = await response.json();
+      console.log('Chapter data:', data);
+      return data;
     },
     enabled: !!id,
+    retry: 1,
   });
 
   // Fetch series data

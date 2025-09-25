@@ -48,7 +48,7 @@ import {
 } from "lucide-react";
 
 export default function SeriesEditPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id: seriesId } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
@@ -78,9 +78,9 @@ export default function SeriesEditPage() {
     isLoading: seriesLoading, 
     error: seriesError 
   } = useQuery({
-    queryKey: ["/api/series", id],
-    queryFn: () => apiRequest("GET", `/api/series/${id}`),
-    enabled: !!id,
+    queryKey: ["/api/series", seriesId],
+    queryFn: () => apiRequest("GET", `/api/series/${seriesId}`),
+    enabled: !!seriesId,
   });
 
   // Fetch chapters
@@ -88,16 +88,17 @@ export default function SeriesEditPage() {
     data: chapters = [], 
     isLoading: chaptersLoading 
   } = useQuery({
-    queryKey: ["/api/series", id, "chapters"],
+    queryKey: ["/api/series", seriesId, "chapters"],
     queryFn: async () => {
-      const response = await fetch(`/api/series/${id}/chapters`);
+      const response = await fetch(`/api/series/${seriesId}/chapters`);
       if (!response.ok) {
         throw new Error('Failed to fetch chapters');
       }
       const data = await response.json();
+      // Ensure we always return an array
       return Array.isArray(data) ? data : [];
     },
-    enabled: !!id,
+    enabled: !!seriesId,
   });
 
   // Initialize form with series data
@@ -124,10 +125,10 @@ export default function SeriesEditPage() {
   // Update series mutation
   const updateSeriesMutation = useMutation({
     mutationFn: async (seriesData: any) => {
-      return apiRequest("PUT", `/api/series/${id}`, seriesData);
+      return apiRequest("PUT", `/api/series/${seriesId}`, seriesData);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/series", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/series", seriesId] });
       toast({
         title: "Success",
         description: "Series updated successfully",
@@ -145,10 +146,10 @@ export default function SeriesEditPage() {
   // Create chapter mutation
   const createChapterMutation = useMutation({
     mutationFn: async (chapterData: any) => {
-      return apiRequest("POST", `/api/series/${id}/chapters`, chapterData);
+      return apiRequest("POST", `/api/series/${seriesId}/chapters`, chapterData);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/series", id, "chapters"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/series", seriesId, "chapters"] });
       setShowNewChapter(false);
       setChapterTitle("");
       setChapterContent("");
@@ -172,7 +173,7 @@ export default function SeriesEditPage() {
       return apiRequest("PUT", `/api/chapters/${editingChapter.id}`, chapterData);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/series", id, "chapters"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/series", seriesId, "chapters"] });
       setEditingChapter(null);
       setChapterTitle("");
       setChapterContent("");
@@ -196,7 +197,7 @@ export default function SeriesEditPage() {
       return apiRequest("DELETE", `/api/chapters/${chapterId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/series", id, "chapters"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/series", seriesId, "chapters"] });
       toast({
         title: "Success",
         description: "Chapter deleted successfully",
@@ -214,7 +215,7 @@ export default function SeriesEditPage() {
   // Delete series mutation
   const deleteSeriesMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest("DELETE", `/api/series/${id}`);
+      return apiRequest("DELETE", `/api/series/${seriesId}`);
     },
     onSuccess: () => {
       toast({
@@ -406,7 +407,7 @@ export default function SeriesEditPage() {
           <div className="text-center">
             <h2 className="text-2xl font-bold mb-2">Access denied</h2>
             <p className="text-muted-foreground">You don't have permission to edit this series.</p>
-            <Button className="mt-4" onClick={() => setLocation(`/story/${id}`)}>
+            <Button className="mt-4" onClick={() => setLocation(`/story/${seriesId}`)}>
               View Series
             </Button>
           </div>
@@ -426,7 +427,7 @@ export default function SeriesEditPage() {
             <Button 
               variant="ghost" 
               size="sm" 
-              onClick={() => setLocation(`/story/${id}`)}
+              onClick={() => setLocation(`/story/${seriesId}`)}
               className="flex items-center gap-2"
             >
               <ArrowLeft className="w-4 h-4" />
