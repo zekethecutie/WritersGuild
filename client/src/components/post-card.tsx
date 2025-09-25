@@ -12,7 +12,6 @@ import SavePostImage from "@/components/save-post-image";
 import CommentThread from "@/components/comment-thread";
 import ReportPostButton from "@/components/report-post-button";
 import RichTextEditor from "@/components/rich-text-editor";
-import SpotifyPlayer from "@/components/spotify-player";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
