@@ -1075,34 +1075,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Spotify integration routes
-  app.get('/api/spotify/search', requireAuth, async (req, res) => {
-    try {
-      const { q: query, type = 'track', limit = 20 } = req.query;
-      if (!query) {
-        return res.status(400).json({ message: "Query parameter required" });
-      }
-
-      const spotify = await getSpotifyClient();
-      const results = await spotify.search(query as string, [type as 'track'], 'US', parseInt(limit as string));
-      res.json(results);
-    } catch (error) {
-      console.error("Error searching Spotify:", error);
-      res.status(500).json({ message: "Failed to search Spotify" });
-    }
-  });
-
-  app.get('/api/spotify/track/:id', requireAuth, async (req, res) => {
-    try {
-      const { id } = req.params;
-      const spotify = await getSpotifyClient();
-      const track = await spotify.tracks.get(id);
-      res.json(track);
-    } catch (error) {
-      console.error("Error fetching Spotify track:", error);
-      res.status(500).json({ message: "Failed to fetch track" });
-    }
-  });
+  // Spotify integration routes - mount the spotify routes
+  app.use('/api/spotify', spotifyRoutes);
 
   // Messaging routes
   app.get('/api/conversations', requireAuth, async (req: any, res) => {

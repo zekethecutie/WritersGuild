@@ -38,8 +38,14 @@ export default function SpotifyPlayer({
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
 
   const { data: searchResults, isLoading } = useQuery({
-    queryKey: ["/api/spotify/search", searchQuery],
-    queryFn: () => spotifyService.search(searchQuery, 'track', 10),
+    queryKey: ["spotify-search", searchQuery],
+    queryFn: async () => {
+      const response = await fetch(`/api/spotify/search?q=${encodeURIComponent(searchQuery)}&type=track&limit=10`);
+      if (!response.ok) {
+        throw new Error('Failed to search Spotify');
+      }
+      return response.json();
+    },
     enabled: searchQuery.length > 2 && searchMode,
   });
 
@@ -126,7 +132,7 @@ export default function SpotifyPlayer({
                     data-testid={`spotify-track-${track.id}`}
                   >
                     <img
-                      src={spotifyService.getImageUrl(track.album.images, 'small')}
+                      src={track.album.images?.[0]?.url || '/api/placeholder/48/48'}
                       alt={track.album.name}
                       className="w-12 h-12 rounded object-cover"
                     />
@@ -136,7 +142,7 @@ export default function SpotifyPlayer({
                         {track.artists[0]?.name} • {track.album.name}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {formatDuration(track.duration_ms)}
+                        {Math.floor(track.duration_ms / 60000)}:{String(Math.floor((track.duration_ms % 60000) / 1000)).padStart(2, '0')}
                       </p>
                     </div>
                     {track.preview_url && (
@@ -220,7 +226,7 @@ export default function SpotifyPlayer({
             <Button
               variant="ghost"
               size={compact ? "sm" : "default"}
-              onClick={() => handlePlayPause(track.preview_url)}
+              onClick={() => handlePlayPause(track)}
               className="text-white hover:bg-white/20"
               data-testid="button-play-preview"
             >
