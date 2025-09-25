@@ -298,6 +298,7 @@ export class DatabaseStorage implements IStorage {
       .select({
         id: posts.id,
         authorId: posts.authorId,
+        title: posts.title,
         content: posts.content,
         formattedContent: posts.formattedContent,
         postType: posts.postType,
@@ -363,6 +364,7 @@ export class DatabaseStorage implements IStorage {
     return results.map(row => ({
       id: row.id,
       authorId: row.authorId,
+      title: row.title,
       content: row.content,
       formattedContent: row.formattedContent,
       postType: row.postType,
@@ -726,6 +728,7 @@ export class DatabaseStorage implements IStorage {
     return db.select({
       id: posts.id,
       authorId: posts.authorId,
+      title: posts.title,
       content: posts.content,
       formattedContent: posts.formattedContent,
       postType: posts.postType,
@@ -833,6 +836,7 @@ export class DatabaseStorage implements IStorage {
       .select({
         id: posts.id,
         authorId: posts.authorId,
+        title: posts.title,
         content: posts.content,
         formattedContent: posts.formattedContent,
         postType: posts.postType,
@@ -897,6 +901,7 @@ export class DatabaseStorage implements IStorage {
     return trendingPosts.map(row => ({
       id: row.id,
       authorId: row.authorId,
+      title: row.title,
       content: row.content,
       formattedContent: row.formattedContent,
       postType: row.postType,
@@ -1381,7 +1386,7 @@ export class DatabaseStorage implements IStorage {
     const searchTerm = `%${query.toLowerCase()}%`;
 
     // Search users
-    const users = await db
+    const searchUsers = await db
       .select({
         id: users.id,
         username: users.username,
@@ -1409,7 +1414,7 @@ export class DatabaseStorage implements IStorage {
       .limit(20);
 
     // Search posts
-    const posts = await db
+    const searchPosts = await db
       .select({
         id: posts.id,
         content: posts.content,
@@ -1441,7 +1446,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(posts.createdAt))
       .limit(30);
 
-    return { users, posts };
+    return { users: searchUsers, posts: searchPosts };
   }
 
   // Series management methods
@@ -1753,7 +1758,8 @@ export class DatabaseStorage implements IStorage {
 
   async updateSeries(seriesId: string, updateData: any): Promise<any> {
     try {
-      const updated = await this.db.update(series)
+      const [updated] = await db
+        .update(series)
         .set({
           title: updateData.title,
           description: updateData.description,
@@ -1767,7 +1773,7 @@ export class DatabaseStorage implements IStorage {
         .where(eq(series.id, seriesId))
         .returning();
       
-      return updated[0];
+      return updated;
     } catch (error) {
       console.error("Error updating series:", error);
       throw error;
@@ -1776,8 +1782,19 @@ export class DatabaseStorage implements IStorage {
 
   async deleteChapter(chapterId: string): Promise<void> {
     try {
-      await this.db.delete(chapters)
+      // Get chapter info before deleting to update series count
+      const chapter = await this.getChapterById(chapterId);
+      
+      await db.delete(chapters)
         .where(eq(chapters.id, chapterId));
+
+      // Update series chapters count
+      if (chapter) {
+        await db
+          .update(series)
+          .set({ chaptersCount: sql`${series.chaptersCount} - 1` })
+          .where(eq(series.id, chapter.seriesId));
+      }
     } catch (error) {
       console.error("Error deleting chapter:", error);
       throw error;
@@ -1786,12 +1803,11 @@ export class DatabaseStorage implements IStorage {
 
   async getChapterById(chapterId: string): Promise<any> {
     try {
-      const chapter = await this.db.select()
+      const [chapter] = await db.select()
         .from(chapters)
-        .where(eq(chapters.id, chapterId))
-        .limit(1);
+        .where(eq(chapters.id, chapterId));
       
-      return chapter[0] || null;
+      return chapter || null;
     } catch (error) {
       console.error("Error fetching chapter:", error);
       throw error;
@@ -1800,7 +1816,8 @@ export class DatabaseStorage implements IStorage {
 
   async updateChapter(chapterId: string, updateData: any): Promise<any> {
     try {
-      const updated = await this.db.update(chapters)
+      const [updated] = await db
+        .update(chapters)
         .set({
           title: updateData.title,
           content: updateData.content,
@@ -1811,7 +1828,7 @@ export class DatabaseStorage implements IStorage {
         .where(eq(chapters.id, chapterId))
         .returning();
       
-      return updated[0];
+      return updated;
     } catch (error) {
       console.error("Error updating chapter:", error);
       throw error;
