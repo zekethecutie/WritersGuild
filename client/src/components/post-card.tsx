@@ -11,10 +11,13 @@ import PostDownload from "@/components/post-download";
 import SavePostImage from "@/components/save-post-image";
 import CommentThread from "@/components/comment-thread";
 import ReportPostButton from "@/components/report-post-button";
+import RichTextEditor from "@/components/rich-text-editor";
+import SpotifyPlayer from "@/components/spotify-player";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
   DialogContent,
@@ -53,7 +56,10 @@ import {
   Crown,
   CheckCircle,
   Trash2,
-  Edit
+  Edit,
+  Type,
+  Music,
+  Image as ImageIcon
 } from "lucide-react";
 import type { Post, User } from "@shared/schema";
 import { getProfileImageUrl } from "@/lib/defaultImages";
@@ -81,6 +87,11 @@ export default function PostCard({ post }: PostCardProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editTitle, setEditTitle] = useState(post.title || "");
   const [editContent, setEditContent] = useState(post.content);
+  const [isRichEditor, setIsRichEditor] = useState(false);
+  const [showSpotify, setShowSpotify] = useState(false);
+  const [selectedTrack, setSelectedTrack] = useState<any>(post.spotifyTrackData || null);
+  const [selectedImages, setSelectedImages] = useState<string[]>(post.imageUrls || []);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
   const postRef = useRef<HTMLDivElement>(null);
 
   // Use author data from post or fallback for display
@@ -333,6 +344,72 @@ export default function PostCard({ post }: PostCardProps) {
     },
   });
 
+  const handleImageUpload = async (files: FileList) => {
+    // Validate files
+    const validFiles = Array.from(files).filter(file => {
+      const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+      const maxSize = 10 * 1024 * 1024; // 10MB
+
+      if (!validTypes.includes(file.type)) {
+        toast({
+          title: "Invalid file type",
+          description: `${file.name} is not a supported image format.`,
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      if (file.size > maxSize) {
+        toast({
+          title: "File too large",
+          description: `${file.name} is larger than 10MB.`,
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      return true;
+    });
+
+    if (validFiles.length === 0) return;
+
+    const formData = new FormData();
+    validFiles.forEach(file => {
+      formData.append('images', file);
+    });
+
+    setIsUploadingImages(true);
+    try {
+      const response = await fetch("/api/upload/images", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Upload failed: ${errorText}`);
+      }
+
+      const data = await response.json();
+      setSelectedImages(prev => [...prev, ...data.imageUrls]);
+
+      toast({
+        title: "Images uploaded!",
+        description: `${validFiles.length} image(s) added to your post.`,
+      });
+    } catch (error) {
+      console.error("Image upload error:", error);
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload images. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingImages(false);
+    }
+  };
+
   const handleEditSave = () => {
     if (!editContent.trim()) {
       toast({
@@ -342,9 +419,37 @@ export default function PostCard({ post }: PostCardProps) {
       });
       return;
     }
+
+    if (editContent.length > 10000) {
+      toast({
+        title: "Post too long",
+        description: "Posts must be under 10,000 characters.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isUploadingImages) {
+      toast({
+        title: "Images uploading",
+        description: "Please wait for image uploads to complete.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     editPostMutation.mutate({
       title: editTitle || undefined,
-      content: editContent
+      content: editContent,
+      imageUrls: selectedImages.length > 0 ? selectedImages : undefined,
+      spotifyTrackData: selectedTrack ? {
+        name: selectedTrack.name,
+        artist: selectedTrack.artists?.[0]?.name || selectedTrack.artist,
+        album: selectedTrack.album?.name || selectedTrack.album,
+        image: selectedTrack.album?.images?.[0]?.url || selectedTrack.image,
+        preview_url: selectedTrack.preview_url,
+        external_urls: selectedTrack.external_urls
+      } : undefined,
     });
   };
 
@@ -757,6 +862,10 @@ export default function PostCard({ post }: PostCardProps) {
                       onClick={() => {
                         setEditTitle(post.title || "");
                         setEditContent(post.content);
+                        setSelectedImages(post.imageUrls || []);
+                        setSelectedTrack(post.spotifyTrackData || null);
+                        setIsRichEditor(false);
+                        setShowSpotify(false);
                         setShowEditDialog(true);
                       }}
                     >
@@ -784,33 +893,203 @@ export default function PostCard({ post }: PostCardProps) {
 
       {/* Edit Post Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Post</DialogTitle>
           </DialogHeader>
+
           <div className="space-y-4">
-            {post.postType !== "text" && (
-              <Input
-                placeholder="Title (optional)"
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
+            <div className="flex space-x-3">
+              <img
+                src={getProfileImageUrl(user?.profileImageUrl)}
+                alt="Your profile"
+                className="w-12 h-12 rounded-full object-cover flex-shrink-0"
               />
-            )}
-            <Textarea
-              placeholder="What's on your mind?"
-              value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-              rows={6}
-            />
+              <div className="flex-1">
+                {/* Post Type and Privacy */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-muted-foreground">Type:</span>
+                      <Badge variant="outline" className={`text-xs ${
+                        post.postType === "poetry" ? "text-purple-400 border-purple-400/30 bg-purple-400/10" :
+                        post.postType === "story" ? "text-blue-400 border-blue-400/30 bg-blue-400/10" :
+                        post.postType === "challenge" ? "text-green-400 border-green-400/30 bg-green-400/10" :
+                        "text-muted-foreground border-border bg-muted/50"
+                      }`}>
+                        {post.postType.charAt(0).toUpperCase() + post.postType.slice(1)}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Title Field */}
+                {(post.postType === "story" || post.postType === "poetry") && (
+                  <div className="mb-4">
+                    <Input
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      placeholder={`${post.postType === "story" ? "Story" : "Poem"} title (optional)`}
+                      className="text-lg font-medium bg-transparent border-none outline-none placeholder-muted-foreground"
+                      maxLength={255}
+                    />
+                  </div>
+                )}
+
+                {/* Editor */}
+                {isRichEditor ? (
+                  <div className="mb-4">
+                    <RichTextEditor
+                      content={editContent}
+                      onChange={setEditContent}
+                      placeholder="Share your thoughts, poetry, or stories..."
+                      className="min-h-[120px]"
+                      postType={post.postType}
+                    />
+                  </div>
+                ) : (
+                  <Textarea
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    placeholder="Share your thoughts, poetry, or stories..."
+                    className="resize-none border-none outline-none bg-transparent text-base placeholder-muted-foreground min-h-[120px] p-0"
+                  />
+                )}
+
+                {/* Media Attachments */}
+                {selectedImages.length > 0 && (
+                  <div className="mb-4">
+                    <ImageGallery
+                      images={selectedImages}
+                      onRemove={(index) => {
+                        setSelectedImages(prev => prev.filter((_, i) => i !== index));
+                      }}
+                      className="rounded-xl overflow-hidden"
+                    />
+                  </div>
+                )}
+
+                {selectedTrack && (
+                  <div className="mb-4">
+                    <SpotifyPlayer
+                      track={selectedTrack}
+                      onRemove={() => setSelectedTrack(null)}
+                      compact
+                    />
+                  </div>
+                )}
+
+                {showSpotify && (
+                  <div className="mb-4">
+                    <SpotifyPlayer
+                      onTrackSelect={(track) => {
+                        setSelectedTrack(track);
+                        setShowSpotify(false);
+                      }}
+                      onClose={() => setShowSpotify(false)}
+                      searchMode
+                    />
+                  </div>
+                )}
+
+                <Separator className="my-4" />
+
+                {/* Toolbar */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsRichEditor(!isRichEditor)}
+                      className={`p-2 rounded-lg transition-colors ${
+                        isRichEditor ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-primary hover:bg-primary/10"
+                      }`}
+                      title="Rich Text Formatting"
+                    >
+                      <Type className="w-5 h-5" />
+                    </Button>
+
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      onChange={(e) => e.target.files && handleImageUpload(e.target.files)}
+                      className="hidden"
+                      id="edit-image-upload"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => document.getElementById('edit-image-upload')?.click()}
+                      disabled={isUploadingImages || selectedImages.length >= 4}
+                      className={`p-2 rounded-lg transition-colors ${
+                        isUploadingImages ? "text-blue-400 bg-blue-400/10" :
+                        selectedImages.length >= 4 ? "text-muted-foreground/50 cursor-not-allowed" :
+                        "text-muted-foreground hover:text-primary hover:bg-primary/10"
+                      }`}
+                      title={isUploadingImages ? "Uploading..." : selectedImages.length >= 4 ? "Maximum 4 images" : "Add Images"}
+                    >
+                      {isUploadingImages ? (
+                        <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <ImageIcon className="w-5 h-5" />
+                      )}
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowSpotify(!showSpotify)}
+                      className={`p-2 rounded-lg transition-colors ${
+                        showSpotify || selectedTrack ? "text-green-500 bg-green-500/10" : "text-muted-foreground hover:text-green-500 hover:bg-green-500/10"
+                      }`}
+                      title="Add Music"
+                    >
+                      <Music className="w-5 h-5" />
+                    </Button>
+
+                    {post.postType === "poetry" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="p-2 rounded-lg text-muted-foreground hover:text-purple-400 hover:bg-purple-400/10 transition-colors"
+                        title="Poetry Formatting"
+                      >
+                        <Quote className="w-5 h-5" />
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    {editContent.length > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        {editContent.length} characters
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
+
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+            <Button variant="outline" onClick={() => {
+              setShowEditDialog(false);
+              setIsRichEditor(false);
+              setSelectedImages(post.imageUrls || []);
+              setSelectedTrack(post.spotifyTrackData || null);
+              setShowSpotify(false);
+            }}>
               Cancel
             </Button>
             <Button
               onClick={handleEditSave}
-              disabled={!editContent.trim() || editPostMutation.isPending}
+              disabled={!editContent.trim() || editPostMutation.isPending || isUploadingImages}
+              className="bg-primary text-primary-foreground px-6 py-2 rounded-full font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
+              {editPostMutation.isPending ? (
+                <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-2" />
+              ) : null}
               {editPostMutation.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
