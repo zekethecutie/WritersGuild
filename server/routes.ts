@@ -530,6 +530,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Follow routes
+  // New follow routes with correct endpoints
+  app.post('/api/follows', requireAuth, writeLimiter, async (req: any, res) => {
+    try {
+      const followerId = req.session.userId;
+      const { followingId } = req.body;
+
+      if (!followingId) {
+        return res.status(400).json({ message: "followingId is required" });
+      }
+
+      if (followerId === followingId) {
+        return res.status(400).json({ message: "Cannot follow yourself" });
+      }
+
+      const isAlreadyFollowing = await storage.isFollowing(followerId, followingId);
+      
+      if (isAlreadyFollowing) {
+        return res.status(400).json({ message: "Already following this user" });
+      }
+
+      // Follow the user
+      const follow = await storage.followUser(followerId, followingId);
+
+      // Create and broadcast follow notification
+      const notification = await storage.createNotification({
+        userId: followingId,
+        type: 'follow',
+        actorId: followerId,
+        isRead: false,
+        postId: null,
+        data: {}
+      });
+
+      // Broadcast real-time notification
+      if ((app as any).broadcastNotification) {
+        (app as any).broadcastNotification(followingId, notification);
+      }
+
+      res.json({ following: true, follow, message: "Following user" });
+    } catch (error) {
+      console.error("Error following user:", error);
+      res.status(500).json({ message: "Failed to follow user" });
+    }
+  });
+
+  app.delete('/api/follows/:followingId', requireAuth, async (req: any, res) => {
+    try {
+      const followerId = req.session.userId;
+      const { followingId } = req.params;
+
+      await storage.unfollowUser(followerId, followingId);
+      res.json({ following: false, message: "Unfollowed user" });
+    } catch (error) {
+      console.error("Error unfollowing user:", error);
+      res.status(500).json({ message: "Failed to unfollow user" });
+    }
+  });
+
   app.post('/api/users/:id/follow', requireAuth, writeLimiter, async (req: any, res) => {
     try {
       const followerId = req.session.userId;

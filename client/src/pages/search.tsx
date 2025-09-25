@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/sidebar";
 import MobileNav from "@/components/mobile-nav";
 import PostCard from "@/components/post-card";
+import FollowButton from "@/components/follow-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,7 +45,7 @@ interface SearchFilters {
 }
 
 export default function SearchPage() {
-  const { user, isAuthenticated } = useAuth();
+  const { user: currentUser, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -73,7 +74,7 @@ export default function SearchPage() {
     queryKey: ["/api/search", debouncedQuery, filters],
     queryFn: async () => {
       if (!debouncedQuery.trim()) return { posts: [], users: [], topics: [] };
-      
+
       const params = new URLSearchParams({
         q: debouncedQuery,
         type: filters.type,
@@ -125,12 +126,12 @@ export default function SearchPage() {
     <div className="min-h-screen bg-background">
       <div className="flex">
         <Sidebar />
-        
+
         <main className="flex-1 px-4 py-6 md:px-6">
           <div className="max-w-4xl mx-auto">
             <div className="mb-6">
               <h1 className="text-2xl font-bold mb-4">Search</h1>
-              
+
               {/* Search Input */}
               <div className="relative mb-4">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -155,7 +156,7 @@ export default function SearchPage() {
                   Filters
                   {showFilters && <ChevronDown className="w-4 h-4" />}
                 </Button>
-                
+
                 {Object.values(filters).some(v => v !== 'all' && v !== false && v !== 0) && (
                   <Button
                     variant="ghost"
@@ -371,15 +372,33 @@ export default function SearchPage() {
                                           </Badge>
                                         )}
                                       </div>
-                                      <p className="text-sm text-muted-foreground">@{user.username}</p>
+                                      <p className="text-sm text-muted-foreground truncate">
+                                        @{user.username}
+                                      </p>
                                       {user.bio && (
-                                        <p className="text-sm mt-1 line-clamp-2">{user.bio}</p>
+                                        <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+                                          {user.bio}
+                                        </p>
                                       )}
                                       <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                                         <span>{user.postsCount || 0} posts</span>
                                         <span>{user.followersCount || 0} followers</span>
                                       </div>
                                     </div>
+
+                                    {currentUser && user.id !== currentUser.id && (
+                                      <div className="flex flex-col gap-2">
+                                        <FollowButton userId={user.id} variant="outline" size="sm" />
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => window.location.href = `/messages?user=${user.id}`}
+                                          className="text-xs"
+                                        >
+                                          Message
+                                        </Button>
+                                      </div>
+                                    )}
                                   </div>
                                 </CardContent>
                               </Card>

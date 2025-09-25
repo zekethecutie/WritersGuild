@@ -41,6 +41,19 @@ export default function Messages() {
   const [messageInput, setMessageInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Check for user parameter in URL to start new conversation
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetUserId = urlParams.get('user');
+    
+    if (targetUserId && isAuthenticated) {
+      // Create conversation with target user
+      createConversationMutation.mutate(targetUserId);
+      // Clear URL parameter
+      window.history.replaceState({}, '', '/messages');
+    }
+  }, [isAuthenticated]);
+
   // Fetch conversations
   const { data: conversations = [], isLoading: conversationsLoading } = useQuery({
     queryKey: ["/api/conversations"],
@@ -69,6 +82,24 @@ export default function Messages() {
       toast({
         title: "Error",
         description: "Failed to send message",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Create conversation mutation
+  const createConversationMutation = useMutation({
+    mutationFn: async (participantId: string) => {
+      return apiRequest("POST", "/api/conversations", { participantId });
+    },
+    onSuccess: (conversation) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      setSelectedConversation(conversation);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to start conversation",
         variant: "destructive",
       });
     },

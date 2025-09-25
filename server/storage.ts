@@ -756,11 +756,46 @@ export class DatabaseStorage implements IStorage {
     return newNotification;
   }
 
-  async getUserNotifications(userId: string): Promise<Notification[]> {
-    return db.select()
+  async getUserNotifications(userId: string): Promise<any[]> {
+    const result = await db.select({
+      id: notifications.id,
+      userId: notifications.userId,
+      type: notifications.type,
+      actorId: notifications.actorId,
+      postId: notifications.postId,
+      isRead: notifications.isRead,
+      data: notifications.data,
+      createdAt: notifications.createdAt,
+      actor: {
+        id: users.id,
+        username: users.username,
+        displayName: users.displayName,
+        profileImageUrl: users.profileImageUrl,
+        isVerified: users.isVerified,
+      },
+      post: notifications.postId ? {
+        id: posts.id,
+        content: posts.content,
+      } : null,
+    })
       .from(notifications)
+      .leftJoin(users, eq(notifications.actorId, users.id))
+      .leftJoin(posts, eq(notifications.postId, posts.id))
       .where(eq(notifications.userId, userId))
       .orderBy(desc(notifications.createdAt));
+
+    return result.map(row => ({
+      id: row.id,
+      userId: row.userId,
+      type: row.type,
+      actorId: row.actorId,
+      postId: row.postId,
+      isRead: row.isRead,
+      data: row.data,
+      createdAt: row.createdAt,
+      actor: row.actor,
+      post: row.post,
+    }));
   }
 
   async markNotificationAsRead(id: string): Promise<void> {

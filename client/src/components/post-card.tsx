@@ -20,7 +20,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  DialogFooter
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -58,6 +58,7 @@ import {
 import type { Post, User } from "@shared/schema";
 import { getProfileImageUrl } from "@/lib/defaultImages";
 import AuthDialog from "@/components/auth-dialog";
+import FollowButton from "@/components/follow-button";
 
 interface PostCardProps {
   post: Post & {
@@ -75,13 +76,11 @@ export default function PostCard({ post }: PostCardProps) {
   const queryClient = useQueryClient();
   const [isExpanded, setIsExpanded] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
-  const [editData, setEditData] = useState({
-    title: post.title || "",
-    content: post.content || "",
-  });
-  
-  const [showAuthDialog, setShowAuthDialog] = useState(false); // State for auth dialog
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [editTitle, setEditTitle] = useState(post.title || "");
+  const [editContent, setEditContent] = useState(post.content);
   const postRef = useRef<HTMLDivElement>(null);
 
   // Use author data from post or fallback for display
@@ -311,7 +310,7 @@ export default function PostCard({ post }: PostCardProps) {
   });
 
   const editPostMutation = useMutation({
-    mutationFn: async (data: { title: string; content: string }) => {
+    mutationFn: async (data: { title?: string; content: string }) => {
       return apiRequest("PUT", `/api/posts/${post.id}`, data);
     },
     onSuccess: () => {
@@ -335,7 +334,7 @@ export default function PostCard({ post }: PostCardProps) {
   });
 
   const handleEditSave = () => {
-    if (!editData.content.trim()) {
+    if (!editContent.trim()) {
       toast({
         title: "Error",
         description: "Post content cannot be empty.",
@@ -343,7 +342,10 @@ export default function PostCard({ post }: PostCardProps) {
       });
       return;
     }
-    editPostMutation.mutate(editData);
+    editPostMutation.mutate({
+      title: editTitle || undefined,
+      content: editContent
+    });
   };
 
   const getPostTypeStyle = () => {
@@ -471,7 +473,7 @@ export default function PostCard({ post }: PostCardProps) {
           {/* Author Info */}
           <div className="flex items-center flex-wrap gap-2 mb-2">
             <div className="flex items-center space-x-2">
-              <span 
+              <span
                 className="font-semibold hover:underline cursor-pointer"
                 onClick={() => window.location.href = `/profile/${author.username}`}
               >
@@ -652,6 +654,7 @@ export default function PostCard({ post }: PostCardProps) {
               size="sm"
               className="engagement-btn hover:text-purple-400 group"
               data-testid="button-share-post"
+              onClick={() => navigator.clipboard.writeText(window.location.origin + `/post/${post.id}`)}
             >
               <div className="p-2 rounded-full group-hover:bg-purple-400/10 transition-colors">
                 <Share className="w-5 h-5" />
@@ -682,6 +685,11 @@ export default function PostCard({ post }: PostCardProps) {
               <PostDownload post={post} postRef={postRef} />
 
               <SavePostImage postRef={postRef} postId={post.id} disabled={!user} />
+
+              {/* Follow button */}
+              {user && user.id !== author.id && (
+                <FollowButton userId={author.id} />
+              )}
 
               {/* Delete button - for post owner or admin */}
               {(user?.id === author.id || (user as any)?.isAdmin) && (
@@ -745,12 +753,10 @@ export default function PostCard({ post }: PostCardProps) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   {user?.id === author.id && (
-                    <DropdownMenuItem 
+                    <DropdownMenuItem
                       onClick={() => {
-                        setEditData({
-                          title: post.title || "",
-                          content: post.content || "",
-                        });
+                        setEditTitle(post.title || "");
+                        setEditContent(post.content);
                         setShowEditDialog(true);
                       }}
                     >
@@ -776,56 +782,67 @@ export default function PostCard({ post }: PostCardProps) {
         </div>
       )}
 
-      
-
       {/* Edit Post Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Edit Post</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            {(post.postType === "story" || post.postType === "poetry") && (
-              <div>
-                <label className="block text-sm font-medium mb-2">Title</label>
-                <Input
-                  value={editData.title}
-                  onChange={(e) => setEditData(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="Post title..."
-                />
-              </div>
-            )}
-            <div>
-              <label className="block text-sm font-medium mb-2">Content</label>
-              <Textarea
-                value={editData.content}
-                onChange={(e) => setEditData(prev => ({ ...prev, content: e.target.value }))}
-                placeholder="What's on your mind?"
-                className="min-h-[120px]"
+            {post.postType !== "text" && (
+              <Input
+                placeholder="Title (optional)"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
               />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowEditDialog(false)}>
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleEditSave}
-                disabled={editPostMutation.isPending}
-              >
-                {editPostMutation.isPending ? "Saving..." : "Save Changes"}
-              </Button>
-            </div>
+            )}
+            <Textarea
+              placeholder="What's on your mind?"
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              rows={6}
+            />
           </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleEditSave}
+              disabled={!editContent.trim() || editPostMutation.isPending}
+            >
+              {editPostMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Auth Dialog for guests */}
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Post</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this post? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletePostMutation.mutate()}
+              disabled={deletePostMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletePostMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AuthDialog
         open={showAuthDialog}
         onOpenChange={setShowAuthDialog}
-        title="Join to Interact"
-        description="Sign up or log in to like, comment, and interact with posts"
-        onSuccess={() => window.location.reload()}
+        action="interact with posts"
       />
     </article>
   );
