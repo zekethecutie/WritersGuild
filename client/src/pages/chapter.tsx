@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { useParams, useLocation } from "wouter";
+import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -21,7 +21,8 @@ import {
 import { formatDistanceToNow } from "date-fns";
 
 export default function ChapterPage() {
-  const { id } = useParams<{ id: string }>();
+  const [match, params] = useRoute("/chapter/:id");
+  const id = params?.id;
   const [, setLocation] = useLocation();
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
