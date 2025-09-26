@@ -342,56 +342,40 @@ function PostCard({
             </div>
           </div>
 
-          <div className="relative">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <MoreHorizontal className="w-4 h-4" />
-            </Button>
-            
-            <div className="absolute right-0 top-full mt-1 w-48 bg-background border border-border rounded-lg shadow-lg z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+          {(isOwnPost || canModerate) && (
+            <div className="flex items-center space-x-2">
               {isOwnPost && (
                 <>
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-3 text-xs"
                     onClick={() => setShowEditModal(true)}
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-muted rounded-t-lg"
                   >
-                    Edit Post
-                  </button>
-                  <button
+                    Edit
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-3 text-xs text-red-500 hover:text-red-700"
                     onClick={handleDelete}
-                    className="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-muted"
                   >
-                    Delete Post
-                  </button>
-                  <div className="border-t border-border"></div>
+                    Delete
+                  </Button>
                 </>
               )}
               {canModerate && !isOwnPost && (
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-3 text-xs text-red-500 hover:text-red-700"
                   onClick={handleDelete}
-                  className="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-muted"
                 >
-                  Moderate Delete
-                </button>
+                  Delete
+                </Button>
               )}
-              <button
-                onClick={() => window.open(`/post/${post.id}`, '_blank')}
-                className="w-full px-4 py-2 text-left text-sm hover:bg-muted"
-              >
-                View Post
-              </button>
-              <button
-                onClick={handleShare}
-                className="w-full px-4 py-2 text-left text-sm hover:bg-muted rounded-b-lg"
-              >
-                Copy Link
-              </button>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Title */}
