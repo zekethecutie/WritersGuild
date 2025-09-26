@@ -25,6 +25,7 @@ import {
   Edit,
   Plus,
   ArrowLeft,
+  ArrowRight,
   Crown,
   MoreHorizontal
 } from "lucide-react";
@@ -32,13 +33,32 @@ import { formatDistanceToNow } from "date-fns";
 import { getProfileImageUrl } from "@/lib/defaultImages";
 
 export default function StoryPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id, chapterId } = useParams<{ id: string; chapterId?: string }>();
   const [, setLocation] = useLocation();
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [newComment, setNewComment] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+
+  // Determine if we're viewing a specific chapter
+  const isChapterView = !!chapterId;
+
+  // Fetch specific chapter when in chapter view
+  const { 
+    data: currentChapter, 
+    isLoading: chapterLoading 
+  } = useQuery({
+    queryKey: ["/api/chapters", chapterId],
+    queryFn: async () => {
+      const response = await fetch(`/api/chapters/${chapterId}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Chapter not found');
+      return response.json();
+    },
+    enabled: !!chapterId,
+  });
 
   // Fetch story/series data
   const { 
@@ -194,6 +214,126 @@ export default function StoryPage() {
   const readingProgressPercentage = progress?.progressPercentage || 0;
   const lastChapterRead = progress?.lastChapterIndex || 0;
 
+  // If we're viewing a specific chapter, show chapter reader
+  if (isChapterView) {
+    if (chapterLoading) {
+      return <LoadingScreen title="Loading Chapter..." subtitle="Fetching chapter content" />;
+    }
+    
+    if (!currentChapter) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-muted rounded-xl flex items-center justify-center mb-4 mx-auto">
+              <BookOpen className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">Chapter not found</h2>
+            <p className="text-muted-foreground mb-4">
+              The chapter you're looking for doesn't exist or has been removed.
+            </p>
+            <Button onClick={() => setLocation(`/story/${id}`)}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Story
+            </Button>
+          </div>
+        </div>
+      );
+    }
+    
+    // Find current chapter index for navigation
+    const currentChapterIndex = chapters.findIndex((ch: any) => ch.id === chapterId);
+    const prevChapter = currentChapterIndex > 0 ? chapters[currentChapterIndex - 1] : null;
+    const nextChapter = currentChapterIndex < chapters.length - 1 ? chapters[currentChapterIndex + 1] : null;
+    
+    return (
+      <div className="min-h-screen bg-background">
+        <Sidebar />
+        
+        <div className="lg:ml-64 min-h-screen">
+          {/* Chapter header */}
+          <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b">
+            <div className="flex items-center gap-4 p-4">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setLocation(`/story/${id}`)}
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Story
+              </Button>
+              <div className="flex-1">
+                <h1 className="text-lg font-bold truncate">
+                  Chapter {currentChapter.chapterNumber}: {currentChapter.title}
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  {story.title} by {story.author?.displayName || "Unknown Author"}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Chapter content */}
+          <div className="max-w-4xl mx-auto p-6">
+            <Card>
+              <CardContent className="p-8">
+                <div className="prose prose-lg max-w-none dark:prose-invert">
+                  <h1 className="text-3xl font-bold mb-8">
+                    Chapter {currentChapter.chapterNumber}: {currentChapter.title}
+                  </h1>
+                  <div 
+                    className="text-foreground leading-relaxed"
+                    style={{ fontSize: '18px', lineHeight: '1.7' }}
+                  >
+                    {currentChapter.content.includes('<') ? (
+                      <div dangerouslySetInnerHTML={{ __html: currentChapter.content }} />
+                    ) : (
+                      <div className="whitespace-pre-wrap">{currentChapter.content}</div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Chapter navigation */}
+            <div className="flex justify-between items-center mt-8">
+              <div>
+                {prevChapter && (
+                  <Button 
+                    variant="outline"
+                    onClick={() => setLocation(`/story/${id}/chapter/${prevChapter.id}`)}
+                    className="flex items-center gap-2"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Previous Chapter
+                  </Button>
+                )}
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">
+                  Chapter {currentChapterIndex + 1} of {chapters.length}
+                </p>
+              </div>
+              <div>
+                {nextChapter && (
+                  <Button
+                    onClick={() => setLocation(`/story/${id}/chapter/${nextChapter.id}`)}
+                    className="flex items-center gap-2"
+                  >
+                    Next Chapter
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <MobileNav />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
@@ -315,7 +455,7 @@ export default function StoryPage() {
                             onClick={() => {
                               const targetChapter = chapters[lastChapterRead] || chapters[0];
                               if (targetChapter?.id) {
-                                setLocation(`/chapter/${targetChapter.id}`);
+                                setLocation(`/story/${id}/chapter/${targetChapter.id}`);
                               }
                             }}
                           >
@@ -400,7 +540,7 @@ export default function StoryPage() {
                         <Card 
                           key={chapter.id} 
                           className="hover:shadow-md transition-shadow cursor-pointer"
-                          onClick={() => setLocation(`/chapter/${chapter.id}`)}
+                          onClick={() => setLocation(`/story/${id}/chapter/${chapter.id}`)}
                         >
                           <CardContent className="p-4">
                             <div className="flex items-center justify-between">
