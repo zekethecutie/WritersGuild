@@ -652,5 +652,5 @@ function PostCard({
   );
 }
 
-export default PostCard;
 export { PostCard };
+export default PostCard;

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -198,14 +197,14 @@ export default function Messages() {
   const getConversationName = (conversation: Conversation) => {
     if (conversation.name) return conversation.name;
     if (conversation.isGroup) return "Group Chat";
-    
+
     const otherParticipant = conversation.participants?.find(p => p.id !== user?.id);
     return otherParticipant?.displayName || otherParticipant?.username || "Unknown User";
   };
 
   const getConversationImage = (conversation: Conversation) => {
     if (conversation.isGroup) return null;
-    
+
     const otherParticipant = conversation.participants?.find(p => p.id !== user?.id);
     return getProfileImageUrl(otherParticipant?.profileImageUrl);
   };
@@ -225,7 +224,7 @@ export default function Messages() {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-      
+
       <div className="lg:ml-64 min-h-screen">
         <div className="flex h-[calc(100vh-4rem)] max-w-6xl mx-auto">
       {/* Conversations List */}
@@ -318,7 +317,7 @@ export default function Messages() {
                 <div>
                   <h2 className="font-semibold">{getConversationName(selectedConversation)}</h2>
                   <p className="text-sm text-muted-foreground">
-                    {selectedConversation.isGroup 
+                    {selectedConversation.isGroup
                       ? `${selectedConversation.participants.length} members`
                       : "Direct message"
                     }
@@ -360,7 +359,7 @@ export default function Messages() {
                         }`}>
                           {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
                         </p>
-                        
+
                         {/* Unsend button for own messages */}
                         {message.senderId === user.id && (
                           <Button
@@ -408,10 +407,8 @@ export default function Messages() {
       </div>
     </div>
       </div>
-      
+
       <MobileNav />
     </div>
   );
 }
-
-export default Messages;
