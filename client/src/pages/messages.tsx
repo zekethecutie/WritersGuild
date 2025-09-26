@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -7,7 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Send, Search, MessageCircle, Users, X } from "lucide-react";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Send, Search, MessageCircle, Users, X, MoreHorizontal, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { getProfileImageUrl } from "@/lib/defaultImages";
 import Sidebar from "@/components/sidebar";
@@ -209,6 +216,10 @@ export default function Messages() {
     return getProfileImageUrl(otherParticipant?.profileImageUrl);
   };
 
+  const getOtherParticipant = (conversation: Conversation) => {
+    return conversation.participants?.find(p => p.id !== user?.id);
+  };
+
   const filteredConversations = conversations.filter(conversation =>
     getConversationName(conversation).toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -227,185 +238,239 @@ export default function Messages() {
 
       <div className="lg:ml-64 min-h-screen">
         <div className="flex h-[calc(100vh-4rem)] max-w-6xl mx-auto">
-      {/* Conversations List */}
-      <div className="w-1/3 border-r border-border">
-        <div className="p-4 border-b border-border">
-          <div className="flex items-center space-x-2 mb-4">
-            <MessageCircle className="w-5 h-5" />
-            <h1 className="text-xl font-bold">Messages</h1>
-          </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search conversations..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </div>
+          {/* Conversations List */}
+          <div className="w-1/3 border-r border-border">
+            <div className="p-4 border-b border-border">
+              <div className="flex items-center space-x-2 mb-4">
+                <MessageCircle className="w-5 h-5" />
+                <h1 className="text-xl font-bold">Messages</h1>
+              </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search conversations..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
 
-        <ScrollArea className="h-[calc(100%-8rem)]">
-          {loading ? (
-            <div className="p-4">
-              <p className="text-muted-foreground">Loading conversations...</p>
-            </div>
-          ) : filteredConversations.length === 0 ? (
-            <div className="p-4">
-              <p className="text-muted-foreground">No conversations found</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-border">
-              {filteredConversations.map((conversation) => (
-                <div
-                  key={conversation.id}
-                  className={`p-4 cursor-pointer hover:bg-muted/50 transition-colors ${
-                    selectedConversation?.id === conversation.id ? 'bg-muted' : ''
-                  }`}
-                  onClick={() => setSelectedConversation(conversation)}
-                >
-                  <div className="flex items-start space-x-3">
+            <ScrollArea className="h-[calc(100%-8rem)]">
+              {loading ? (
+                <div className="p-4">
+                  <p className="text-muted-foreground">Loading conversations...</p>
+                </div>
+              ) : filteredConversations.length === 0 ? (
+                <div className="p-4">
+                  <p className="text-muted-foreground">No conversations found</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {filteredConversations.map((conversation) => (
+                    <div
+                      key={conversation.id}
+                      className={`p-4 cursor-pointer hover:bg-muted/50 transition-colors ${
+                        selectedConversation?.id === conversation.id ? 'bg-muted' : ''
+                      }`}
+                      onClick={() => setSelectedConversation(conversation)}
+                    >
+                      <div className="flex items-start space-x-3">
+                        <Avatar className="w-10 h-10">
+                          <AvatarImage src={getConversationImage(conversation) || undefined} />
+                          <AvatarFallback>
+                            {conversation.isGroup ? <Users className="w-4 h-4" /> : getConversationName(conversation)[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <h3 className="font-medium truncate">
+                              {getConversationName(conversation)}
+                            </h3>
+                            {conversation.lastMessage && (
+                              <span className="text-xs text-muted-foreground">
+                                {formatDistanceToNow(new Date(conversation.lastMessage.createdAt), { addSuffix: true })}
+                              </span>
+                            )}
+                          </div>
+                          {conversation.lastMessage && (
+                            <p className="text-sm text-muted-foreground truncate">
+                              {conversation.lastMessage.content}
+                            </p>
+                          )}
+                          {conversation.unreadCount && conversation.unreadCount > 0 && (
+                            <Badge variant="destructive" className="mt-1">
+                              {conversation.unreadCount}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+
+          {/* Chat Area */}
+          <div className="flex-1 flex flex-col">
+            {selectedConversation ? (
+              <>
+                {/* Chat Header */}
+                <div className="p-4 border-b border-border">
+                  <div className="flex items-center space-x-3">
                     <Avatar className="w-10 h-10">
-                      <AvatarImage src={getConversationImage(conversation) || undefined} />
+                      <AvatarImage src={getConversationImage(selectedConversation) || undefined} />
                       <AvatarFallback>
-                        {conversation.isGroup ? <Users className="w-4 h-4" /> : getConversationName(conversation)[0]}
+                        {selectedConversation.isGroup ? <Users className="w-4 h-4" /> : getConversationName(selectedConversation)[0]}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-medium truncate">
-                          {getConversationName(conversation)}
-                        </h3>
-                        {conversation.lastMessage && (
-                          <span className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(new Date(conversation.lastMessage.createdAt), { addSuffix: true })}
-                          </span>
-                        )}
-                      </div>
-                      {conversation.lastMessage && (
-                        <p className="text-sm text-muted-foreground truncate">
-                          {conversation.lastMessage.content}
-                        </p>
-                      )}
-                      {conversation.unreadCount && conversation.unreadCount > 0 && (
-                        <Badge variant="destructive" className="mt-1">
-                          {conversation.unreadCount}
-                        </Badge>
-                      )}
+                    <div>
+                      <h2 className="font-semibold">{getConversationName(selectedConversation)}</h2>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedConversation.isGroup
+                          ? `${selectedConversation.participants.length} members`
+                          : (() => {
+                              const otherUser = getOtherParticipant(selectedConversation);
+                              return otherUser ? `@${otherUser.username}` : "Direct message";
+                            })()
+                        }
+                      </p>
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </ScrollArea>
-      </div>
 
-      {/* Chat Area */}
-      <div className="flex-1 flex flex-col">
-        {selectedConversation ? (
-          <>
-            {/* Chat Header */}
-            <div className="p-4 border-b border-border">
-              <div className="flex items-center space-x-3">
-                <Avatar className="w-8 h-8">
-                  <AvatarImage src={getConversationImage(selectedConversation) || undefined} />
-                  <AvatarFallback>
-                    {selectedConversation.isGroup ? <Users className="w-4 h-4" /> : getConversationName(selectedConversation)[0]}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <h2 className="font-semibold">{getConversationName(selectedConversation)}</h2>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedConversation.isGroup
-                      ? `${selectedConversation.participants.length} members`
-                      : "Direct message"
-                    }
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Messages */}
-            <ScrollArea className="flex-1 p-4">
-              <div className="space-y-4">
-                {messages
-                  .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-                  .map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${message.senderId === user.id ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div className={`max-w-[70%] ${message.senderId === user.id ? 'order-2' : 'order-1'} relative group`}>
-                      {message.senderId !== user.id && (
-                        <div className="flex items-center space-x-2 mb-1">
-                          <Avatar className="w-6 h-6">
-                            <AvatarImage src={getProfileImageUrl(message.sender?.profileImageUrl)} />
-                            <AvatarFallback>{message.sender?.displayName?.[0] || message.sender?.username?.[0] || '?'}</AvatarFallback>
-                          </Avatar>
-                          <span className="text-sm font-medium">{message.sender?.displayName || message.sender?.username || 'Unknown User'}</span>
-                        </div>
-                      )}
-                      <div
-                        className={`p-3 rounded-lg relative ${
-                          message.senderId === user.id
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted'
-                        }`}
-                      >
-                        <p className="whitespace-pre-wrap">{message.content}</p>
-                        <p className={`text-xs mt-1 ${
-                          message.senderId === user.id ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                        }`}>
-                          {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
-                        </p>
-
-                        {/* Unsend button for own messages */}
-                        {message.senderId === user.id && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleUnsendMessage(message.id)}
-                            className="absolute -top-2 -right-2 w-6 h-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-full"
-                            title="Unsend message"
+                {/* Messages */}
+                <ScrollArea className="flex-1 p-4 bg-gray-50/50 dark:bg-gray-900/20">
+                  <div className="space-y-1">
+                    {messages
+                      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+                      .map((message, index, array) => {
+                        const isOwn = message.senderId === user.id;
+                        const prevMessage = array[index - 1];
+                        const isFirstInGroup = !prevMessage || prevMessage.senderId !== message.senderId;
+                        
+                        return (
+                          <div
+                            key={message.id}
+                            className={`flex items-end space-x-2 ${isOwn ? 'justify-end' : 'justify-start'} group`}
                           >
-                            <X className="w-3 h-3" />
-                          </Button>
-                        )}
-                      </div>
+                            {!isOwn && (
+                              <Avatar className="w-6 h-6 flex-shrink-0">
+                                <AvatarImage src={getProfileImageUrl(message.sender?.profileImageUrl)} />
+                                <AvatarFallback className="text-xs">
+                                  {message.sender?.displayName?.[0] || message.sender?.username?.[0] || '?'}
+                                </AvatarFallback>
+                              </Avatar>
+                            )}
+                            
+                            <div className={`max-w-[70%] ${isOwn ? 'order-first' : ''}`}>
+                              {!isOwn && isFirstInGroup && (
+                                <div className="mb-1 px-3">
+                                  <span className="text-xs font-medium text-muted-foreground">
+                                    {message.sender?.displayName || message.sender?.username || 'Unknown User'}
+                                  </span>
+                                </div>
+                              )}
+                              
+                              <div className="relative">
+                                <div
+                                  className={`px-4 py-2 rounded-2xl max-w-full break-words relative ${
+                                    isOwn
+                                      ? 'bg-blue-500 text-white rounded-br-md'
+                                      : 'bg-gray-200 dark:bg-gray-700 text-foreground rounded-bl-md'
+                                  }`}
+                                >
+                                  <p className="text-sm leading-relaxed">{message.content}</p>
+                                </div>
+                                
+                                {/* Message options */}
+                                {isOwn && (
+                                  <div className="absolute -top-2 -left-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="w-6 h-6 p-0 rounded-full bg-background shadow-md hover:bg-muted"
+                                        >
+                                          <MoreHorizontal className="w-3 h-3" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent>
+                                        <DropdownMenuItem
+                                          onClick={() => handleUnsendMessage(message.id)}
+                                          className="text-destructive"
+                                        >
+                                          <Trash2 className="w-4 h-4 mr-2" />
+                                          Unsend message
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              <div className={`mt-1 px-3 ${isOwn ? 'text-right' : 'text-left'}`}>
+                                <span className="text-xs text-muted-foreground">
+                                  {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            {isOwn && (
+                              <Avatar className="w-6 h-6 flex-shrink-0">
+                                <AvatarImage src={getProfileImageUrl(user.profileImageUrl)} />
+                                <AvatarFallback className="text-xs">
+                                  {user.displayName?.[0] || user.username?.[0] || '?'}
+                                </AvatarFallback>
+                              </Avatar>
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
+                </ScrollArea>
+
+                {/* Message Input */}
+                <div className="p-4 border-t border-border bg-background">
+                  <div className="flex space-x-3 items-end">
+                    <Avatar className="w-8 h-8 flex-shrink-0">
+                      <AvatarImage src={getProfileImageUrl(user.profileImageUrl)} />
+                      <AvatarFallback className="text-xs">
+                        {user.displayName?.[0] || user.username?.[0] || '?'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 flex space-x-2">
+                      <Input
+                        placeholder="Message..."
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        className="flex-1 rounded-full border-gray-300 focus:border-blue-500"
+                      />
+                      <Button 
+                        onClick={sendMessage} 
+                        disabled={!newMessage.trim()}
+                        className="rounded-full w-10 h-10 p-0"
+                      >
+                        <Send className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
-                ))}
+                </div>
+              </>
+            ) : (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center">
+                  <MessageCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium mb-2">Select a conversation</h3>
+                  <p className="text-muted-foreground">Choose a conversation from the list to start messaging</p>
+                </div>
               </div>
-            </ScrollArea>
-
-            {/* Message Input */}
-            <div className="p-4 border-t border-border">
-              <div className="flex space-x-2">
-                <Input
-                  placeholder="Type a message..."
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  className="flex-1"
-                />
-                <Button onClick={sendMessage} disabled={!newMessage.trim()}>
-                  <Send className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <MessageCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">Select a conversation</h3>
-              <p className="text-muted-foreground">Choose a conversation from the list to start messaging</p>
-            </div>
+            )}
           </div>
-        )}
-      </div>
-    </div>
+        </div>
       </div>
 
       <MobileNav />

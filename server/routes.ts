@@ -10,7 +10,9 @@ import bcrypt from "bcrypt";
 import session from "express-session";
 import MemoryStore from "memorystore";
 import rateLimit from "express-rate-limit";
-import { storage } from "./storage";
+import { eq, desc, asc, like, ilike, and, or, isNull, sql, gt, lt, gte, lte, ne, count, inArray } from "drizzle-orm";
+import { db } from "./db"; // Assuming db is your Drizzle client instance
+import { conversationsTable, messages, users, postsTable, commentsTable, notificationsTable, seriesTable, chaptersTable, bookmarksTable, likesTable, followsTable, follows, series, chapters, users as usersTable, posts, comments, notifications, conversations, messages as messagesTable } from "@shared/db"; // Import necessary tables and schema
 import { insertPostSchema, insertCommentSchema } from "@shared/schema";
 import { getSpotifyClient } from "./spotifyClient";
 import spotifyRoutes from "./spotifyRoutes";
@@ -558,7 +560,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const isAlreadyFollowing = await storage.isFollowing(followerId, followingId);
-      
+
       if (isAlreadyFollowing) {
         return res.status(400).json({ message: "Already following this user" });
       }
@@ -611,7 +613,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const isAlreadyFollowing = await storage.isFollowing(followerId, followingId);
-      
+
       if (isAlreadyFollowing) {
         // Unfollow if already following
         await storage.unfollowUser(followerId, followingId);
@@ -1164,13 +1166,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/spotify', spotifyRoutes);
 
   // Messaging routes
-  app.get('/api/conversations', requireAuth, async (req: any, res) => {
+  // Get conversations for current user
+  app.get("/api/conversations", requireAuth, async (req, res) => {
     try {
-      const userId = req.session.userId;
-      const conversations = await storage.getUserConversations(userId);
-      res.json(conversations);
+      const conversations = await db
+        .select({
+          id: conversationsTable.id,
+          name: conversationsTable.name,
+          isGroup: conversationsTable.isGroup,
+          createdAt: conversationsTable.createdAt,
+          updatedAt: conversationsTable.updatedAt,
+          lastMessageId: conversationsTable.lastMessageId,
+          participantOneId: conversationsTable.participantOneId,
+          participantTwoId: conversationsTable.participantTwoId,
+        })
+        .from(conversationsTable)
+        .where(
+          or(
+            eq(conversationsTable.participantOneId, req.session.userId!),
+            eq(conversationsTable.participantTwoId, req.session.userId!)
+          )
+        )
+        .orderBy(desc(conversationsTable.updatedAt));
+
+      // Get participants for each conversation
+      const conversationsWithParticipants = await Promise.all(
+        conversations.map(async (conv) => {
+          // Get both participants
+          const participantIds = [conv.participantOneId, conv.participantTwoId].filter(Boolean);
+          const participants = await db
+            .select({
+              id: usersTable.id,
+              username: usersTable.username,
+              displayName: usersTable.displayName,
+              profileImageUrl: usersTable.profileImageUrl,
+            })
+            .from(usersTable)
+            .where(inArray(usersTable.id, participantIds));
+
+          // Get last message if exists
+          let lastMessage = null;
+          if (conv.lastMessageId) {
+            const lastMessages = await db
+              .select({
+                id: messagesTable.id,
+                content: messagesTable.content,
+                senderId: messagesTable.senderId,
+                createdAt: messagesTable.createdAt,
+              })
+              .from(messagesTable)
+              .where(eq(messagesTable.id, conv.lastMessageId))
+              .limit(1);
+
+            if (lastMessages.length > 0) {
+              lastMessage = lastMessages[0];
+            }
+          }
+
+          return {
+            ...conv,
+            participants,
+            lastMessage,
+          };
+        })
+      );
+
+      res.json(conversationsWithParticipants);
     } catch (error) {
-      console.error("Error fetching conversations:", error);
+      console.error("Failed to fetch conversations:", error);
       res.status(500).json({ message: "Failed to fetch conversations" });
     }
   });
@@ -1202,24 +1265,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/conversations/:id/messages', requireAuth, async (req: any, res) => {
+  // Get messages for a conversation
+  app.get("/api/conversations/:conversationId/messages", requireAuth, async (req, res) => {
     try {
-      const userId = req.session.userId;
-      const { id: conversationId } = req.params;
-      const { limit = 50, offset = 0 } = req.query;
+      const { conversationId } = req.params;
 
-      // Verify user is part of this conversation
-      const conversations = await storage.getUserConversations(userId);
-      const userConversation = conversations.find(c => c.id === conversationId);
+      // Verify user is part of conversation
+      const conversation = await db
+        .select()
+        .from(conversationsTable)
+        .where(
+          and(
+            eq(conversationsTable.id, conversationId),
+            or(
+              eq(conversationsTable.participantOneId, req.session.userId!),
+              eq(conversationsTable.participantTwoId, req.session.userId!)
+            )
+          )
+        )
+        .limit(1);
 
-      if (!userConversation) {
-        return res.status(403).json({ message: "Access denied to this conversation" });
+      if (conversation.length === 0) {
+        return res.status(404).json({ message: "Conversation not found" });
       }
 
-      const messages = await storage.getConversationMessages(conversationId, parseInt(limit), parseInt(offset));
-      res.json(messages);
+      const conversationMessages = await db
+        .select({
+          id: messagesTable.id,
+          content: messagesTable.content,
+          senderId: messagesTable.senderId,
+          conversationId: messagesTable.conversationId,
+          createdAt: messagesTable.createdAt,
+          senderUsername: usersTable.username,
+          senderDisplayName: usersTable.displayName,
+          senderProfileImageUrl: usersTable.profileImageUrl,
+        })
+        .from(messagesTable)
+        .leftJoin(usersTable, eq(messagesTable.senderId, usersTable.id))
+        .where(eq(messagesTable.conversationId, conversationId))
+        .orderBy(asc(messagesTable.createdAt));
+
+      // Format messages to include sender data
+      const formattedMessages = conversationMessages.map(msg => ({
+        id: msg.id,
+        content: msg.content,
+        senderId: msg.senderId,
+        conversationId: msg.conversationId,
+        createdAt: msg.createdAt,
+        sender: {
+          id: msg.senderId,
+          username: msg.senderUsername || 'unknown',
+          displayName: msg.senderDisplayName || 'Unknown User',
+          profileImageUrl: msg.senderProfileImageUrl,
+        }
+      }));
+
+      res.json(formattedMessages);
     } catch (error) {
-      console.error("Error fetching messages:", error);
+      console.error("Failed to fetch messages:", error);
       res.status(500).json({ message: "Failed to fetch messages" });
     }
   });
@@ -1551,7 +1654,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/chapters/:id', async (req, res) => {
     try {
       const { id: chapterId } = req.params;
-      
+
       // Basic UUID validation
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       if (!uuidRegex.test(chapterId)) {
