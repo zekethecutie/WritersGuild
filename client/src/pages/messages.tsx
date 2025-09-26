@@ -167,7 +167,10 @@ export default function MessagesPage() {
             </div>
           ) : (
             filteredConversations.map((conversation: ConversationWithParticipants) => {
-              const otherParticipant = conversation.participantOne || conversation.participantTwo;
+              // Determine the other participant by excluding current user
+              const otherParticipant = conversation.participantOne?.id === user?.id 
+                ? conversation.participantTwo 
+                : conversation.participantOne;
               const isSelected = conversation.id === selectedConversationId;
               
               return (
@@ -232,28 +235,39 @@ export default function MessagesPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <Avatar className="w-10 h-10">
-                      <AvatarImage 
-                        src={getProfileImageUrl(
-                          selectedConversation.participantOne?.profileImageUrl || 
-                          selectedConversation.participantTwo?.profileImageUrl
-                        )} 
-                        alt="Profile"
-                      />
-                      <AvatarFallback>
-                        <UserIcon className="w-5 h-5" />
-                      </AvatarFallback>
+                      {(() => {
+                        const otherParticipant = selectedConversation.participantOne?.id === user?.id 
+                          ? selectedConversation.participantTwo 
+                          : selectedConversation.participantOne;
+                        return (
+                          <>
+                            <AvatarImage 
+                              src={getProfileImageUrl(otherParticipant?.profileImageUrl)} 
+                              alt={otherParticipant?.displayName || "Profile"}
+                            />
+                            <AvatarFallback>
+                              <UserIcon className="w-5 h-5" />
+                            </AvatarFallback>
+                          </>
+                        );
+                      })()}
                     </Avatar>
                     <div>
-                      <h3 className="font-medium" data-testid="text-chat-participant-name">
-                        {selectedConversation.participantOne?.displayName || 
-                         selectedConversation.participantTwo?.displayName || 
-                         "Unknown User"}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        @{selectedConversation.participantOne?.username || 
-                           selectedConversation.participantTwo?.username || 
-                           "unknown"}
-                      </p>
+                      {(() => {
+                        const otherParticipant = selectedConversation.participantOne?.id === user?.id 
+                          ? selectedConversation.participantTwo 
+                          : selectedConversation.participantOne;
+                        return (
+                          <>
+                            <h3 className="font-medium" data-testid="text-chat-participant-name">
+                              {otherParticipant?.displayName || "Unknown User"}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              @{otherParticipant?.username || "unknown"}
+                            </p>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                   

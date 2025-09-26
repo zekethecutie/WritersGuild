@@ -178,9 +178,8 @@ export default function PostCard({
           <div 
             className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap break-words"
             data-testid={`text-content-${post.id}`}
-          >
-            {displayContent}
-          </div>
+            dangerouslySetInnerHTML={{ __html: displayContent }}
+          />
           {shouldTruncate && (
             <Button
               variant="link"
