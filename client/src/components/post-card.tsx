@@ -26,7 +26,7 @@ import {
   Edit,
   Trash2
 } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { getProfileImageUrl } from "@/lib/defaultImages";
 import SpotifyPlayer from "@/components/spotify-player";
 import { ImageGallery } from "@/components/image-gallery";
@@ -107,7 +107,7 @@ function PostCard({
   } as User;
 
   const isOwnPost = user?.id === post.authorId;
-  const canModerate = user?.isAdmin || user?.isSuperAdmin;
+  const canModerate = (user as any)?.isAdmin || (user as any)?.isSuperAdmin;
 
   const handleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -154,6 +154,8 @@ function PostCard({
     }
   };
 
+  const [, navigate] = useLocation();
+
   const handleComment = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -166,7 +168,7 @@ function PostCard({
       });
       return;
     }
-    window.location.href = `/post/${post.id}`;
+    navigate(`/post/${post.id}`);
   };
 
   const handleRepost = async (e: React.MouseEvent) => {
@@ -387,7 +389,7 @@ function PostCard({
 
   // Truncate content if it's too long
   const shouldTruncate = post.content.length > 300;
-  const displayContent = shouldTruncate && !showFullContent
+  const displayContent: string = shouldTruncate && !showFullContent
     ? post.content.slice(0, 300) + "..."
     : post.content;
 
@@ -527,7 +529,7 @@ function PostCard({
             {post.content.includes('<') ? (
               <div dangerouslySetInnerHTML={{ __html: displayContent }} />
             ) : (
-              <div>{displayContent}</div>
+              <span>{displayContent}</span>
             )}
           </div>
           {shouldTruncate && (
@@ -553,9 +555,9 @@ function PostCard({
         )}
 
         {/* Spotify Integration */}
-        {post.spotifyTrackData && (
+        {post.spotifyTrackData && typeof post.spotifyTrackData === 'object' && post.spotifyTrackData !== null && (
           <div className="mb-4">
-            <SpotifyPlayer track={post.spotifyTrackData} />
+            <SpotifyPlayer track={post.spotifyTrackData as any} />
           </div>
         )}
 
