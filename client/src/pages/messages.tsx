@@ -93,7 +93,7 @@ export default function MessagesPage() {
 
   const handleSendMessage = () => {
     if (!selectedConversationId || !newMessage.trim()) return;
-    
+
     sendMessageMutation.mutate({
       conversationId: selectedConversationId,
       content: newMessage.trim(),
@@ -129,7 +129,7 @@ export default function MessagesPage() {
               <Plus className="w-4 h-4" />
             </Button>
           </div>
-          
+
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
@@ -172,7 +172,7 @@ export default function MessagesPage() {
                 ? conversation.participantTwo 
                 : conversation.participantOne;
               const isSelected = conversation.id === selectedConversationId;
-              
+
               return (
                 <div
                   key={conversation.id}
@@ -192,7 +192,7 @@ export default function MessagesPage() {
                         <UserIcon className="w-6 h-6" />
                       </AvatarFallback>
                     </Avatar>
-                    
+
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <h4 className="font-medium truncate">
@@ -204,13 +204,13 @@ export default function MessagesPage() {
                           </span>
                         )}
                       </div>
-                      
+
                       {conversation.lastMessage && (
                         <p className="text-sm text-muted-foreground truncate">
                           {conversation.lastMessage.content}
                         </p>
                       )}
-                      
+
                       {conversation.unreadCount && conversation.unreadCount > 0 && (
                         <Badge variant="default" className="mt-1 text-xs">
                           {conversation.unreadCount}
@@ -270,7 +270,7 @@ export default function MessagesPage() {
                       })()}
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center space-x-2">
                     <Button size="sm" variant="ghost">
                       <Phone className="w-4 h-4" />
@@ -312,7 +312,7 @@ export default function MessagesPage() {
                     ...message,
                     createdAt: message.createdAt ? (typeof message.createdAt === 'string' ? message.createdAt : message.createdAt.toISOString()) : new Date().toISOString()
                   };
-                  
+
                   return (
                     <ChatBubble
                       key={message.id}
@@ -473,7 +473,7 @@ export default function Messages() {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-      
+
       <div className="lg:ml-64 min-h-screen">
         <div className="flex h-screen">
           {/* Conversations List */}
@@ -488,7 +488,7 @@ export default function Messages() {
                 />
               </div>
             </div>
-            
+
             <div className="overflow-y-auto">
               {conversations.length === 0 ? (
                 <div className="p-8 text-center">

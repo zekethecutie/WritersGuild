@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -48,8 +50,10 @@ function PostCard({
   onBookmark,
   onShare
 }: PostCardProps) {
-
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [showFullContent, setShowFullContent] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   // Create fallback author if none provided
   const author = post.author || {
@@ -76,6 +80,183 @@ function PostCard({
     updatedAt: new Date()
   } as User;
 
+  const isOwnPost = user?.id === post.authorId;
+  const canModerate = user?.isAdmin || user?.isSuperAdmin;
+
+  const handleLike = async () => {
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "You need to be signed in to like posts",
+        variant: "default",
+      });
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/posts/${post.id}/like`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        onLike?.(post.id);
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error('Like error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to like post",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleComment = () => {
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "You need to be signed in to comment",
+        variant: "default",
+      });
+      return;
+    }
+    window.location.href = `/post/${post.id}`;
+  };
+
+  const handleRepost = async () => {
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "You need to be signed in to repost",
+        variant: "default",
+      });
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/posts/${post.id}/repost`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        onRepost?.(post.id);
+        toast({
+          title: "Reposted!",
+          description: "Post has been shared to your profile",
+        });
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error('Repost error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to repost",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBookmark = async () => {
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "You need to be signed in to bookmark posts",
+        variant: "default",
+      });
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/posts/${post.id}/bookmark`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        onBookmark?.(post.id);
+        toast({
+          title: post.isBookmarked ? "Removed from bookmarks" : "Bookmarked!",
+          description: post.isBookmarked ? "Post removed from your bookmarks" : "Post saved to your bookmarks",
+        });
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error('Bookmark error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to bookmark post",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleShare = async () => {
+    const postUrl = `${window.location.origin}/post/${post.id}`;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: post.title || `Post by ${author.displayName}`,
+          text: post.content.slice(0, 100) + (post.content.length > 100 ? '...' : ''),
+          url: postUrl,
+        });
+      } catch (error) {
+        console.error('Share error:', error);
+      }
+    } else {
+      // Fallback to copying to clipboard
+      try {
+        await navigator.clipboard.writeText(postUrl);
+        toast({
+          title: "Link copied!",
+          description: "Post link copied to clipboard",
+        });
+      } catch (error) {
+        console.error('Copy error:', error);
+        toast({
+          title: "Error",
+          description: "Failed to copy link",
+          variant: "destructive",
+        });
+      }
+    }
+    
+    onShare?.(post.id);
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm('Are you sure you want to delete this post?')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/posts/${post.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "Post deleted",
+          description: "Your post has been deleted",
+        });
+        window.location.reload();
+      } else {
+        throw new Error('Failed to delete post');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete post",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Truncate content if it's too long
   const shouldTruncate = post.content.length > 300;
   const displayContent = shouldTruncate && !showFullContent 
@@ -101,7 +282,7 @@ function PostCard({
   };
 
   return (
-    <article className="border-b border-border bg-background">
+    <article className="border-b border-border bg-background group">
       <div className="p-6">
         {/* Header */}
         <div className="flex items-start space-x-3 mb-4">
@@ -161,9 +342,56 @@ function PostCard({
             </div>
           </div>
 
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-            <MoreHorizontal className="w-4 h-4" />
-          </Button>
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </Button>
+            
+            <div className="absolute right-0 top-full mt-1 w-48 bg-background border border-border rounded-lg shadow-lg z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+              {isOwnPost && (
+                <>
+                  <button
+                    onClick={() => setShowEditModal(true)}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-muted rounded-t-lg"
+                  >
+                    Edit Post
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    className="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-muted"
+                  >
+                    Delete Post
+                  </button>
+                  <div className="border-t border-border"></div>
+                </>
+              )}
+              {canModerate && !isOwnPost && (
+                <button
+                  onClick={handleDelete}
+                  className="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-muted"
+                >
+                  Moderate Delete
+                </button>
+              )}
+              <button
+                onClick={() => window.open(`/post/${post.id}`, '_blank')}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-muted"
+              >
+                View Post
+              </button>
+              <button
+                onClick={handleShare}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-muted rounded-b-lg"
+              >
+                Copy Link
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Title */}
@@ -176,15 +404,25 @@ function PostCard({
         {/* Content */}
         <div className="mb-4">
           <div 
-            className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap break-words"
+            className="text-foreground text-base leading-relaxed whitespace-pre-wrap break-words max-w-none"
             data-testid={`text-content-${post.id}`}
-            dangerouslySetInnerHTML={{ __html: displayContent }}
-          />
+            style={{ 
+              fontSize: '16px', 
+              lineHeight: '1.6',
+              color: 'var(--foreground)'
+            }}
+          >
+            {post.content.includes('<') ? (
+              <div dangerouslySetInnerHTML={{ __html: displayContent }} />
+            ) : (
+              <div>{displayContent}</div>
+            )}
+          </div>
           {shouldTruncate && (
             <Button
               variant="link"
               size="sm"
-              className="h-auto p-0 text-blue-500 hover:text-blue-600"
+              className="h-auto p-0 text-blue-500 hover:text-blue-600 mt-2"
               onClick={() => setShowFullContent(!showFullContent)}
               data-testid={`button-toggle-content-${post.id}`}
             >
@@ -226,8 +464,8 @@ function PostCard({
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-8 space-x-2 ${post.isLiked ? 'text-red-500' : 'text-muted-foreground'}`}
-                onClick={() => onLike?.(post.id)}
+                className={`h-8 space-x-2 transition-colors ${post.isLiked ? 'text-red-500 hover:text-red-600' : 'text-muted-foreground hover:text-red-500'}`}
+                onClick={handleLike}
                 data-testid={`button-like-${post.id}`}
               >
                 <Heart className={`w-4 h-4 ${post.isLiked ? 'fill-current' : ''}`} />
@@ -237,8 +475,8 @@ function PostCard({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 space-x-2 text-muted-foreground"
-                onClick={() => onComment?.(post.id)}
+                className="h-8 space-x-2 text-muted-foreground hover:text-blue-500 transition-colors"
+                onClick={handleComment}
                 data-testid={`button-comment-${post.id}`}
               >
                 <MessageCircle className="w-4 h-4" />
@@ -248,8 +486,8 @@ function PostCard({
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-8 space-x-2 ${post.isReposted ? 'text-green-500' : 'text-muted-foreground'}`}
-                onClick={() => onRepost?.(post.id)}
+                className={`h-8 space-x-2 transition-colors ${post.isReposted ? 'text-green-500 hover:text-green-600' : 'text-muted-foreground hover:text-green-500'}`}
+                onClick={handleRepost}
                 data-testid={`button-repost-${post.id}`}
               >
                 <Repeat2 className="w-4 h-4" />
@@ -261,8 +499,8 @@ function PostCard({
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-8 w-8 p-0 ${post.isBookmarked ? 'text-blue-500' : 'text-muted-foreground'}`}
-                onClick={() => onBookmark?.(post.id)}
+                className={`h-8 w-8 p-0 transition-colors ${post.isBookmarked ? 'text-blue-500 hover:text-blue-600' : 'text-muted-foreground hover:text-blue-500'}`}
+                onClick={handleBookmark}
                 data-testid={`button-bookmark-${post.id}`}
               >
                 <Bookmark className={`w-4 h-4 ${post.isBookmarked ? 'fill-current' : ''}`} />
@@ -271,8 +509,8 @@ function PostCard({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0 text-muted-foreground"
-                onClick={() => onShare?.(post.id)}
+                className="h-8 w-8 p-0 text-muted-foreground hover:text-primary transition-colors"
+                onClick={handleShare}
                 data-testid={`button-share-${post.id}`}
               >
                 <Share className="w-4 h-4" />
@@ -287,3 +525,4 @@ function PostCard({
 }
 
 export default PostCard;
+export { PostCard };
