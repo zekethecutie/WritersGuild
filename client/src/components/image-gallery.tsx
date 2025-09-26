@@ -129,5 +129,5 @@ function ImageGallery({
   );
 }
 
-export default ImageGallery;
 export { ImageGallery };
+export default ImageGallery;

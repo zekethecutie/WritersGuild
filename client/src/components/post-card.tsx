@@ -4,6 +4,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Heart, 
   MessageCircle, 
@@ -23,7 +27,7 @@ import {
 import { Link } from "wouter";
 import { getProfileImageUrl } from "@/lib/defaultImages";
 import SpotifyPlayer from "@/components/spotify-player";
-import ImageGallery from "@/components/image-gallery";
+import { ImageGallery } from "@/components/image-gallery";
 import type { Post, User } from "@shared/schema";
 
 interface PostCardProps {
@@ -54,6 +58,10 @@ function PostCard({
   const { toast } = useToast();
   const [showFullContent, setShowFullContent] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [editTitle, setEditTitle] = useState(post.title || "");
+  const [editContent, setEditContent] = useState(post.content || "");
+  const [editGenre, setEditGenre] = useState(post.genre || "");
+  const [isEditing, setIsEditing] = useState(false);
 
   // Create fallback author if none provided
   const author = post.author || {
@@ -225,6 +233,53 @@ function PostCard({
     }
     
     onShare?.(post.id);
+  };
+
+  const handleEdit = async () => {
+    if (!editContent.trim()) {
+      toast({
+        title: "Error",
+        description: "Post content cannot be empty",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsEditing(true);
+    try {
+      const response = await fetch(`/api/posts/${post.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          title: editTitle,
+          content: editContent,
+          genre: editGenre,
+        }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Post updated",
+          description: "Your post has been updated successfully",
+        });
+        setShowEditModal(false);
+        window.location.reload();
+      } else {
+        throw new Error('Failed to update post');
+      }
+    } catch (error) {
+      console.error('Edit error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update post",
+        variant: "destructive",
+      });
+    } finally {
+      setIsEditing(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -504,9 +559,75 @@ function PostCard({
         )}
       </div>
 
+      {/* Edit Modal */}
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Post</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Title (optional)</label>
+              <Input
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder="Post title..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Content</label>
+              <Textarea
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                placeholder="What's on your mind?"
+                className="min-h-[120px]"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Genre</label>
+              <Select value={editGenre} onValueChange={setEditGenre}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a genre..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fiction">Fiction</SelectItem>
+                  <SelectItem value="non-fiction">Non-Fiction</SelectItem>
+                  <SelectItem value="poetry">Poetry</SelectItem>
+                  <SelectItem value="drama">Drama</SelectItem>
+                  <SelectItem value="mystery">Mystery</SelectItem>
+                  <SelectItem value="romance">Romance</SelectItem>
+                  <SelectItem value="sci-fi">Science Fiction</SelectItem>
+                  <SelectItem value="fantasy">Fantasy</SelectItem>
+                  <SelectItem value="horror">Horror</SelectItem>
+                  <SelectItem value="biography">Biography</SelectItem>
+                  <SelectItem value="essay">Essay</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowEditModal(false)}
+                disabled={isEditing}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleEdit}
+                disabled={isEditing || !editContent.trim()}
+              >
+                {isEditing ? "Updating..." : "Update Post"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </article>
   );
 }
+
+export default PostCard;
 
 export default PostCard;
 export { PostCard };
