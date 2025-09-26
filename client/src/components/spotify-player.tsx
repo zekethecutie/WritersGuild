@@ -1,416 +1,277 @@
-
-import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import React, { useState, useEffect, useRef } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { 
-  Search,
-  Music,
-  Play,
-  Pause,
-  X,
-  ExternalLink,
-  Clock
-} from "lucide-react";
+import { Music, ExternalLink, Play, Pause } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface SpotifyTrack {
   id: string;
   name: string;
-  artists: { name: string }[];
-  album: {
-    name: string;
-    images: { url: string; width: number; height: number }[];
-  };
-  preview_url: string | null;
+  artist: string;
+  album: string;
+  image?: string;
+  preview_url?: string;
   external_urls: {
     spotify: string;
   };
-  duration_ms: number;
-  explicit: boolean;
 }
 
 interface SpotifyPlayerProps {
-  track?: SpotifyTrack;
-  onTrackSelect?: (track: SpotifyTrack) => void;
-  onRemove?: () => void;
-  onClose?: () => void;
-  searchMode?: boolean;
-  compact?: boolean;
+  track: SpotifyTrack | null;
+  size?: "sm" | "md" | "lg";
+  showPreview?: boolean;
+  className?: string;
 }
 
-export default function SpotifyPlayer({
-  track,
-  onTrackSelect,
-  onRemove,
-  onClose,
-  searchMode = false,
-  compact = false
+export default function SpotifyPlayer({ 
+  track, 
+  size = "md", 
+  showPreview = true, 
+  className 
 }: SpotifyPlayerProps) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
-  const [playingTrackId, setPlayingTrackId] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const { toast } = useToast();
 
-  // Debounce search query
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedQuery(searchQuery);
-    }, 500);
+    const audio = audioRef.current;
+    if (!audio || !track?.preview_url) return;
 
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+    const updateTime = () => setCurrentTime(audio.currentTime);
+    const updateDuration = () => setDuration(audio.duration);
+    const handleEnded = () => setIsPlaying(false);
 
-  // Search for tracks
-  const { data: searchResults, isLoading: isSearching, error: searchError } = useQuery({
-    queryKey: ["/api/spotify/search", debouncedQuery],
-    queryFn: async () => {
-      if (!debouncedQuery.trim()) return { tracks: { items: [] } };
-      
-      try {
-        const response = await fetch(`/api/spotify/search?q=${encodeURIComponent(debouncedQuery)}&type=track&limit=20`, {
-          credentials: 'include'
-        });
-        
-        if (!response.ok) {
-          if (response.status === 401) {
-            throw new Error('Spotify authentication required');
-          }
-          if (response.status === 404) {
-            throw new Error('Spotify service not available');
-          }
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || `Search failed: ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        
-        // Comprehensive validation
-        if (!data || typeof data !== 'object') {
-          throw new Error('Invalid response format');
-        }
-        
-        const tracks = data.tracks?.items || [];
-        
-        // Validate each track
-        const validTracks = tracks.filter((track: any) => {
-          return track && 
-                 track.id && 
-                 track.name && 
-                 Array.isArray(track.artists) && 
-                 track.album && 
-                 track.album.name;
-        });
-        
-        return {
-          tracks: {
-            items: validTracks
-          }
-        };
-      } catch (error) {
-        console.error('Spotify search error:', error);
-        throw error;
-      }
-    },
-    enabled: !!debouncedQuery.trim(),
-    retry: (failureCount, error) => {
-      // Don't retry auth errors
-      if (error?.message?.includes('authentication')) {
-        return false;
-      }
-      return failureCount < 2;
-    },
-  });
+    audio.addEventListener('timeupdate', updateTime);
+    audio.addEventListener('loadedmetadata', updateDuration);
+    audio.addEventListener('ended', handleEnded);
 
-  const tracks = searchResults?.tracks?.items || [];
+    return () => {
+      audio.removeEventListener('timeupdate', updateTime);
+      audio.removeEventListener('loadedmetadata', updateDuration);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, [track?.preview_url]);
 
-  const playPreview = async (trackToPlay: SpotifyTrack) => {
-    if (!trackToPlay.preview_url) return;
+  const handlePlayPause = async () => {
+    if (!track) return;
 
-    // Stop current audio
-    if (currentAudio) {
-      currentAudio.pause();
-      currentAudio.src = '';
-    }
-
-    if (playingTrackId === trackToPlay.id) {
-      setIsPlaying(false);
-      setPlayingTrackId(null);
-      setCurrentAudio(null);
+    if (!track.preview_url) {
+      // Open Spotify directly as fallback
+      window.open(track.external_urls.spotify, '_blank');
+      toast({
+        title: "Opening in Spotify 🎵", 
+        description: "This track doesn't have a preview, so we're opening it in Spotify for you!",
+      });
       return;
     }
 
-    try {
-      const audio = new Audio(trackToPlay.preview_url);
-      
-      audio.addEventListener('ended', () => {
-        setIsPlaying(false);
-        setPlayingTrackId(null);
-        setCurrentAudio(null);
-      });
-
-      audio.addEventListener('error', (e) => {
-        console.error('Audio error:', e);
-        setIsPlaying(false);
-        setPlayingTrackId(null);
-        setCurrentAudio(null);
-      });
-
-      // Set loading state immediately to prevent double-clicks
-      setPlayingTrackId(trackToPlay.id);
+    if (isPlaying && audioRef.current) {
+      audioRef.current.pause();
       setIsPlaying(false);
+    } else {
+      if (!audioRef.current || audioRef.current.src !== track.preview_url) {
+        // Clean up old audio if exists
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current = null;
+        }
 
-      await audio.play();
-      setCurrentAudio(audio);
-      setIsPlaying(true);
-    } catch (error) {
-      console.error('Failed to play preview:', error);
-      // Reset state on error
-      setIsPlaying(false);
-      setPlayingTrackId(null);
-      setCurrentAudio(null);
-    }
-  };
+        const newAudio = new Audio();
 
-  const stopPreview = () => {
-    if (currentAudio) {
-      currentAudio.pause();
-      currentAudio.src = '';
-      setCurrentAudio(null);
-    }
-    setIsPlaying(false);
-    setPlayingTrackId(null);
-  };
+        // Set up event listeners before setting src
+        newAudio.addEventListener('ended', () => {
+          setIsPlaying(false);
+        });
 
-  const formatDuration = (ms: number) => {
-    const minutes = Math.floor(ms / 60000);
-    const seconds = Math.floor((ms % 60000) / 1000);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  };
+        newAudio.addEventListener('error', (e) => {
+          console.error("Audio error:", e);
+          setIsPlaying(false);
+          toast({
+            title: "Playback error 🎵",
+            description: "Could not load this track preview. The audio file might be unavailable.",
+            variant: "destructive",
+          });
+        });
 
-  const getImageUrl = (images: { url: string; width: number; height: number }[]) => {
-    if (!images || !Array.isArray(images) || !images.length) return '';
-    
-    try {
-      const sortedImages = images
-        .filter(img => img && img.url) // Filter out invalid entries
-        .sort((a, b) => (b.width || 0) - (a.width || 0));
-      
-      return sortedImages[0]?.url || '';
-    } catch (error) {
-      console.error('Error processing image URL:', error);
-      return '';
-    }
-  };
+        // Set crossOrigin to allow CORS
+        newAudio.crossOrigin = "anonymous";
+        newAudio.preload = "auto";
+        newAudio.src = track.preview_url;
 
-  useEffect(() => {
-    return () => {
-      if (currentAudio) {
-        currentAudio.pause();
-        currentAudio.src = '';
+        audioRef.current = newAudio;
       }
-    };
-  }, [currentAudio]);
 
-  // If showing a selected track in compact mode
-  if (compact && track) {
-    return (
-      <Card className="bg-gradient-to-r from-green-500/10 to-green-600/10 border-green-500/20">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-3">
+      try {
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          await playPromise;
+          setIsPlaying(true);
+        }
+      } catch (error) {
+        console.error("Audio play error:", error);
+        setIsPlaying(false);
+
+        if ((error as any).name === 'NotAllowedError') {
+          toast({
+            title: "Playback blocked 🎵",
+            description: "Click anywhere on the page first, then try playing again.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Playback error 🎵",
+            description: "Unable to play audio. Try opening in Spotify instead.",
+            variant: "destructive",
+          });
+        }
+      }
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  if (!track) return null;
+
+  const sizeClasses = {
+    sm: {
+      container: "p-3",
+      image: "w-10 h-10",
+      title: "text-sm",
+      artist: "text-xs",
+      icon: "w-4 h-4",
+    },
+    md: {
+      container: "p-4",
+      image: "w-12 h-12",
+      title: "text-sm",
+      artist: "text-sm",
+      icon: "w-4 h-4",
+    },
+    lg: {
+      container: "p-6",
+      image: "w-16 h-16",
+      title: "text-base",
+      artist: "text-sm",
+      icon: "w-5 h-5",
+    },
+  };
+
+  const classes = sizeClasses[size];
+
+  return (
+    <Card className={`bg-gradient-to-r from-green-500/10 to-green-600/10 border-green-200 dark:border-green-800 ${className}`}>
+      <CardContent className={classes.container}>
+        <div className="flex items-center gap-3">
+          {/* Album Art or Music Icon */}
+          {track.image ? (
             <img
-              src={getImageUrl(track.album.images)}
-              alt={track.album.name}
-              className="w-12 h-12 rounded-lg object-cover bg-muted"
-              onError={(e) => {
-                e.currentTarget.src = '';
-                e.currentTarget.style.display = 'none';
-              }}
+              src={track.image}
+              alt={`${track.album} album art`}
+              className={`${classes.image} rounded object-cover`}
             />
-            <div className="flex-1 min-w-0">
-              <h4 className="font-medium text-sm truncate">{track.name}</h4>
-              <p className="text-xs text-muted-foreground truncate">
-                by {track.artists.map(a => a.name).join(', ')}
-              </p>
-              <p className="text-xs text-muted-foreground truncate">
-                {track.album.name}
-              </p>
+          ) : (
+            <div className={`${classes.image} bg-green-100 dark:bg-green-900 rounded flex items-center justify-center`}>
+              <Music className={`${classes.icon} text-green-600 dark:text-green-400`} />
             </div>
-            <div className="flex items-center gap-1">
-              {track.preview_url && (
+          )}
+
+          {/* Track Info */}
+          <div className="flex-1 min-w-0">
+            <p className={`font-medium ${classes.title}`} style={{
+              whiteSpace: 'normal',
+              wordBreak: 'break-word',
+              overflow: 'visible',
+              textOverflow: 'clip',
+              lineHeight: '1.6',
+              minHeight: '1.6em',
+              paddingBottom: '2px'
+            }}>
+              {track.name}
+            </p>
+            <p className={`text-muted-foreground ${classes.artist}`} style={{
+              whiteSpace: 'normal',
+              wordBreak: 'break-word',
+              overflow: 'visible',
+              textOverflow: 'clip',
+              lineHeight: '1.5',
+              minHeight: '1.5em',
+              paddingBottom: '2px'
+            }}>
+              {track.artist}
+            </p>
+            {size !== "sm" && (
+              <p className="text-xs text-muted-foreground" style={{
+                whiteSpace: 'normal',
+                wordBreak: 'break-word',
+                overflow: 'visible',
+                textOverflow: 'clip',
+                lineHeight: '1.4',
+                minHeight: '1.4em',
+                paddingBottom: '2px'
+              }}>
+                {track.album}
+              </p>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-1">
+            {showPreview && track.preview_url && (
+              <div className="flex items-center gap-2 shrink-0">
                 <Button
-                  variant="ghost"
+                  onClick={handlePlayPause}
                   size="sm"
-                  onClick={() => playPreview(track)}
-                  className="h-8 w-8 p-0"
+                  variant="ghost"
+                  className="h-8 w-8 p-0 hover:bg-white/20"
+                  disabled={isLoading}
                 >
-                  {playingTrackId === track.id && isPlaying ? (
-                    <Pause className="w-4 h-4" />
+                  {isLoading ? (
+                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : isPlaying ? (
+                    <Pause className="h-4 w-4 text-white" />
                   ) : (
-                    <Play className="w-4 h-4" />
+                    <Play className="h-4 w-4 text-white" />
                   )}
                 </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onRemove}
-                className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Search mode UI
-  return (
-    <Card className="w-full">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Music className="w-5 h-5 text-green-500" />
-            Add Music from Spotify
-          </CardTitle>
-          {onClose && (
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="w-4 h-4" />
-            </Button>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search for songs, artists, or albums..."
-            className="pl-10"
-          />
-        </div>
-
-        <ScrollArea className="h-96 w-full">
-          {isSearching && debouncedQuery && (
-            <div className="flex items-center justify-center py-8">
-              <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-              <span className="ml-2 text-sm text-muted-foreground">Searching...</span>
-            </div>
-          )}
-
-          {!debouncedQuery && !isSearching && (
-            <div className="text-center py-8 text-muted-foreground">
-              <Music className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">Search for music to add to your post</p>
-            </div>
-          )}
-
-          {searchError && (
-            <div className="text-center py-8 text-red-500">
-              <p className="text-sm">
-                {searchError.message?.includes('authentication') 
-                  ? 'Spotify authentication required. Please check your settings.' 
-                  : 'Search failed. Please try again.'}
-              </p>
-            </div>
-          )}
-
-          {debouncedQuery && !isSearching && !searchError && tracks.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              <p className="text-sm">No tracks found</p>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            {tracks.map((trackItem: SpotifyTrack) => {
-              // Validate track data
-              if (!trackItem || !trackItem.id || !trackItem.name || !trackItem.artists) {
-                return null;
-              }
-              
-              return (
-              <div
-                key={trackItem.id}
-                className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
-              >
-                <img
-                  src={getImageUrl(trackItem.album.images)}
-                  alt={trackItem.album.name}
-                  className="w-12 h-12 rounded-lg object-cover bg-muted flex-shrink-0"
-                  onError={(e) => {
-                    e.currentTarget.src = '';
-                    e.currentTarget.style.display = 'none';
-                  }}
+                {duration > 0 && !isLoading && (
+                  <span className="text-xs text-muted-foreground min-w-[3rem]">
+                    {formatTime(currentTime)}/{formatTime(duration)}
+                  </span>
+                )}
+                <audio
+                  ref={audioRef}
+                  src={track.preview_url || ""}
+                  preload="metadata"
                 />
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-sm truncate">
-                    {trackItem.name}
-                    {trackItem.explicit && (
-                      <Badge variant="secondary" className="ml-2 text-xs">E</Badge>
-                    )}
-                  </h4>
-                  <p className="text-xs text-muted-foreground truncate">
-                    by {trackItem.artists.map(a => a.name).join(', ')}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {trackItem.album.name}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Clock className="w-3 h-3 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">
-                      {formatDuration(trackItem.duration_ms)}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  {trackItem.preview_url && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => playPreview(trackItem)}
-                      className="h-8 w-8 p-0"
-                      title="Play preview"
-                    >
-                      {playingTrackId === trackItem.id && isPlaying ? (
-                        <Pause className="w-4 h-4" />
-                      ) : (
-                        <Play className="w-4 h-4" />
-                      )}
-                    </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => window.open(trackItem.external_urls.spotify, '_blank')}
-                    className="h-8 w-8 p-0"
-                    title="Open in Spotify"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={() => {
-                      onTrackSelect?.(trackItem);
-                      stopPreview();
-                    }}
-                    className="text-xs px-3"
-                  >
-                    Select
-                  </Button>
-                </div>
               </div>
-              );
-            })}
+            )}
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => window.open(track.external_urls.spotify, '_blank')}
+              className="p-2"
+              title="Open in Spotify"
+            >
+              <ExternalLink className={classes.icon} />
+            </Button>
           </div>
-        </ScrollArea>
+        </div>
+
+        {/* Spotify Badge */}
+        <div className="flex items-center justify-between mt-2">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Music className="w-3 h-3" />
+            <span>Spotify</span>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

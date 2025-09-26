@@ -68,7 +68,15 @@ export default function Messages() {
   // Fetch messages for selected conversation
   const { data: messages = [], isLoading: messagesLoading } = useQuery({
     queryKey: ["/api/conversations", selectedConversation?.id, "messages"],
-    queryFn: () => apiRequest("GET", `/api/conversations/${selectedConversation!.id}/messages`) as unknown as Promise<MessageWithSender[]>,
+    queryFn: async () => {
+      try {
+        const result = await apiRequest("GET", `/api/conversations/${selectedConversation!.id}/messages`);
+        return Array.isArray(result) ? result : [];
+      } catch (error) {
+        console.error("Failed to fetch messages:", error);
+        return [];
+      }
+    },
     enabled: !!selectedConversation?.id,
   });
 
@@ -391,22 +399,23 @@ export default function Messages() {
                     </div>
                   ) : (
                     <div className="space-y-1">
-                      {[...(messages as MessageWithSender[])].reverse().map((message: MessageWithSender, index: number, array: MessageWithSender[]) => {
-                        const isOwn = message.senderId === user?.id;
-                        const nextMessage = array[index + 1];
-                        const isLastInGroup = !nextMessage || nextMessage.senderId !== message.senderId;
+                      {Array.isArray(messages) && messages.length > 0 ? 
+                        [...messages].reverse().map((message: MessageWithSender, index: number, array: MessageWithSender[]) => {
+                          const isOwn = message.senderId === user?.id;
+                          const nextMessage = array[index + 1];
+                          const isLastInGroup = !nextMessage || nextMessage.senderId !== message.senderId;
 
-                        return (
-                          <ChatBubble
-                            key={message.id}
-                            message={message}
-                            isOwn={isOwn}
-                            isLastInGroup={isLastInGroup}
-                            onReact={(messageId, emoji) => console.log('React to:', messageId, 'with', emoji)}
-                            onReply={(messageId) => console.log('Reply to:', messageId)}
-                          />
-                        );
-                      })}
+                          return (
+                            <ChatBubble
+                              key={message.id}
+                              message={message}
+                              isOwn={isOwn}
+                              isLastInGroup={isLastInGroup}
+                              onReact={(messageId, emoji) => console.log('React to:', messageId, 'with', emoji)}
+                              onReply={(messageId) => console.log('Reply to:', messageId)}
+                            />
+                          );
+                        }) : null}
                     </div>
                   )}
                 </ScrollArea>

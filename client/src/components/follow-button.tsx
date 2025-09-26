@@ -66,7 +66,7 @@ export default function FollowButton({
           throw new Error(errorData.message || 'Failed to unfollow user');
         }
 
-        return response.json();
+        return { following: false };
       } else {
         // Follow - POST request
         const response = await fetch('/api/follows', {
@@ -83,12 +83,15 @@ export default function FollowButton({
           throw new Error(errorData.message || 'Failed to follow user');
         }
 
-        return response.json();
+        return { following: true };
       }
     },
     onMutate: () => {
+      // Store previous state for rollback
+      const previousFollowing = following;
       // Optimistic update
       setFollowing(!following);
+      return { previousFollowing };
     },
     onSuccess: (data) => {
       // Update state based on server response
@@ -109,9 +112,11 @@ export default function FollowButton({
           : "You have unfollowed this user",
       });
     },
-    onError: (error) => {
+    onError: (error, variables, context) => {
       // Revert optimistic update
-      setFollowing(following);
+      if (context?.previousFollowing !== undefined) {
+        setFollowing(context.previousFollowing);
+      }
       console.error("Follow error:", error);
       toast({
         title: "Error",

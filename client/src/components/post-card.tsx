@@ -64,7 +64,6 @@ import type { Post, User } from "@shared/schema";
 import { getProfileImageUrl } from "@/lib/defaultImages";
 import AuthDialog from "@/components/auth-dialog";
 import FollowButton from "@/components/follow-button";
-import { useGuestRestriction } from "@/hooks/useGuestRestriction";
 
 interface PostCardProps {
   post: Post & {
@@ -76,8 +75,7 @@ interface PostCardProps {
 }
 
 export default function PostCard({ post }: PostCardProps) {
-  const { user } = useAuth();
-  const permissions = useGuestPermissions();
+  const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -94,10 +92,6 @@ export default function PostCard({ post }: PostCardProps) {
   const [selectedImages, setSelectedImages] = useState<string[]>(post.imageUrls || []);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const postRef = useRef<HTMLDivElement>(null);
-
-  // Hook for guest restrictions
-  const { requireAuth } = useGuestRestriction();
-
 
   // Use author data from post or fallback for display
   const author = post.author || {
@@ -720,8 +714,15 @@ export default function PostCard({ post }: PostCardProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => requireAuth(() => likeMutation.mutate(), "like posts")}
-              disabled={likeMutation.isPending}
+              onClick={() => {
+                if (!user) {
+                  setRestrictedAction('like posts');
+                  setShowAuthDialog(true);
+                  return;
+                }
+                likeMutation.mutate();
+              }}
+              disabled={!isAuthenticated || likeMutation.isPending}
               className={`h-8 px-2 ${post.isLiked ? "text-red-500" : "text-muted-foreground"} hover:text-red-500 group`}
               data-testid="button-like-post"
             >
@@ -734,7 +735,15 @@ export default function PostCard({ post }: PostCardProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setShowComments(!showComments)}
+              onClick={() => {
+                if (!user) {
+                  setRestrictedAction('comment on posts');
+                  setShowAuthDialog(true);
+                  return;
+                }
+                setShowComments(!showComments);
+              }}
+              disabled={!isAuthenticated}
               className={`h-8 px-2 ${showComments ? "text-blue-400" : "text-muted-foreground"} hover:text-blue-400 group`}
               data-testid="button-comment-post"
             >
@@ -747,8 +756,15 @@ export default function PostCard({ post }: PostCardProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => requireAuth(() => repostMutation.mutate(""), "repost posts")}
-              disabled={repostMutation.isPending}
+              onClick={() => {
+                if (!user) {
+                  setRestrictedAction('repost posts');
+                  setShowAuthDialog(true);
+                  return;
+                }
+                repostMutation.mutate("");
+              }}
+              disabled={!isAuthenticated || repostMutation.isPending}
               className={`h-8 px-2 ${post.isReposted ? "text-green-400" : "text-muted-foreground"} hover:text-green-400 group`}
               data-testid="button-repost"
             >
@@ -773,8 +789,15 @@ export default function PostCard({ post }: PostCardProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => requireAuth(() => bookmarkMutation.mutate(), "bookmark posts")}
-              disabled={bookmarkMutation.isPending}
+              onClick={() => {
+                if (!user) {
+                  setRestrictedAction('bookmark posts');
+                  setShowAuthDialog(true);
+                  return;
+                }
+                bookmarkMutation.mutate();
+              }}
+              disabled={!isAuthenticated || bookmarkMutation.isPending}
               className={`h-8 px-2 ${post.isBookmarked ? "text-yellow-400" : "text-muted-foreground"} hover:text-yellow-400 group`}
               data-testid="button-bookmark-post"
             >
