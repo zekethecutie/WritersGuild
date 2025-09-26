@@ -250,15 +250,36 @@ export default function ChapterPage() {
           <Card className="mb-8">
             <CardContent className="p-8 md:p-12">
               <div className="prose prose-lg max-w-none dark:prose-invert">
-                <div 
-                  className="leading-relaxed text-base md:text-lg whitespace-pre-wrap"
-                  style={{ 
-                    lineHeight: '1.8',
-                    fontFamily: 'system-ui, -apple-system, sans-serif'
-                  }}
-                >
-                  {chapter.content}
-                </div>
+                {chapter.content && chapter.content.trim() ? (
+                  <div 
+                    className="leading-relaxed text-base md:text-lg whitespace-pre-wrap"
+                    style={{ 
+                      lineHeight: '1.8',
+                      fontFamily: 'system-ui, -apple-system, sans-serif'
+                    }}
+                  >
+                    {chapter.content}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4 mx-auto">
+                      <BookOpen className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-semibold mb-2">Chapter Content Not Available</h3>
+                    <p className="text-muted-foreground mb-4">
+                      This chapter appears to be empty or still being written.
+                    </p>
+                    {isOwner && (
+                      <Button 
+                        variant="outline"
+                        onClick={() => setLocation(`/story/${chapter.seriesId}/chapter/${chapter.id}/edit`)}
+                      >
+                        <Edit3 className="w-4 h-4 mr-2" />
+                        Add Content
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
