@@ -23,9 +23,19 @@ export function useGuestRestriction() {
     return true;
   };
 
+  const requireAuth = (action: () => void, actionName?: string) => {
+    if (!isAuthenticated) {
+      setShowAuthDialog(true);
+      return false;
+    }
+    action();
+    return true;
+  };
+
   return {
     checkAuthAndExecute,
     handleGuestAction,
+    requireAuth,
     showAuthDialog,
     setShowAuthDialog,
     isAuthenticated

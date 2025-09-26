@@ -12,12 +12,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
-  MessageCircle, 
-  Search, 
-  Send, 
-  MoreHorizontal, 
-  Phone, 
+import {
+  MessageCircle,
+  Search,
+  Send,
+  MoreHorizontal,
+  Phone,
   Video,
   User as UserIcon,
   Plus
@@ -49,7 +49,7 @@ export default function Messages() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const targetUserId = urlParams.get('user');
-    
+
     if (targetUserId && isAuthenticated) {
       // Create conversation with target user
       createConversationMutation.mutate(targetUserId);
@@ -102,12 +102,12 @@ export default function Messages() {
         credentials: "include",
         body: JSON.stringify({ participantId }),
       });
-      
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || "Failed to create conversation");
       }
-      
+
       return response.json();
     },
     onSuccess: (conversation: ConversationWithDetails) => {
@@ -395,7 +395,7 @@ export default function Messages() {
                         const isOwn = message.senderId === user?.id;
                         const nextMessage = array[index + 1];
                         const isLastInGroup = !nextMessage || nextMessage.senderId !== message.senderId;
-                        
+
                         return (
                           <ChatBubble
                             key={message.id}
@@ -421,8 +421,8 @@ export default function Messages() {
                       className="flex-1"
                       disabled={sendMessageMutation.isPending}
                     />
-                    <Button 
-                      type="submit" 
+                    <Button
+                      type="submit"
                       disabled={!messageInput.trim() || sendMessageMutation.isPending}
                       size="sm"
                     >

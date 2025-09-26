@@ -620,7 +620,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Follow if not following
         const follow = await storage.followUser(followerId, followingId);
 
-        // Create and broadcast follow notification
+        // Only create notification when following (not unfollowing)
         const notification = await storage.createNotification({
           userId: followingId,
           type: 'follow',

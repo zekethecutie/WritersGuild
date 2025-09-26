@@ -39,7 +39,7 @@ function AppRouter() {
       <Route path="/series/:id/edit" component={isAuthenticated ? SeriesEditPage : Landing} />
       <Route path="/story/:id" component={StoryPage} />
       <Route path="/story/:id/chapter/:chapterId" component={StoryPage} />
-      <Route path="/story/:id/edit" component={lazy(() => import("./pages/chapter-editor"))} />
+      <Route path="/story/:id/edit" component={lazy(() => import("./pages/series-edit"))} />
       <Route path="/story/:id/chapter/:chapterId/edit" component={lazy(() => import("./pages/chapter-editor"))} />
       <Route path="/leaderboard" component={lazy(() => import("./pages/leaderboard"))} />
       <Route path="/search" component={isAuthenticated ? SearchPage : Explore} />
