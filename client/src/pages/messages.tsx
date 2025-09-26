@@ -19,7 +19,8 @@ import {
   MoreHorizontal, 
   Phone, 
   Video,
-  User as UserIcon
+  User as UserIcon,
+  Plus
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { Conversation, Message, User } from "@shared/schema";
@@ -41,6 +42,8 @@ export default function Messages() {
   const [selectedConversation, setSelectedConversation] = useState<ConversationWithDetails | null>(null);
   const [messageInput, setMessageInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [showUserSearch, setShowUserSearch] = useState(false);
+  const [searchUsers, setSearchUsers] = useState<any[]>([]);
 
   // Check for user parameter in URL to start new conversation
   useEffect(() => {
@@ -143,6 +146,34 @@ export default function Messages() {
     sendMessageMutation.mutate({ content: messageInput.trim() });
   };
 
+  // Search users when typing in search box
+  const searchUsersMutation = useMutation({
+    mutationFn: async (query: string) => {
+      if (!query.trim()) return [];
+      const response = await fetch(`/api/search/users?q=${encodeURIComponent(query)}`, {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        return response.json();
+      }
+      return [];
+    },
+    onSuccess: (data) => {
+      setSearchUsers(data);
+    }
+  });
+
+  // Handle search input change
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      setShowUserSearch(true);
+      searchUsersMutation.mutate(searchQuery);
+    } else {
+      setShowUserSearch(false);
+      setSearchUsers([]);
+    }
+  }, [searchQuery]);
+
   // Filter conversations based on search
   const filteredConversations = (Array.isArray(conversations) ? conversations : []).filter((conv: any) =>
     conv.otherParticipant?.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -180,7 +211,7 @@ export default function Messages() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search conversations..."
+                  placeholder="Search conversations or users..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -189,7 +220,48 @@ export default function Messages() {
             </div>
 
             <ScrollArea className="h-[calc(100vh-140px)]">
-              {conversationsLoading ? (
+              {showUserSearch ? (
+                <div className="p-4 space-y-2">
+                  <div className="text-sm font-medium text-muted-foreground mb-2">Search Users</div>
+                  {searchUsers.map((user) => (
+                    <button
+                      key={user.id}
+                      onClick={() => {
+                        createConversationMutation.mutate(user.id);
+                        setSearchQuery("");
+                        setShowUserSearch(false);
+                      }}
+                      className="w-full p-3 flex items-center space-x-3 hover:bg-muted/50 transition-colors text-left rounded-lg"
+                    >
+                      <Avatar className="w-10 h-10">
+                        <AvatarImage
+                          src={getProfileImageUrl(user.profileImageUrl)}
+                          alt={user.displayName}
+                        />
+                        <AvatarFallback>
+                          <UserIcon className="w-5 h-5" />
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{user.displayName}</p>
+                        <p className="text-sm text-muted-foreground truncate">@{user.username}</p>
+                        {user.followersCount !== undefined && (
+                          <p className="text-xs text-muted-foreground">
+                            {user.followersCount} followers
+                          </p>
+                        )}
+                      </div>
+                      <MessageCircle className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                  ))}
+                  {searchUsers.length === 0 && searchQuery && (
+                    <div className="p-4 text-center text-muted-foreground">
+                      <UserIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p>No users found</p>
+                    </div>
+                  )}
+                </div>
+              ) : conversationsLoading ? (
                 <div className="p-4 space-y-4">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <div key={i} className="flex items-center space-x-3 p-3 animate-pulse">
@@ -201,11 +273,11 @@ export default function Messages() {
                     </div>
                   ))}
                 </div>
-              ) : filteredConversations.length === 0 ? (
+              ) : filteredConversations.length === 0 && !searchQuery ? (
                 <div className="p-8 text-center text-muted-foreground">
                   <MessageCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
                   <p>No conversations yet</p>
-                  <p className="text-sm">Start a conversation by visiting someone's profile</p>
+                  <p className="text-sm">Search for users above to start a conversation</p>
                 </div>
               ) : (
                 <div className="space-y-0">
@@ -330,7 +402,7 @@ export default function Messages() {
                             message={message}
                             isOwn={isOwn}
                             isLastInGroup={isLastInGroup}
-                            onReact={(messageId) => console.log('React to:', messageId)}
+                            onReact={(messageId, emoji) => console.log('React to:', messageId, 'with', emoji)}
                             onReply={(messageId) => console.log('Reply to:', messageId)}
                           />
                         );

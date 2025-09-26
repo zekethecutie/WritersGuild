@@ -51,23 +51,40 @@ export default function FollowButton({
 
   const followMutation = useMutation({
     mutationFn: async () => {
-      const endpoint = following ? `/api/users/${userId}/unfollow` : `/api/users/${userId}/follow`;
-      const method = "POST";
-      
-      const response = await fetch(endpoint, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-      });
+      if (following) {
+        // Unfollow - DELETE request
+        const response = await fetch(`/api/follows/${userId}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Failed to ${following ? 'unfollow' : 'follow'} user`);
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Failed to unfollow user');
+        }
+
+        return response.json();
+      } else {
+        // Follow - POST request
+        const response = await fetch('/api/follows', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ followingId: userId }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Failed to follow user');
+        }
+
+        return response.json();
       }
-
-      return response.json();
     },
     onMutate: () => {
       // Optimistic update

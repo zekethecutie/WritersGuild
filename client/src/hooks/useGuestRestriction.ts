@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { useAuth } from "./useAuth";
+import { useAuth } from "@/hooks/useAuth";
 
 export function useGuestRestriction() {
   const { isAuthenticated } = useAuth();

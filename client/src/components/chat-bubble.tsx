@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 import { getProfileImageUrl } from "@/lib/defaultImages";
-import { Heart, Reply, MoreHorizontal, User as UserIcon } from "lucide-react";
+import { Heart, Reply, MoreHorizontal, User as UserIcon, Smile } from "lucide-react";
 
 interface Message {
   id: string;
@@ -25,7 +25,7 @@ interface ChatBubbleProps {
   message: Message;
   isOwn: boolean;
   isLastInGroup?: boolean;
-  onReact?: (messageId: string) => void;
+  onReact?: (messageId: string, emoji: string) => void;
   onReply?: (messageId: string) => void;
 }
 
@@ -37,8 +37,22 @@ export default function ChatBubble({
   onReply 
 }: ChatBubbleProps) {
   const [showActions, setShowActions] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isLongPressed, setIsLongPressed] = useState(false);
+  const [reactionAnimation, setReactionAnimation] = useState<string | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout>();
+
+  const quickEmojis = ['❤️', '😂', '😮', '😢', '😡', '👍', '👎'];
+
+  const handleEmojiReact = (emoji: string) => {
+    setReactionAnimation(emoji);
+    onReact?.(message.id, emoji);
+    setShowEmojiPicker(false);
+    setShowActions(false);
+    
+    // Clear animation after 1 second
+    setTimeout(() => setReactionAnimation(null), 1000);
+  };
 
   const handleTouchStart = () => {
     timeoutRef.current = setTimeout(() => {
@@ -114,10 +128,10 @@ export default function ChatBubble({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0 hover:bg-red-500/20"
-                onClick={() => onReact?.(message.id)}
+                className="h-8 w-8 p-0 hover:bg-yellow-500/20"
+                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
               >
-                <Heart className="w-4 h-4" />
+                <Smile className="w-4 h-4" />
               </Button>
               <Button
                 variant="ghost"
@@ -134,6 +148,32 @@ export default function ChatBubble({
               >
                 <MoreHorizontal className="w-4 h-4" />
               </Button>
+            </div>
+          )}
+
+          {/* Emoji picker */}
+          {showEmojiPicker && (
+            <div className={`absolute ${
+              isOwn ? "left-0 -translate-x-full" : "right-0 translate-x-full"
+            } -top-12 bg-background/95 backdrop-blur-sm rounded-lg p-2 shadow-lg border flex gap-1`}>
+              {quickEmojis.map((emoji) => (
+                <Button
+                  key={emoji}
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-lg hover:scale-125 transition-transform"
+                  onClick={() => handleEmojiReact(emoji)}
+                >
+                  {emoji}
+                </Button>
+              ))}
+            </div>
+          )}
+
+          {/* Reaction animation */}
+          {reactionAnimation && (
+            <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 animate-bounce text-2xl pointer-events-none">
+              {reactionAnimation}
             </div>
           )}
         </div>

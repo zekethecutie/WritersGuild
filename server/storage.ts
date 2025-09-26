@@ -1266,14 +1266,35 @@ export class DatabaseStorage implements IStorage {
     return message;
   }
 
-  async getConversationMessages(conversationId: string, limit = 50, offset = 0): Promise<Message[]> {
-    return db
-      .select()
+  async getConversationMessages(conversationId: string, limit = 50, offset = 0): Promise<any[]> {
+    const result = await db
+      .select({
+        id: messages.id,
+        conversationId: messages.conversationId,
+        senderId: messages.senderId,
+        content: messages.content,
+        messageType: messages.messageType,
+        attachmentUrls: messages.attachmentUrls,
+        isRead: messages.isRead,
+        readAt: messages.readAt,
+        createdAt: messages.createdAt,
+        updatedAt: messages.updatedAt,
+        sender: {
+          id: users.id,
+          username: users.username,
+          displayName: users.displayName,
+          profileImageUrl: users.profileImageUrl,
+          isVerified: users.isVerified,
+        }
+      })
       .from(messages)
+      .leftJoin(users, eq(messages.senderId, users.id))
       .where(eq(messages.conversationId, conversationId))
       .orderBy(desc(messages.createdAt))
       .limit(limit)
       .offset(offset);
+
+    return result;
   }
 
   async markMessageAsRead(messageId: string): Promise<void> {
@@ -1302,6 +1323,14 @@ export class DatabaseStorage implements IStorage {
           eq(messages.isRead, false)
         )
       );
+  }
+
+  async getConversationById(conversationId: string): Promise<Conversation | undefined> {
+    const [conversation] = await db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.id, conversationId));
+    return conversation;
   }
 
   // User discovery and search methods
