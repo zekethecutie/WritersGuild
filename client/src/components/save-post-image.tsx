@@ -121,21 +121,6 @@ export default function SavePostImage({ postRef, postId, disabled }: SavePostIma
     </Button>
   );
 }
-import React, { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Download, Heart, MessageCircle, Repeat2, Bookmark } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import html2canvas from "html2canvas";
-import { getProfileImageUrl } from "@/lib/defaultImages";
-import { formatDistanceToNow } from "date-fns";
-
-interface SavePostImageProps {
-  post: any;
-  trigger: React.ReactNode;
-}
 
 export function SavePostImage({ post, trigger }: SavePostImageProps) {
   const [isOpen, setIsOpen] = useState(false);

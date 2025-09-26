@@ -400,7 +400,7 @@ export default function Messages() {
                   ) : (
                     <div className="space-y-1">
                       {Array.isArray(messages) && messages.length > 0 ? 
-                        [...messages].reverse().map((message: MessageWithSender, index: number, array: MessageWithSender[]) => {
+                        [...(messages as MessageWithSender[])].reverse().map((message: MessageWithSender, index: number, array: MessageWithSender[]) => {
                           const isOwn = message.senderId === user?.id;
                           const nextMessage = array[index + 1];
                           const isLastInGroup = !nextMessage || nextMessage.senderId !== message.senderId;
@@ -417,7 +417,7 @@ export default function Messages() {
                           );
                         }) : null}
                     </div>
-                  )}
+                  )</old_str>}
                 </ScrollArea>
 
                 {/* Message Input */}

@@ -1,7 +1,6 @@
 import { useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { useGuestPermissions } from "@/hooks/useGuestPermissions";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -81,7 +80,7 @@ export default function PostCard({ post }: PostCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showAuthDialog, setShowAuthDialog] = useState(false);
-  const [restrictedAction, setRestrictedAction] = useState(''); // State to track the restricted action
+  const [restrictedAction, setRestrictedAction] = useState('');</old_str>
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editTitle, setEditTitle] = useState(post.title || "");
