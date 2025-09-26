@@ -64,6 +64,7 @@ import type { Post, User } from "@shared/schema";
 import { getProfileImageUrl } from "@/lib/defaultImages";
 import AuthDialog from "@/components/auth-dialog";
 import FollowButton from "@/components/follow-button";
+import { useGuestRestriction } from "@/hooks/useGuestRestriction";
 
 interface PostCardProps {
   post: Post & {

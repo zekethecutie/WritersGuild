@@ -5,11 +5,9 @@ import { useAuth } from "./useAuth";
 export function useGuestRestriction() {
   const { isAuthenticated } = useAuth();
   const [showAuthDialog, setShowAuthDialog] = useState(false);
-  const [restrictedAction, setRestrictedAction] = useState<string>("");
 
-  const requireAuth = (action: () => void, actionName?: string) => {
+  const checkAuthAndExecute = (action: () => void, feature?: string) => {
     if (!isAuthenticated) {
-      setRestrictedAction(actionName || "access this feature");
       setShowAuthDialog(true);
       return false;
     }
@@ -17,9 +15,8 @@ export function useGuestRestriction() {
     return true;
   };
 
-  const checkAuthForAction = (actionName: string) => {
+  const handleGuestAction = (feature?: string) => {
     if (!isAuthenticated) {
-      setRestrictedAction(actionName);
       setShowAuthDialog(true);
       return false;
     }
@@ -27,11 +24,10 @@ export function useGuestRestriction() {
   };
 
   return {
-    requireAuth,
-    checkAuthForAction,
+    checkAuthAndExecute,
+    handleGuestAction,
     showAuthDialog,
     setShowAuthDialog,
-    restrictedAction,
     isAuthenticated
   };
 }

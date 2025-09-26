@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -73,18 +73,29 @@ export default function AuthDialog({
 
     setIsLoading(true);
     try {
-      const result = await login(loginForm.email, loginForm.password);
-      if (result.success) {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          email: loginForm.email,
+          password: loginForm.password
+        })
+      });
+
+      if (response.ok) {
         toast({
           title: "Welcome back!",
           description: "You have been successfully logged in."
         });
         onOpenChange(false);
         onSuccess?.();
+        window.location.reload(); // Refresh to update auth state
       } else {
+        const errorData = await response.json();
         toast({
           title: "Login failed",
-          description: result.error || "Invalid credentials",
+          description: errorData.message || "Invalid credentials",
           variant: "destructive"
         });
       }
@@ -219,6 +230,12 @@ export default function AuthDialog({
              step === 2 ? "Tell us about yourself" :
              "Customize your experience"}
           </DialogTitle>
+          <DialogDescription className="text-center text-muted-foreground">
+            {activeTab === "login" ? "Sign in to your Writers Guild account" :
+             step === 1 ? "Create your Writers Guild account" :
+             step === 2 ? "Help us personalize your experience" :
+             "Choose your preferred content genres"}
+          </DialogDescription>
         </DialogHeader>
 
         {activeTab === "login" ? (
