@@ -19,6 +19,7 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { getProfileImageUrl } from "@/lib/defaultImages";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import ChatBubble from "@/components/chat-bubble";
 import type { Conversation, Message, User } from "@shared/schema";
 
@@ -38,6 +39,7 @@ export default function MessagesPage() {
   const [newMessage, setNewMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   // Fetch conversations
@@ -301,7 +303,7 @@ export default function MessagesPage() {
                     <ChatBubble
                       key={message.id}
                       message={chatMessage}
-                      isOwn={message.senderId === "current-user-id"} // TODO: Replace with actual current user ID
+                      isOwn={message.senderId === user?.id}
                       isLastInGroup={
                         index === messages.length - 1 ||
                         messages[index + 1]?.senderId !== message.senderId
