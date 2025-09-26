@@ -75,7 +75,12 @@ function Messages() {
       });
       if (response.ok) {
         const data = await response.json();
-        setConversations(data);
+        // Ensure participants have proper user data
+        const conversationsWithUsers = data.map((conv: Conversation) => ({
+          ...conv,
+          participants: conv.participants || []
+        }));
+        setConversations(conversationsWithUsers);
       }
     } catch (error) {
       console.error('Failed to fetch conversations:', error);
@@ -91,7 +96,17 @@ function Messages() {
       });
       if (response.ok) {
         const data = await response.json();
-        setMessages(data);
+        // Ensure messages have sender data
+        const messagesWithSenders = data.map((msg: Message) => ({
+          ...msg,
+          sender: msg.sender || {
+            id: msg.senderId,
+            username: 'unknown',
+            displayName: 'Unknown User',
+            profileImageUrl: null
+          }
+        }));
+        setMessages(messagesWithSenders);
       }
     } catch (error) {
       console.error('Failed to fetch messages:', error);
@@ -145,14 +160,14 @@ function Messages() {
     if (conversation.name) return conversation.name;
     if (conversation.isGroup) return "Group Chat";
     
-    const otherParticipant = conversation.participants.find(p => p.id !== user?.id);
-    return otherParticipant?.displayName || "Unknown User";
+    const otherParticipant = conversation.participants?.find(p => p.id !== user?.id);
+    return otherParticipant?.displayName || otherParticipant?.username || "Unknown User";
   };
 
   const getConversationImage = (conversation: Conversation) => {
     if (conversation.isGroup) return null;
     
-    const otherParticipant = conversation.participants.find(p => p.id !== user?.id);
+    const otherParticipant = conversation.participants?.find(p => p.id !== user?.id);
     return getProfileImageUrl(otherParticipant?.profileImageUrl);
   };
 

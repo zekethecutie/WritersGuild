@@ -1209,9 +1209,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { limit = 50, offset = 0 } = req.query;
 
       // Verify user is part of this conversation
-      const conversation = await storage.getConversationById(conversationId);
-      if (!conversation || (conversation.participantOneId !== userId && conversation.participantTwoId !== userId)) {
-        return res.status(403).json({ message: "Access denied" });
+      const conversations = await storage.getUserConversations(userId);
+      const userConversation = conversations.find(c => c.id === conversationId);
+
+      if (!userConversation) {
+        return res.status(403).json({ message: "Access denied to this conversation" });
       }
 
       const messages = await storage.getConversationMessages(conversationId, parseInt(limit), parseInt(offset));
