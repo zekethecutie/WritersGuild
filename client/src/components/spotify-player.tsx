@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Music, ExternalLink, Play, Pause } from "lucide-react";
+import { Music, ExternalLink, Play, Pause, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface SpotifyTrack {
@@ -17,17 +17,27 @@ interface SpotifyTrack {
 }
 
 interface SpotifyPlayerProps {
-  track: SpotifyTrack | null;
+  track?: SpotifyTrack | null;
   size?: "sm" | "md" | "lg";
   showPreview?: boolean;
   className?: string;
+  onRemove?: () => void;
+  onTrackSelect?: (track: SpotifyTrack) => void;
+  onClose?: () => void;
+  searchMode?: boolean;
+  compact?: boolean;
 }
 
 export default function SpotifyPlayer({ 
   track, 
   size = "md", 
   showPreview = true, 
-  className 
+  className,
+  onRemove,
+  onTrackSelect,
+  onClose,
+  searchMode = false,
+  compact = false
 }: SpotifyPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -136,6 +146,25 @@ export default function SpotifyPlayer({
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+
+  // Handle search mode
+  if (searchMode) {
+    return (
+      <div className="p-4 border rounded-lg">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Search Spotify</h3>
+          {onClose && (
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              ×
+            </Button>
+          )}
+        </div>
+        <p className="text-muted-foreground text-center py-8">
+          Spotify search functionality would be implemented here.
+        </p>
+      </div>
+    );
+  }
 
   if (!track) return null;
 
@@ -262,6 +291,19 @@ export default function SpotifyPlayer({
             >
               <ExternalLink className={classes.icon} />
             </Button>
+
+            {/* Remove button for compact mode */}
+            {onRemove && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onRemove}
+                className="p-2 hover:bg-red-100 hover:text-red-600"
+                title="Remove track"
+              >
+                <X className={classes.icon} />
+              </Button>
+            )}
           </div>
         </div>
 

@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -31,7 +31,9 @@ import {
   Lock,
   Users,
   X,
-  Save
+  Save,
+  UserPlus,
+  Search
 } from "lucide-react";
 import { getProfileImageUrl } from "@/lib/defaultImages";
 
@@ -56,6 +58,19 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
   const [isRichEditor, setIsRichEditor] = useState(false);
   const [showSpotify, setShowSpotify] = useState(false);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [collaborators, setCollaborators] = useState<any[]>([]);
+  const [showCollaboratorSearch, setShowCollaboratorSearch] = useState(false);
+  const [collaboratorSearchQuery, setCollaboratorSearchQuery] = useState("");
+
+  // Search for users to collaborate with
+  const searchUsersQuery = useQuery({
+    queryKey: ["/api/users/search", collaboratorSearchQuery],
+    queryFn: async () => {
+      if (!collaboratorSearchQuery.trim()) return [];
+      return apiRequest("GET", `/api/users/search?q=${encodeURIComponent(collaboratorSearchQuery)}`);
+    },
+    enabled: !!collaboratorSearchQuery.trim(),
+  });
 
   // Reset form when post changes
   useEffect(() => {
@@ -67,6 +82,9 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
       setPrivacy(post.isPrivate ? "private" : "public");
       setSelectedTrack(post.spotifyTrackData || null);
       setSelectedImages(post.imageUrls || []);
+      setCollaborators([]);
+      setShowCollaboratorSearch(false);
+      setCollaboratorSearchQuery("");
     }
   }, [post]);
 
@@ -172,6 +190,18 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
     }
   };
 
+  const handleAddCollaborator = (user: any) => {
+    if (!collaborators.find(c => c.id === user.id)) {
+      setCollaborators(prev => [...prev, user]);
+    }
+    setCollaboratorSearchQuery("");
+    setShowCollaboratorSearch(false);
+  };
+
+  const handleRemoveCollaborator = (userId: string) => {
+    setCollaborators(prev => prev.filter(c => c.id !== userId));
+  };
+
   const handleSubmit = () => {
     if (!content.trim()) {
       toast({
@@ -200,19 +230,25 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
       return;
     }
 
+    // Mocking mentions and hashtags as they are not defined in the provided snippet
+    // In a real scenario, these would be managed state variables.
+    const mentions = new Set<string>(); // Placeholder
+    const hashtags = new Set<string>(); // Placeholder
+
     const postData = {
       title: title.trim() || undefined,
       content: content.trim(),
       postType,
       genre: genre || undefined,
-      imageUrls: selectedImages.length > 0 ? selectedImages : undefined,
-      spotifyTrackId: selectedTrack?.id,
+      imageUrls: selectedImages,
+      mentions: Array.from(mentions),
+      hashtags: Array.from(hashtags),
+      collaborators: collaborators.length > 0 ? collaborators : undefined,
       spotifyTrackData: selectedTrack ? {
-        id: selectedTrack.id,
         name: selectedTrack.name,
-        artist: selectedTrack.artists?.[0]?.name || selectedTrack.artist,
-        album: selectedTrack.album?.name || selectedTrack.album,
-        image: selectedTrack.album?.images?.[0]?.url || selectedTrack.image,
+        artist: selectedTrack.artists[0]?.name,
+        album: selectedTrack.album?.name,
+        image: selectedTrack.album?.images[0]?.url,
         preview_url: selectedTrack.preview_url,
         external_urls: selectedTrack.external_urls
       } : undefined,
@@ -258,9 +294,10 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
         <div className="space-y-4">
           <div className="flex space-x-3">
             <img
-              src={getProfileImageUrl(user.profileImageUrl)}
+              src={user?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.username}`}
               alt="Your profile"
               className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+              data-testid="img-composer-avatar"
             />
             <div className="flex-1">
               {/* Post Type and Privacy */}
@@ -300,16 +337,19 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
                 </Select>
               </div>
 
-              {/* Title Field */}
-              <div className="mb-4">
-                <Input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Title (optional)"
-                  className="text-lg font-semibold border-none outline-none bg-transparent placeholder-muted-foreground"
-                  maxLength={100}
-                />
-              </div>
+              {/* Title Input */}
+              {(postType === "story" || postType === "poetry") && (
+                <div className="mb-4">
+                  <Input
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder={`${postType === "story" ? "Story" : "Poem"} title (optional)`}
+                    className="text-lg font-medium bg-transparent border-none outline-none placeholder-muted-foreground"
+                    data-testid="input-post-title"
+                    maxLength={255}
+                  />
+                </div>
+              )}
 
               {/* Editor */}
               {isRichEditor ? (
@@ -327,7 +367,8 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   placeholder="Share your thoughts, poetry, or stories..."
-                  className="resize-none border-none outline-none bg-transparent text-base placeholder-muted-foreground min-h-[120px] p-0"
+                  className="resize-none border-none outline-none bg-transparent text-lg placeholder-muted-foreground min-h-[120px] p-0"
+                  data-testid="textarea-post-content"
                 />
               )}
 

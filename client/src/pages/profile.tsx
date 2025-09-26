@@ -33,6 +33,7 @@ import { formatDistanceToNow } from "date-fns";
 import type { Post, User } from "@shared/schema";
 import LoadingScreen from "@/components/loading-screen";
 import FollowButton from "@/components/follow-button";
+import MessageButton from "@/components/message-button";
 
 // User Stories Section Component
 function UserStoriesSection({ userId, isOwnProfile }: { userId: string; isOwnProfile: boolean }) {
@@ -400,9 +401,9 @@ export default function Profile() {
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="absolute top-4 right-4">
-              {isOwnProfile ? (
+            {/* Edit Profile Button - Keep only for own profile */}
+            {isOwnProfile && (
+              <div className="absolute top-4 right-4">
                 <Button 
                   variant="outline" 
                   className="bg-background/80 backdrop-blur-sm"
@@ -412,25 +413,8 @@ export default function Profile() {
                   <Settings className="w-4 h-4 mr-2" />
                   Edit Profile
                 </Button>
-              ) : (
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    className="bg-background/80 backdrop-blur-sm"
-                    data-testid="button-message"
-                    onClick={() => window.location.href = `/messages?user=${profileUser.id}`}
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                  </Button>
-                  <FollowButton 
-                    userId={profileUser.id}
-                    variant="default"
-                    size="sm"
-                  />
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           {/* Profile Info */}
@@ -473,9 +457,25 @@ export default function Profile() {
                   )}
                 </div>
               </div>
-              <p className="text-muted-foreground" data-testid="text-username">
-                @{profileUser.username}
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-muted-foreground" data-testid="text-username">
+                  @{profileUser.username}
+                </p>
+                {!isOwnProfile && (
+                  <div className="flex gap-2">
+                    <MessageButton 
+                      userId={profileUser.id}
+                      variant="outline"
+                      size="sm"
+                    />
+                    <FollowButton 
+                      userId={profileUser.id}
+                      variant="default"
+                      size="sm"
+                    />
+                  </div>
+                )}
+              </div>
               <div className="flex flex-wrap gap-2 mt-1">
                 {profileUser.isVerified && (
                   <Badge variant="secondary" className="text-xs">
@@ -534,7 +534,7 @@ export default function Profile() {
             {/* Writing Genres */}
             {profileUser.genres && profileUser.genres.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-4">
-                {profileUser.genres.map((genre) => (
+                {profileUser.genres.map((genre: string) => (
                   <Badge key={genre} variant="outline" className="text-xs">
                     {genre}
                   </Badge>

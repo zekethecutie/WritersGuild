@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+// No React hooks needed for this component
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -20,10 +20,9 @@ export default function FollowButton({
 }: FollowButtonProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [following, setFollowing] = useState(isFollowing);
 
   // Check current follow status on mount
-  const { data: followStatus } = useQuery({
+  const { data: following, isLoading } = useQuery({
     queryKey: ["follow-status", userId],
     queryFn: async () => {
       try {
@@ -40,14 +39,8 @@ export default function FollowButton({
       return false;
     },
     enabled: !!userId,
+    initialData: isFollowing,
   });
-
-  // Update local state when follow status is fetched
-  useEffect(() => {
-    if (followStatus !== undefined) {
-      setFollowing(followStatus);
-    }
-  }, [followStatus]);
 
   const followMutation = useMutation({
     mutationFn: async () => {
@@ -86,18 +79,8 @@ export default function FollowButton({
         return { following: true };
       }
     },
-    onMutate: () => {
-      // Store previous state for rollback
-      const previousFollowing = following;
-      // Optimistic update
-      setFollowing(!following);
-      return { previousFollowing };
-    },
     onSuccess: (data) => {
-      // Update state based on server response
-      setFollowing(data.following);
-      
-      // Invalidate relevant queries
+      // Invalidate relevant queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["follow-status", userId] });
       queryClient.invalidateQueries({ queryKey: ["/api/users/recommended"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users/trending"] });
@@ -112,11 +95,7 @@ export default function FollowButton({
           : "You have unfollowed this user",
       });
     },
-    onError: (error, variables, context) => {
-      // Revert optimistic update
-      if (context?.previousFollowing !== undefined) {
-        setFollowing(context.previousFollowing);
-      }
+    onError: (error) => {
       console.error("Follow error:", error);
       toast({
         title: "Error",
@@ -131,10 +110,10 @@ export default function FollowButton({
       variant={variant || (following ? "outline" : "default")}
       size={size}
       onClick={() => followMutation.mutate()}
-      disabled={followMutation.isPending}
+      disabled={followMutation.isPending || isLoading}
       className="ml-2"
     >
-      {followMutation.isPending ? (
+      {followMutation.isPending || isLoading ? (
         <Loader2 className="w-4 h-4 mr-1 animate-spin" />
       ) : following ? (
         <>
