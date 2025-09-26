@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Send, Search, MessageCircle, Users, X } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { getProfileImageUrl } from "@/lib/defaultImages";
+import Sidebar from "@/components/sidebar";
+import MobileNav from "@/components/mobile-nav";
 
 interface Message {
   id: string;
@@ -42,7 +44,7 @@ interface Conversation {
   unreadCount?: number;
 }
 
-function Messages() {
+export default function Messages() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -221,7 +223,11 @@ function Messages() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] max-w-6xl mx-auto">
+    <div className="min-h-screen bg-background">
+      <Sidebar />
+      
+      <div className="lg:ml-64 min-h-screen">
+        <div className="flex h-[calc(100vh-4rem)] max-w-6xl mx-auto">
       {/* Conversations List */}
       <div className="w-1/3 border-r border-border">
         <div className="p-4 border-b border-border">
@@ -400,6 +406,10 @@ function Messages() {
           </div>
         )}
       </div>
+    </div>
+      </div>
+      
+      <MobileNav />
     </div>
   );
 }

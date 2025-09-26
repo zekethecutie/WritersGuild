@@ -102,7 +102,10 @@ function PostCard({
   const isOwnPost = user?.id === post.authorId;
   const canModerate = user?.isAdmin || user?.isSuperAdmin;
 
-  const handleLike = async () => {
+  const handleLike = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     if (!user) {
       toast({
         title: "Sign in required",
@@ -120,7 +123,8 @@ function PostCard({
 
       if (response.ok) {
         onLike?.(post.id);
-        window.location.reload();
+        // Instead of full reload, just refresh the current page data
+        setTimeout(() => window.location.reload(), 100);
       }
     } catch (error) {
       console.error('Like error:', error);
@@ -132,7 +136,10 @@ function PostCard({
     }
   };
 
-  const handleComment = () => {
+  const handleComment = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     if (!user) {
       toast({
         title: "Sign in required",
@@ -144,7 +151,10 @@ function PostCard({
     window.location.href = `/post/${post.id}`;
   };
 
-  const handleRepost = async () => {
+  const handleRepost = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     if (!user) {
       toast({
         title: "Sign in required",
@@ -166,7 +176,7 @@ function PostCard({
           title: "Reposted!",
           description: "Post has been shared to your profile",
         });
-        window.location.reload();
+        setTimeout(() => window.location.reload(), 100);
       }
     } catch (error) {
       console.error('Repost error:', error);
@@ -178,7 +188,9 @@ function PostCard({
     }
   };
 
-  const handleBookmark = async () => {
+  const handleBookmark = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!user) {
       toast({
         title: "Sign in required",
@@ -212,7 +224,9 @@ function PostCard({
     }
   };
 
-  const handleShare = async () => {
+  const handleShare = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     const postUrl = `${window.location.origin}/post/${post.id}`;
 
     if (navigator.share) {

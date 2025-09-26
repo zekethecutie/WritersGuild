@@ -386,13 +386,82 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async getPostsByUser(userId: string, limit = 20, offset = 0): Promise<Post[]> {
-    return db.select()
+  async getPostsByUser(userId: string, limit = 20, offset = 0): Promise<(Post & { author?: User; isLiked?: boolean; isBookmarked?: boolean; isReposted?: boolean })[]> {
+    const postsQuery = db
+      .select({
+        id: posts.id,
+        authorId: posts.authorId,
+        title: posts.title,
+        content: posts.content,
+        formattedContent: posts.formattedContent,
+        postType: posts.postType,
+        genre: posts.genre,
+        spotifyTrackId: posts.spotifyTrackId,
+        spotifyTrackData: posts.spotifyTrackData,
+        imageUrls: posts.imageUrls,
+        isPrivate: posts.isPrivate,
+        likesCount: posts.likesCount,
+        commentsCount: posts.commentsCount,
+        repostsCount: posts.repostsCount,
+        viewsCount: posts.viewsCount,
+        createdAt: posts.createdAt,
+        updatedAt: posts.updatedAt,
+        author: {
+          id: users.id,
+          username: users.username,
+          displayName: users.displayName,
+          email: users.email,
+          password: users.password,
+          bio: users.bio,
+          location: users.location,
+          website: users.website,
+          profileImageUrl: users.profileImageUrl,
+          coverImageUrl: users.coverImageUrl,
+          genres: users.genres,
+          writingStreak: users.writingStreak,
+          wordCountGoal: users.wordCountGoal,
+          weeklyPostsGoal: users.weeklyPostsGoal,
+          isVerified: users.isVerified,
+          isAdmin: users.isAdmin,
+          isSuperAdmin: users.isSuperAdmin,
+          postsCount: users.postsCount,
+          commentsCount: users.commentsCount,
+          createdAt: users.createdAt,
+          updatedAt: users.updatedAt
+        }
+      })
       .from(posts)
+      .leftJoin(users, eq(posts.authorId, users.id))
       .where(eq(posts.authorId, userId))
       .orderBy(desc(posts.createdAt))
       .limit(limit)
       .offset(offset);
+
+    const results = await postsQuery;
+
+    return results.map(row => ({
+      id: row.id,
+      authorId: row.authorId,
+      title: row.title,
+      content: row.content,
+      formattedContent: row.formattedContent,
+      postType: row.postType,
+      genre: row.genre,
+      spotifyTrackId: row.spotifyTrackId,
+      spotifyTrackData: row.spotifyTrackData,
+      imageUrls: row.imageUrls,
+      isPrivate: row.isPrivate,
+      likesCount: row.likesCount,
+      commentsCount: row.commentsCount,
+      repostsCount: row.repostsCount,
+      viewsCount: row.viewsCount,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      author: row.author || undefined,
+      isLiked: false,
+      isBookmarked: false,
+      isReposted: false,
+    }));
   }
 
   async updatePost(id: string, data: Partial<Post>): Promise<Post> {

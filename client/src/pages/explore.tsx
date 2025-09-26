@@ -227,6 +227,7 @@ export default function Explore() {
   // Render explore page for authenticated users
   return (
     <div className="min-h-screen bg-background">
+      <Sidebar />
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b">
         <div className="max-w-7xl mx-auto px-4 py-4">
@@ -248,7 +249,8 @@ export default function Explore() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="lg:ml-64 min-h-screen">
+        <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-3">
@@ -468,6 +470,7 @@ export default function Explore() {
           </div>
         </div>
       </div>
+        </div>
 
       <MobileNav />
     </div>
