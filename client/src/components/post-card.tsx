@@ -73,6 +73,13 @@ function PostCard({
   const [editContent, setEditContent] = useState(post.content || "");
   const [editGenre, setEditGenre] = useState(post.genre || "");
   const [isEditing, setIsEditing] = useState(false);
+  
+  // Optimistic state for instant UI updates
+  const [optimisticLiked, setOptimisticLiked] = useState(post.isLiked);
+  const [optimisticLikesCount, setOptimisticLikesCount] = useState(post.likesCount || 0);
+  const [optimisticBookmarked, setOptimisticBookmarked] = useState(post.isBookmarked);
+  const [optimisticReposted, setOptimisticReposted] = useState(post.isReposted);
+  const [optimisticRepostsCount, setOptimisticRepostsCount] = useState(post.repostsCount || 0);
 
   // Create fallback author if none provided
   const author = post.author || {
@@ -115,17 +122,28 @@ function PostCard({
       return;
     }
 
+    // Instant optimistic update
+    const wasLiked = optimisticLiked;
+    setOptimisticLiked(!wasLiked);
+    setOptimisticLikesCount(prev => wasLiked ? prev - 1 : prev + 1);
+
     try {
-      const response = await fetch(`/api/posts/${post.id}/like`, {
-        method: 'POST',
+      const method = wasLiked ? 'DELETE' : 'POST';
+      const endpoint = wasLiked ? `/api/posts/${post.id}/like` : `/api/posts/${post.id}/like`;
+      
+      const response = await fetch(endpoint, {
+        method,
         credentials: 'include',
       });
 
-      if (response.ok) {
-        onLike?.(post.id);
-        // Instead of full reload, just refresh the current page data
-        setTimeout(() => window.location.reload(), 100);
+      if (!response.ok) {
+        // Revert on error
+        setOptimisticLiked(wasLiked);
+        setOptimisticLikesCount(prev => wasLiked ? prev + 1 : prev - 1);
+        throw new Error('Failed to like post');
       }
+
+      onLike?.(post.id);
     } catch (error) {
       console.error('Like error:', error);
       toast({
@@ -164,20 +182,36 @@ function PostCard({
       return;
     }
 
+    // Instant optimistic update
+    const wasReposted = optimisticReposted;
+    setOptimisticReposted(!wasReposted);
+    setOptimisticRepostsCount(prev => wasReposted ? prev - 1 : prev + 1);
+
     try {
       const response = await fetch(`/api/posts/${post.id}/repost`, {
         method: 'POST',
         credentials: 'include',
       });
 
-      if (response.ok) {
-        onRepost?.(post.id);
-        toast({
-          title: "Reposted!",
-          description: "Post has been shared to your profile",
-        });
-        setTimeout(() => window.location.reload(), 100);
+      if (!response.ok) {
+        // Revert on error
+        setOptimisticReposted(wasReposted);
+        setOptimisticRepostsCount(prev => wasReposted ? prev + 1 : prev - 1);
+        throw new Error('Failed to repost');
       }
+
+      const result = await response.json();
+      
+      // Update based on server response
+      if (result.reposted !== undefined) {
+        setOptimisticReposted(result.reposted);
+      }
+
+      onRepost?.(post.id);
+      toast({
+        title: result.reposted ? "Reposted!" : "Repost removed",
+        description: result.reposted ? "Post has been shared to your profile" : "Repost has been removed",
+      });
     } catch (error) {
       console.error('Repost error:', error);
       toast({
@@ -200,20 +234,34 @@ function PostCard({
       return;
     }
 
+    // Instant optimistic update
+    const wasBookmarked = optimisticBookmarked;
+    setOptimisticBookmarked(!wasBookmarked);
+
     try {
       const response = await fetch(`/api/posts/${post.id}/bookmark`, {
         method: 'POST',
         credentials: 'include',
       });
 
-      if (response.ok) {
-        onBookmark?.(post.id);
-        toast({
-          title: post.isBookmarked ? "Removed from bookmarks" : "Bookmarked!",
-          description: post.isBookmarked ? "Post removed from your bookmarks" : "Post saved to your bookmarks",
-        });
-        window.location.reload();
+      if (!response.ok) {
+        // Revert on error
+        setOptimisticBookmarked(wasBookmarked);
+        throw new Error('Failed to bookmark post');
       }
+
+      const result = await response.json();
+      
+      // Update based on server response
+      if (result.bookmarked !== undefined) {
+        setOptimisticBookmarked(result.bookmarked);
+      }
+
+      onBookmark?.(post.id);
+      toast({
+        title: result.bookmarked ? "Bookmarked!" : "Removed from bookmarks",
+        description: result.bookmarked ? "Post saved to your bookmarks" : "Post removed from your bookmarks",
+      });
     } catch (error) {
       console.error('Bookmark error:', error);
       toast({
@@ -528,12 +576,12 @@ function PostCard({
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-8 space-x-2 transition-colors ${post.isLiked ? 'text-red-500 hover:text-red-600' : 'text-muted-foreground hover:text-red-500'}`}
+                className={`h-8 space-x-2 transition-colors ${optimisticLiked ? 'text-red-500 hover:text-red-600' : 'text-muted-foreground hover:text-red-500'}`}
                 onClick={handleLike}
                 data-testid={`button-like-${post.id}`}
               >
-                <Heart className={`w-4 h-4 ${post.isLiked ? 'fill-current' : ''}`} />
-                <span>{(post.likesCount || 0).toLocaleString()}</span>
+                <Heart className={`w-4 h-4 ${optimisticLiked ? 'fill-current' : ''}`} />
+                <span>{optimisticLikesCount.toLocaleString()}</span>
               </Button>
 
               <Button
@@ -550,12 +598,12 @@ function PostCard({
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-8 space-x-2 transition-colors ${post.isReposted ? 'text-green-500 hover:text-green-600' : 'text-muted-foreground hover:text-green-500'}`}
+                className={`h-8 space-x-2 transition-colors ${optimisticReposted ? 'text-green-500 hover:text-green-600' : 'text-muted-foreground hover:text-green-500'}`}
                 onClick={handleRepost}
                 data-testid={`button-repost-${post.id}`}
               >
                 <Repeat2 className="w-4 h-4" />
-                <span>{(post.repostsCount || 0).toLocaleString()}</span>
+                <span>{optimisticRepostsCount.toLocaleString()}</span>
               </Button>
             </div>
 
@@ -563,11 +611,11 @@ function PostCard({
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-8 w-8 p-0 transition-colors ${post.isBookmarked ? 'text-blue-500 hover:text-blue-600' : 'text-muted-foreground hover:text-blue-500'}`}
+                className={`h-8 w-8 p-0 transition-colors ${optimisticBookmarked ? 'text-blue-500 hover:text-blue-600' : 'text-muted-foreground hover:text-blue-500'}`}
                 onClick={handleBookmark}
                 data-testid={`button-bookmark-${post.id}`}
               >
-                <Bookmark className={`w-4 h-4 ${post.isBookmarked ? 'fill-current' : ''}`} />
+                <Bookmark className={`w-4 h-4 ${optimisticBookmarked ? 'fill-current' : ''}`} />
               </Button>
 
               <Button

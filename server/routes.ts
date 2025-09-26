@@ -12,7 +12,7 @@ import MemoryStore from "memorystore";
 import rateLimit from "express-rate-limit";
 import { eq, desc, asc, like, ilike, and, or, isNull, sql, gt, lt, gte, lte, ne, count, inArray } from "drizzle-orm";
 import { db } from "./db"; // Assuming db is your Drizzle client instance
-import { conversationsTable, messages, users, postsTable, commentsTable, notificationsTable, seriesTable, chaptersTable, bookmarksTable, likesTable, followsTable, follows, series, chapters, users as usersTable, posts, comments, notifications, conversations, messages as messagesTable } from "@shared/db"; // Import necessary tables and schema
+import { conversationsTable, messages, users, postsTable, commentsTable, notificationsTable, seriesTable, chaptersTable, bookmarksTable, likesTable, followsTable, follows, series, chapters, users as usersTable, posts, comments, notifications, conversations, messages as messagesTable } from "../shared/schema"; // Import necessary tables and schema
 import { insertPostSchema, insertCommentSchema } from "@shared/schema";
 import { getSpotifyClient } from "./spotifyClient";
 import spotifyRoutes from "./spotifyRoutes";
