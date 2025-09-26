@@ -8,13 +8,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  Heart, 
-  MessageCircle, 
-  Repeat2, 
-  Bookmark, 
-  Share, 
-  Crown, 
+import {
+  Heart,
+  MessageCircle,
+  Repeat2,
+  Bookmark,
+  Share,
+  Crown,
   CheckCircle,
   Play,
   Music,
@@ -22,13 +22,24 @@ import {
   MoreHorizontal,
   Image as ImageIcon,
   MapPin,
-  Calendar
+  Calendar,
+  Edit,
+  Trash2
 } from "lucide-react";
 import { Link } from "wouter";
 import { getProfileImageUrl } from "@/lib/defaultImages";
 import SpotifyPlayer from "@/components/spotify-player";
 import { ImageGallery } from "@/components/image-gallery";
 import type { Post, User } from "@shared/schema";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import EditPostModal from "@/components/edit-post-modal";
+
 
 interface PostCardProps {
   post: Post & {
@@ -45,8 +56,8 @@ interface PostCardProps {
   onShare?: (postId: string) => void;
 }
 
-function PostCard({ 
-  post, 
+function PostCard({
+  post,
   showActions = true,
   onLike,
   onComment,
@@ -54,7 +65,7 @@ function PostCard({
   onBookmark,
   onShare
 }: PostCardProps) {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [showFullContent, setShowFullContent] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -100,13 +111,13 @@ function PostCard({
       });
       return;
     }
-    
+
     try {
       const response = await fetch(`/api/posts/${post.id}/like`, {
         method: 'POST',
         credentials: 'include',
       });
-      
+
       if (response.ok) {
         onLike?.(post.id);
         window.location.reload();
@@ -142,13 +153,13 @@ function PostCard({
       });
       return;
     }
-    
+
     try {
       const response = await fetch(`/api/posts/${post.id}/repost`, {
         method: 'POST',
         credentials: 'include',
       });
-      
+
       if (response.ok) {
         onRepost?.(post.id);
         toast({
@@ -176,13 +187,13 @@ function PostCard({
       });
       return;
     }
-    
+
     try {
       const response = await fetch(`/api/posts/${post.id}/bookmark`, {
         method: 'POST',
         credentials: 'include',
       });
-      
+
       if (response.ok) {
         onBookmark?.(post.id);
         toast({
@@ -203,7 +214,7 @@ function PostCard({
 
   const handleShare = async () => {
     const postUrl = `${window.location.origin}/post/${post.id}`;
-    
+
     if (navigator.share) {
       try {
         await navigator.share({
@@ -231,7 +242,7 @@ function PostCard({
         });
       }
     }
-    
+
     onShare?.(post.id);
   };
 
@@ -286,13 +297,13 @@ function PostCard({
     if (!window.confirm('Are you sure you want to delete this post?')) {
       return;
     }
-    
+
     try {
       const response = await fetch(`/api/posts/${post.id}`, {
         method: 'DELETE',
         credentials: 'include',
       });
-      
+
       if (response.ok) {
         toast({
           title: "Post deleted",
@@ -314,8 +325,8 @@ function PostCard({
 
   // Truncate content if it's too long
   const shouldTruncate = post.content.length > 300;
-  const displayContent = shouldTruncate && !showFullContent 
-    ? post.content.slice(0, 300) + "..." 
+  const displayContent = shouldTruncate && !showFullContent
+    ? post.content.slice(0, 300) + "..."
     : post.content;
 
   const getPostTypeLabel = (type: string) => {
@@ -349,7 +360,7 @@ function PostCard({
               data-testid={`img-avatar-${author.id}`}
             />
           </Link>
-          
+
           <div className="flex-1 min-w-0">
             <div className="flex items-center flex-wrap gap-2 mb-1">
               <Link href={`/profile/${author.username}`}>
@@ -365,13 +376,13 @@ function PostCard({
                   )}
                 </div>
               </Link>
-              
+
               <span className="text-muted-foreground text-sm">
                 @{author.username}
               </span>
-              
+
               <span className="text-muted-foreground text-sm">•</span>
-              
+
               <time className="text-muted-foreground text-sm" data-testid={`text-timestamp-${post.id}`}>
                 {formatDistanceToNow(post.createdAt ? new Date(post.createdAt) : new Date(), { addSuffix: true })}
               </time>
@@ -442,11 +453,11 @@ function PostCard({
 
         {/* Content */}
         <div className="mb-4">
-          <div 
+          <div
             className="text-foreground text-base leading-relaxed whitespace-pre-wrap break-words max-w-none"
             data-testid={`text-content-${post.id}`}
-            style={{ 
-              fontSize: '16px', 
+            style={{
+              fontSize: '16px',
               lineHeight: '1.6',
               color: 'var(--foreground)'
             }}
@@ -473,8 +484,8 @@ function PostCard({
         {/* Images */}
         {post.imageUrls && post.imageUrls.length > 0 && (
           <div className="mb-4">
-            <ImageGallery 
-              images={post.imageUrls} 
+            <ImageGallery
+              images={post.imageUrls}
             />
           </div>
         )}
@@ -606,14 +617,14 @@ function PostCard({
               </Select>
             </div>
             <div className="flex justify-end space-x-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setShowEditModal(false)}
                 disabled={isEditing}
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onClick={handleEdit}
                 disabled={isEditing || !editContent.trim()}
               >

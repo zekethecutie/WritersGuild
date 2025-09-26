@@ -1290,7 +1290,7 @@ export class DatabaseStorage implements IStorage {
       .from(messages)
       .leftJoin(users, eq(messages.senderId, users.id))
       .where(eq(messages.conversationId, conversationId))
-      .orderBy(desc(messages.createdAt))
+      .orderBy(asc(messages.createdAt)) // Changed to asc for chronological order
       .limit(limit)
       .offset(offset);
 
@@ -1309,20 +1309,47 @@ export class DatabaseStorage implements IStorage {
   }
 
   async markConversationAsRead(conversationId: string, userId: string): Promise<void> {
-    await db
-      .update(messages)
-      .set({
-        isRead: true,
-        readAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(messages.conversationId, conversationId),
-          sql`${messages.senderId} != ${userId}`, // Only mark messages not sent by the user
-          eq(messages.isRead, false)
-        )
-      );
+    try {
+      await db
+        .update(messages)
+        .set({ isRead: true, readAt: new Date() })
+        .where(
+          and(
+            eq(messages.conversationId, conversationId),
+            ne(messages.senderId, userId),
+            eq(messages.isRead, false)
+          )
+        );
+    } catch (error) {
+      console.error("Error marking conversation as read:", error);
+      throw error;
+    }
+  }
+
+  async getMessageById(messageId: string): Promise<Message | null> {
+    try {
+      const result = await db
+        .select()
+        .from(messages)
+        .where(eq(messages.id, messageId))
+        .limit(1);
+
+      return result[0] || null;
+    } catch (error) {
+      console.error("Error getting message by ID:", error);
+      throw error;
+    }
+  }
+
+  async deleteMessage(messageId: string): Promise<void> {
+    try {
+      await db
+        .delete(messages)
+        .where(eq(messages.id, messageId));
+    } catch (error) {
+      console.error("Error deleting message:", error);
+      throw error;
+    }
   }
 
   async getConversationById(conversationId: string): Promise<Conversation | undefined> {

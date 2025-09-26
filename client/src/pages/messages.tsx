@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Send, Search, MessageCircle, Users } from "lucide-react";
+import { Send, Search, MessageCircle, Users, X } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { getProfileImageUrl } from "@/lib/defaultImages";
 
@@ -156,6 +156,43 @@ function Messages() {
     }
   };
 
+  const handleUnsendMessage = async (messageId: string) => {
+    if (!confirm('Are you sure you want to unsend this message?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/messages/${messageId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        // Refresh messages to show the deletion
+        if (selectedConversation) {
+          fetchMessages(selectedConversation.id);
+        }
+        toast({
+          title: "Message unsent",
+          description: "Your message has been deleted",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to unsend message",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Failed to unsend message:', error);
+      toast({
+        title: "Error",
+        description: "Failed to unsend message",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getConversationName = (conversation: Conversation) => {
     if (conversation.name) return conversation.name;
     if (conversation.isGroup) return "Group Chat";
@@ -287,23 +324,25 @@ function Messages() {
             {/* Messages */}
             <ScrollArea className="flex-1 p-4">
               <div className="space-y-4">
-                {messages.map((message) => (
+                {messages
+                  .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+                  .map((message) => (
                   <div
                     key={message.id}
                     className={`flex ${message.senderId === user.id ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div className={`max-w-[70%] ${message.senderId === user.id ? 'order-2' : 'order-1'}`}>
+                    <div className={`max-w-[70%] ${message.senderId === user.id ? 'order-2' : 'order-1'} relative group`}>
                       {message.senderId !== user.id && (
                         <div className="flex items-center space-x-2 mb-1">
                           <Avatar className="w-6 h-6">
                             <AvatarImage src={getProfileImageUrl(message.sender?.profileImageUrl)} />
-                            <AvatarFallback>{message.sender?.displayName?.[0] || '?'}</AvatarFallback>
+                            <AvatarFallback>{message.sender?.displayName?.[0] || message.sender?.username?.[0] || '?'}</AvatarFallback>
                           </Avatar>
-                          <span className="text-sm font-medium">{message.sender?.displayName}</span>
+                          <span className="text-sm font-medium">{message.sender?.displayName || message.sender?.username || 'Unknown User'}</span>
                         </div>
                       )}
                       <div
-                        className={`p-3 rounded-lg ${
+                        className={`p-3 rounded-lg relative ${
                           message.senderId === user.id
                             ? 'bg-primary text-primary-foreground'
                             : 'bg-muted'
@@ -315,6 +354,19 @@ function Messages() {
                         }`}>
                           {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
                         </p>
+                        
+                        {/* Unsend button for own messages */}
+                        {message.senderId === user.id && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleUnsendMessage(message.id)}
+                            className="absolute -top-2 -right-2 w-6 h-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-full"
+                            title="Unsend message"
+                          >
+                            <X className="w-3 h-3" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>

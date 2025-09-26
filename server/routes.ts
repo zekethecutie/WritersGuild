@@ -1286,6 +1286,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Unsend message route
+  app.delete('/api/messages/:id', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { id: messageId } = req.params;
+
+      // Get message to verify ownership
+      const message = await storage.getMessageById(messageId);
+      if (!message) {
+        return res.status(404).json({ message: "Message not found" });
+      }
+
+      // Only allow sender to delete their own message
+      if (message.senderId !== userId) {
+        return res.status(403).json({ message: "You can only delete your own messages" });
+      }
+
+      await storage.deleteMessage(messageId);
+      res.json({ message: "Message deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting message:", error);
+      res.status(500).json({ message: "Failed to delete message" });
+    }
+  });
+
   // Admin routes
   app.post('/api/admin/users/:id/admin', requireAuth, async (req: any, res) => {
     try {
