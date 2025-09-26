@@ -51,7 +51,7 @@ export default function FollowButton({
 
   const followMutation = useMutation({
     mutationFn: async () => {
-      const endpoint = `/api/users/${userId}/follow`;
+      const endpoint = following ? `/api/users/${userId}/unfollow` : `/api/users/${userId}/follow`;
       const method = "POST";
       
       const response = await fetch(endpoint, {
@@ -63,7 +63,8 @@ export default function FollowButton({
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to ${following ? 'unfollow' : 'follow'} user`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to ${following ? 'unfollow' : 'follow'} user`);
       }
 
       return response.json();

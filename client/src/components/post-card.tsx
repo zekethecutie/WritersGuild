@@ -82,6 +82,7 @@ export default function PostCard({ post }: PostCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showAuthDialog, setShowAuthDialog] = useState(false);
+  const [restrictedAction, setRestrictedAction] = useState(''); // State to track the restricted action
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editTitle, setEditTitle] = useState(post.title || "");
@@ -92,6 +93,10 @@ export default function PostCard({ post }: PostCardProps) {
   const [selectedImages, setSelectedImages] = useState<string[]>(post.imageUrls || []);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const postRef = useRef<HTMLDivElement>(null);
+
+  // Hook for guest restrictions
+  const { requireAuth } = useGuestRestriction();
+
 
   // Use author data from post or fallback for display
   const author = post.author || {
@@ -124,6 +129,7 @@ export default function PostCard({ post }: PostCardProps) {
   const likeMutation = useMutation({
     mutationFn: async () => {
       if (!user) {
+        setRestrictedAction('like posts'); // Set the restricted action
         setShowAuthDialog(true);
         return Promise.reject(new Error("User not logged in"));
       }
@@ -162,6 +168,7 @@ export default function PostCard({ post }: PostCardProps) {
   const repostMutation = useMutation({
     mutationFn: async (comment?: string) => {
       if (!user) {
+        setRestrictedAction('repost posts'); // Set the restricted action
         setShowAuthDialog(true);
         return Promise.reject(new Error("User not logged in"));
       }
@@ -202,6 +209,7 @@ export default function PostCard({ post }: PostCardProps) {
   const bookmarkMutation = useMutation({
     mutationFn: async () => {
       if (!user) {
+        setRestrictedAction('bookmark posts'); // Set the restricted action
         setShowAuthDialog(true);
         return Promise.reject(new Error("User not logged in"));
       }
@@ -263,6 +271,7 @@ export default function PostCard({ post }: PostCardProps) {
   const reportPostMutation = useMutation({
     mutationFn: async ({ reason }: { reason: string }) => {
       if (!user) {
+        setRestrictedAction('report posts'); // Set the restricted action
         setShowAuthDialog(true);
         return Promise.reject(new Error("User not logged in"));
       }
@@ -320,8 +329,15 @@ export default function PostCard({ post }: PostCardProps) {
   });
 
   const editPostMutation = useMutation({
-    mutationFn: async (data: { title?: string; content: string }) => {
-      return apiRequest("PUT", `/api/posts/${post.id}`, data);
+    mutationFn: async (data: { title?: string; content: string, imageUrls?: string[], spotifyTrackData?: any }) => {
+      // Prepare data, only include fields that have changed or are present
+      const payload: any = {};
+      if (data.title !== undefined) payload.title = data.title;
+      if (data.content !== undefined) payload.content = data.content;
+      if (data.imageUrls !== undefined) payload.imageUrls = data.imageUrls;
+      if (data.spotifyTrackData !== undefined) payload.spotifyTrackData = data.spotifyTrackData;
+
+      return apiRequest("PUT", `/api/posts/${post.id}`, payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
@@ -438,9 +454,9 @@ export default function PostCard({ post }: PostCardProps) {
     }
 
     editPostMutation.mutate({
-      title: editTitle || undefined,
+      title: editTitle.trim() === post.title?.trim() ? undefined : editTitle, // Only send if changed
       content: editContent,
-      imageUrls: selectedImages.length > 0 ? selectedImages : undefined,
+      imageUrls: selectedImages,
       spotifyTrackData: selectedTrack ? {
         name: selectedTrack.name,
         artist: selectedTrack.artists?.[0]?.name || selectedTrack.artist,
@@ -448,7 +464,7 @@ export default function PostCard({ post }: PostCardProps) {
         image: selectedTrack.album?.images?.[0]?.url || selectedTrack.image,
         preview_url: selectedTrack.preview_url,
         external_urls: selectedTrack.external_urls
-      } : undefined,
+      } : null, // Send null if no track is selected
     });
   };
 
@@ -703,15 +719,9 @@ export default function PostCard({ post }: PostCardProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => {
-                if (permissions.showAuthPrompt('like')) {
-                  setShowAuthDialog(true);
-                } else {
-                  likeMutation.mutate();
-                }
-              }}
+              onClick={() => requireAuth(() => likeMutation.mutate(), "like posts")}
               disabled={likeMutation.isPending}
-              className={`engagement-btn ${post.isLiked ? "text-red-400" : ""} hover:text-red-400 group`}
+              className={`h-8 px-2 ${post.isLiked ? "text-red-500" : "text-muted-foreground"} hover:text-red-500 group`}
               data-testid="button-like-post"
             >
               <div className="p-2 rounded-full group-hover:bg-red-400/10 transition-colors">
@@ -724,7 +734,7 @@ export default function PostCard({ post }: PostCardProps) {
               variant="ghost"
               size="sm"
               onClick={() => setShowComments(!showComments)}
-              className={`engagement-btn hover:text-blue-400 group ${showComments ? "text-blue-400" : ""}`}
+              className={`h-8 px-2 ${showComments ? "text-blue-400" : "text-muted-foreground"} hover:text-blue-400 group`}
               data-testid="button-comment-post"
             >
               <div className="p-2 rounded-full group-hover:bg-blue-400/10 transition-colors">
@@ -736,15 +746,9 @@ export default function PostCard({ post }: PostCardProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => {
-                if (permissions.showAuthPrompt('repost')) {
-                  setShowAuthDialog(true);
-                } else {
-                  repostMutation.mutate("");
-                }
-              }}
+              onClick={() => requireAuth(() => repostMutation.mutate(""), "repost posts")}
               disabled={repostMutation.isPending}
-              className={`engagement-btn ${post.isReposted ? "text-green-400" : ""} hover:text-green-400 group`}
+              className={`h-8 px-2 ${post.isReposted ? "text-green-400" : "text-muted-foreground"} hover:text-green-400 group`}
               data-testid="button-repost"
             >
               <div className="p-2 rounded-full group-hover:bg-green-400/10 transition-colors">
@@ -756,7 +760,7 @@ export default function PostCard({ post }: PostCardProps) {
             <Button
               variant="ghost"
               size="sm"
-              className="engagement-btn hover:text-purple-400 group"
+              className="h-8 px-2 text-muted-foreground hover:text-purple-400 group"
               data-testid="button-share-post"
               onClick={() => navigator.clipboard.writeText(window.location.origin + `/post/${post.id}`)}
             >
@@ -768,15 +772,9 @@ export default function PostCard({ post }: PostCardProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => {
-                if (permissions.showAuthPrompt('bookmark')) {
-                  setShowAuthDialog(true);
-                } else {
-                  bookmarkMutation.mutate();
-                }
-              }}
+              onClick={() => requireAuth(() => bookmarkMutation.mutate(), "bookmark posts")}
               disabled={bookmarkMutation.isPending}
-              className={`engagement-btn ${post.isBookmarked ? "text-yellow-400" : ""} hover:text-yellow-400 group`}
+              className={`h-8 px-2 ${post.isBookmarked ? "text-yellow-400" : "text-muted-foreground"} hover:text-yellow-400 group`}
               data-testid="button-bookmark-post"
             >
               <div className="p-2 rounded-full group-hover:bg-yellow-400/10 transition-colors">
@@ -802,7 +800,7 @@ export default function PostCard({ post }: PostCardProps) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="engagement-btn hover:text-red-400 group"
+                      className="h-8 px-2 text-muted-foreground hover:text-red-400 group"
                       data-testid="button-delete-post"
                     >
                       <div className="p-2 rounded-full group-hover:bg-red-400/10 transition-colors">
@@ -847,7 +845,7 @@ export default function PostCard({ post }: PostCardProps) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="engagement-btn hover:text-muted-foreground group"
+                    className="h-8 px-2 text-muted-foreground hover:text-muted-foreground group"
                     data-testid="button-post-menu"
                   >
                     <div className="p-2 rounded-full group-hover:bg-muted/10 transition-colors">
@@ -1120,7 +1118,8 @@ export default function PostCard({ post }: PostCardProps) {
       <AuthDialog
         open={showAuthDialog}
         onOpenChange={setShowAuthDialog}
-        action="interact with posts"
+        restrictedFeature={restrictedAction}
+        onSuccess={() => window.location.reload()}
       />
     </article>
   );

@@ -33,8 +33,20 @@ export default function LeaderboardPage() {
   const { data: topPosts = [], isLoading: postsLoading } = useQuery({
     queryKey: ["/api/leaderboard/posts"],
     queryFn: async () => {
-      const response = await fetch("/api/leaderboard/posts?limit=20");
-      return response.ok ? response.json() : [];
+      try {
+        const response = await fetch("/api/leaderboard/posts?limit=20", {
+          credentials: 'include'
+        });
+        if (!response.ok) {
+          console.error('Failed to fetch top posts:', response.statusText);
+          return [];
+        }
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+      } catch (error) {
+        console.error('Error fetching top posts:', error);
+        return [];
+      }
     },
   });
 

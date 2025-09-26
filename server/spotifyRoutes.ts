@@ -10,18 +10,47 @@ router.get("/search", isAuthenticated, async (req, res) => {
   try {
     const { q, type = 'track', limit = 10 } = req.query;
     
-    if (!q || typeof q !== 'string') {
+    if (!q || typeof q !== 'string' || q.trim() === '') {
       return res.status(400).json({ error: 'Query parameter is required' });
     }
 
-    const spotify = await getSpotifyClient();
     const parsedLimit = Math.min(50, Math.max(1, Number(limit) || 10));
-    const results = await spotify.search(q, [type as any], 'US', parsedLimit as any);
     
-    res.json(results);
+    try {
+      const spotify = await getSpotifyClient();
+      const results = await spotify.search(q.trim(), [type as any], 'US', parsedLimit as any);
+      
+      // Validate and sanitize results
+      const sanitizedResults = {
+        tracks: {
+          items: (results.tracks?.items || []).filter(track => 
+            track && track.id && track.name && track.artists && track.album
+          )
+        }
+      };
+      
+      res.json(sanitizedResults);
+    } catch (spotifyError: any) {
+      console.error('Spotify API error:', spotifyError);
+      
+      if (spotifyError.message?.includes('authentication') || spotifyError.status === 401) {
+        return res.status(401).json({ 
+          error: 'Spotify authentication required',
+          message: 'Please check your Spotify credentials' 
+        });
+      }
+      
+      return res.status(503).json({ 
+        error: 'Spotify service unavailable',
+        message: 'Unable to connect to Spotify at this time' 
+      });
+    }
   } catch (error) {
-    console.error('Spotify search error:', error);
-    res.status(500).json({ error: 'Failed to search Spotify' });
+    console.error('Search endpoint error:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: 'Failed to process search request' 
+    });
   }
 });
 

@@ -1208,6 +1208,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id: conversationId } = req.params;
       const { limit = 50, offset = 0 } = req.query;
 
+      // Verify user is part of this conversation
+      const conversation = await storage.getConversationById(conversationId);
+      if (!conversation || (conversation.participantOneId !== userId && conversation.participantTwoId !== userId)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const messages = await storage.getConversationMessages(conversationId, parseInt(limit), parseInt(offset));
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+
+  app.post('/api/conversations/:id/messages', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { id: conversationId } = req.params;
+      const { content } = req.body;
+
+      if (!content || !content.trim()) {
+        return res.status(400).json({ message: "Message content is required" });
+      }
+
+      // Verify user is part of this conversation
+      const conversation = await storage.getConversationById(conversationId);
+      if (!conversation || (conversation.participantOneId !== userId && conversation.participantTwoId !== userId)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const message = await storage.createMessage(conversationId, userId, content.trim());
+      res.json(message);
+    } catch (error) {
+      console.error("Error creating message:", error);
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  app.put('/api/conversations/:id/read', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { id: conversationId } = req.params;
+
+      await storage.markConversationAsRead(conversationId, userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking conversation as read:", error);
+      res.status(500).json({ message: "Failed to mark as read" });
+    }ery;
+
       // Verify user is part of the conversation
       const conversation = await storage.getConversation(userId, userId); // This doesn't work correctly
       // Instead, let's get the conversation by ID and verify participation

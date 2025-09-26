@@ -72,28 +72,48 @@ export default function SpotifyPlayer({
       if (!debouncedQuery.trim()) return { tracks: { items: [] } };
       
       try {
-        const response = await fetch(`/api/spotify/search?q=${encodeURIComponent(debouncedQuery)}&type=track&limit=20`);
+        const response = await fetch(`/api/spotify/search?q=${encodeURIComponent(debouncedQuery)}&type=track&limit=20`, {
+          credentials: 'include'
+        });
+        
         if (!response.ok) {
           if (response.status === 401) {
             throw new Error('Spotify authentication required');
           }
-          throw new Error(`Search failed: ${response.statusText}`);
+          if (response.status === 404) {
+            throw new Error('Spotify service not available');
+          }
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || `Search failed: ${response.statusText}`);
         }
+        
         const data = await response.json();
         
-        // Validate response structure
+        // Comprehensive validation
         if (!data || typeof data !== 'object') {
           throw new Error('Invalid response format');
         }
         
+        const tracks = data.tracks?.items || [];
+        
+        // Validate each track
+        const validTracks = tracks.filter((track: any) => {
+          return track && 
+                 track.id && 
+                 track.name && 
+                 Array.isArray(track.artists) && 
+                 track.album && 
+                 track.album.name;
+        });
+        
         return {
           tracks: {
-            items: Array.isArray(data.tracks?.items) ? data.tracks.items : []
+            items: validTracks
           }
         };
       } catch (error) {
         console.error('Spotify search error:', error);
-        throw error; // Let React Query handle the error state
+        throw error;
       }
     },
     enabled: !!debouncedQuery.trim(),

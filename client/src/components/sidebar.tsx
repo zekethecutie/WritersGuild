@@ -52,16 +52,13 @@ export default function Sidebar() {
 
   const navigationItems = [
     { icon: Home, label: "Home", path: "/", active: location === "/" },
+    { icon: Search, label: "Search", path: "/search", active: location === "/search" },
     { icon: Compass, label: "Explore", path: "/explore", active: location === "/explore" },
-    // Add Stories navigation item
     { icon: BookOpen, label: "Stories", path: "/series", active: location === "/series" },
-    // Add Leaderboard navigation item
     { icon: Trophy, label: "Leaderboard", path: "/leaderboard", active: location === "/leaderboard" },
     { icon: MessageSquare, label: "Messages", path: "/messages", active: location === "/messages" },
     { icon: Bell, label: "Notifications", path: "/notifications", active: location === "/notifications", badge: unreadCount > 0 ? unreadCount : undefined },
     { icon: Bookmark, label: "Bookmarks", path: "/bookmarks", active: location === "/bookmarks" },
-    // Remove Analytics button
-    // { icon: BarChart3, label: "Analytics", path: "/analytics", active: location === "/analytics" },
     { icon: User, label: "Profile", path: `/profile/${user?.username || user?.id}`, active: location.startsWith("/profile") },
     { icon: Cog, label: "Settings", path: "/settings", active: location === "/settings" },
   ];

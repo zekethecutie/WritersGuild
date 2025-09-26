@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { Conversation, Message, User } from "@shared/schema";
+import ChatBubble from "@/components/chat-bubble";
 
 interface ConversationWithDetails extends Conversation {
   otherParticipant: User;
@@ -90,16 +91,30 @@ export default function Messages() {
   // Create conversation mutation
   const createConversationMutation = useMutation({
     mutationFn: async (participantId: string) => {
-      return apiRequest("POST", "/api/conversations", { participantId }) as Promise<ConversationWithDetails>;
+      const response = await fetch("/api/conversations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ participantId }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to create conversation");
+      }
+      
+      return response.json();
     },
     onSuccess: (conversation: ConversationWithDetails) => {
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
       setSelectedConversation(conversation);
     },
-    onError: () => {
+    onError: (error: any) => {
       toast({
         title: "Error",
-        description: "Failed to start conversation",
+        description: error.message || "Failed to start conversation",
         variant: "destructive",
       });
     },
@@ -303,30 +318,23 @@ export default function Messages() {
                       </div>
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      {[...(messages as MessageWithSender[])].reverse().map((message: MessageWithSender) => (
-                        <div
-                          key={message.id}
-                          className={`flex ${message.senderId === user?.id ? "justify-end" : "justify-start"}`}
-                        >
-                          <div
-                            className={`max-w-xs lg:max-w-md p-3 rounded-lg ${
-                              message.senderId === user?.id
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-muted"
-                            }`}
-                          >
-                            <p className="text-sm">{message.content}</p>
-                            <p className={`text-xs mt-1 ${
-                              message.senderId === user?.id
-                                ? "text-primary-foreground/70"
-                                : "text-muted-foreground"
-                            }`}>
-                              {formatDistanceToNow(new Date(message.createdAt || new Date()), { addSuffix: true })}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
+                    <div className="space-y-1">
+                      {[...(messages as MessageWithSender[])].reverse().map((message: MessageWithSender, index: number, array: MessageWithSender[]) => {
+                        const isOwn = message.senderId === user?.id;
+                        const nextMessage = array[index + 1];
+                        const isLastInGroup = !nextMessage || nextMessage.senderId !== message.senderId;
+                        
+                        return (
+                          <ChatBubble
+                            key={message.id}
+                            message={message}
+                            isOwn={isOwn}
+                            isLastInGroup={isLastInGroup}
+                            onReact={(messageId) => console.log('React to:', messageId)}
+                            onReply={(messageId) => console.log('Reply to:', messageId)}
+                          />
+                        );
+                      })}
                     </div>
                   )}
                 </ScrollArea>
