@@ -1173,25 +1173,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get conversations for current user
   app.get("/api/conversations", requireAuth, async (req, res) => {
     try {
-      const conversations = await db
+      const userConversations = await db
         .select({
-          id: conversationsTable.id,
-          name: conversationsTable.name,
-          isGroup: conversationsTable.isGroup,
-          createdAt: conversationsTable.createdAt,
-          updatedAt: conversationsTable.updatedAt,
-          lastMessageId: conversationsTable.lastMessageId,
-          participantOneId: conversationsTable.participantOneId,
-          participantTwoId: conversationsTable.participantTwoId,
+          id: conversations.id,
+          name: conversations.name,
+          isGroup: conversations.isGroup,
+          createdAt: conversations.createdAt,
+          updatedAt: conversations.updatedAt,
+          lastMessageId: conversations.lastMessageId,
+          participantOneId: conversations.participantOneId,
+          participantTwoId: conversations.participantTwoId,
         })
-        .from(conversationsTable)
+        .from(conversations)
         .where(
           or(
-            eq(conversationsTable.participantOneId, req.session.userId!),
-            eq(conversationsTable.participantTwoId, req.session.userId!)
+            eq(conversations.participantOneId, req.session.userId!),
+            eq(conversations.participantTwoId, req.session.userId!)
           )
         )
-        .orderBy(desc(conversationsTable.updatedAt));
+        .orderBy(desc(conversations.updatedAt));
 
       // Get participants for each conversation
       const conversationsWithParticipants = await Promise.all(
@@ -1200,26 +1200,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const participantIds = [conv.participantOneId, conv.participantTwoId].filter(Boolean);
           const participants = await db
             .select({
-              id: usersTable.id,
-              username: usersTable.username,
-              displayName: usersTable.displayName,
-              profileImageUrl: usersTable.profileImageUrl,
+              id: users.id,
+              username: users.username,
+              displayName: users.displayName,
+              profileImageUrl: users.profileImageUrl,
             })
-            .from(usersTable)
-            .where(inArray(usersTable.id, participantIds));
+            .from(users)
+            .where(inArray(users.id, participantIds));
 
           // Get last message if exists
           let lastMessage = null;
           if (conv.lastMessageId) {
             const lastMessages = await db
               .select({
-                id: messagesTable.id,
-                content: messagesTable.content,
-                senderId: messagesTable.senderId,
-                createdAt: messagesTable.createdAt,
+                id: messages.id,
+                content: messages.content,
+                senderId: messages.senderId,
+                createdAt: messages.createdAt,
               })
-              .from(messagesTable)
-              .where(eq(messagesTable.id, conv.lastMessageId))
+              .from(messages)
+              .where(eq(messages.id, conv.lastMessageId))
               .limit(1);
 
             if (lastMessages.length > 0) {
@@ -1277,13 +1277,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verify user is part of conversation
       const conversation = await db
         .select()
-        .from(conversationsTable)
+        .from(conversations)
         .where(
           and(
-            eq(conversationsTable.id, conversationId),
+            eq(conversations.id, conversationId),
             or(
-              eq(conversationsTable.participantOneId, req.session.userId!),
-              eq(conversationsTable.participantTwoId, req.session.userId!)
+              eq(conversations.participantOneId, req.session.userId!),
+              eq(conversations.participantTwoId, req.session.userId!)
             )
           )
         )
@@ -1295,19 +1295,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const conversationMessages = await db
         .select({
-          id: messagesTable.id,
-          content: messagesTable.content,
-          senderId: messagesTable.senderId,
-          conversationId: messagesTable.conversationId,
-          createdAt: messagesTable.createdAt,
-          senderUsername: usersTable.username,
-          senderDisplayName: usersTable.displayName,
-          senderProfileImageUrl: usersTable.profileImageUrl,
+          id: messages.id,
+          content: messages.content,
+          senderId: messages.senderId,
+          conversationId: messages.conversationId,
+          createdAt: messages.createdAt,
+          senderUsername: users.username,
+          senderDisplayName: users.displayName,
+          senderProfileImageUrl: users.profileImageUrl,
         })
-        .from(messagesTable)
-        .leftJoin(usersTable, eq(messagesTable.senderId, usersTable.id))
-        .where(eq(messagesTable.conversationId, conversationId))
-        .orderBy(asc(messagesTable.createdAt));
+        .from(messages)
+        .leftJoin(users, eq(messages.senderId, users.id))
+        .where(eq(messages.conversationId, conversationId))
+        .orderBy(asc(messages.createdAt));
 
       // Format messages to include sender data
       const formattedMessages = conversationMessages.map(msg => ({

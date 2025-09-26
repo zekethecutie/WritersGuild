@@ -167,32 +167,6 @@ export default function Messages() {
     // TODO: Implement reply functionality
   };
 
-  // Handle unsend message  
-  const handleUnsendMessage = async (messageId: string) => {
-    if (!selectedConversation) return;
-    
-    try {
-      const response = await fetch(`/api/messages/${messageId}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      });
-      
-      if (response.ok) {
-        // Remove message from local state
-        setMessages(prev => prev.filter(msg => msg.id !== messageId));
-        // Refresh conversations in case it was the last message
-        fetchConversations();
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to unsend message",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error('Failed to unsend message:', error);
-    }
-  };
 
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation) return;
