@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ import { formatDistanceToNow } from "date-fns";
 import { getProfileImageUrl } from "@/lib/defaultImages";
 import Sidebar from "@/components/sidebar";
 import MobileNav from "@/components/mobile-nav";
+import ChatBubble from "@/components/chat-bubble";
 
 interface Message {
   id: string;
@@ -53,6 +55,7 @@ interface Conversation {
 export default function Messages() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { isConnected, lastMessage, sendMessage: sendWebSocketMessage } = useWebSocket();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -69,12 +72,20 @@ export default function Messages() {
   useEffect(() => {
     if (selectedConversation) {
       fetchMessages(selectedConversation.id);
-      const interval = setInterval(() => {
-        fetchMessages(selectedConversation.id);
-      }, 3000);
-      return () => clearInterval(interval);
     }
   }, [selectedConversation]);
+
+  // Handle WebSocket messages for real-time updates
+  useEffect(() => {
+    if (lastMessage) {
+      if (lastMessage.type === 'new_message' && selectedConversation?.id === lastMessage.data.conversationId) {
+        setMessages(prev => [...prev, lastMessage.data]);
+      } else if (lastMessage.type === 'message_reaction' && selectedConversation?.id === lastMessage.data.conversationId) {
+        // Handle emoji reactions
+        console.log('Message reaction received:', lastMessage.data);
+      }
+    }
+  }, [lastMessage, selectedConversation]);
 
   const fetchConversations = async () => {
     try {
@@ -121,10 +132,87 @@ export default function Messages() {
     }
   };
 
+  // Handle emoji reactions
+  const handleEmojiReact = async (messageId: string, emoji: string) => {
+    if (!selectedConversation) return;
+    
+    try {
+      // Send via WebSocket for real-time updates
+      if (isConnected) {
+        sendWebSocketMessage({
+          type: 'message_reaction',
+          data: {
+            messageId,
+            emoji,
+            conversationId: selectedConversation.id
+          }
+        });
+      }
+
+      // Also persist to backend
+      await fetch(`/api/messages/${messageId}/react`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ emoji })
+      });
+    } catch (error) {
+      console.error('Failed to add reaction:', error);
+    }
+  };
+
+  // Handle message replies
+  const handleReply = (messageId: string) => {
+    console.log('Reply to message:', messageId);
+    // TODO: Implement reply functionality
+  };
+
+  // Handle unsend message  
+  const handleUnsendMessage = async (messageId: string) => {
+    if (!selectedConversation) return;
+    
+    try {
+      const response = await fetch(`/api/messages/${messageId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        // Remove message from local state
+        setMessages(prev => prev.filter(msg => msg.id !== messageId));
+        // Refresh conversations in case it was the last message
+        fetchConversations();
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to unsend message",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Failed to unsend message:', error);
+    }
+  };
+
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation) return;
 
+    const messageContent = newMessage.trim();
+    setNewMessage(""); // Clear input immediately for better UX
+
     try {
+      // Send via WebSocket for real-time delivery if connected
+      if (isConnected) {
+        sendWebSocketMessage({
+          type: 'send_message',
+          data: {
+            conversationId: selectedConversation.id,
+            content: messageContent
+          }
+        });
+      }
+
+      // Also persist via REST API
       const response = await fetch(`/api/conversations/${selectedConversation.id}/messages`, {
         method: 'POST',
         headers: {
@@ -132,15 +220,20 @@ export default function Messages() {
         },
         credentials: 'include',
         body: JSON.stringify({
-          content: newMessage.trim()
+          content: messageContent
         }),
       });
 
       if (response.ok) {
-        setNewMessage("");
-        fetchMessages(selectedConversation.id);
+        // Refresh conversations to update last message
         fetchConversations();
+        // If WebSocket failed, refetch messages
+        if (!isConnected) {
+          fetchMessages(selectedConversation.id);
+        }
       } else {
+        // Restore message if sending failed
+        setNewMessage(messageContent);
         toast({
           title: "Error",
           description: "Failed to send message",
@@ -149,6 +242,7 @@ export default function Messages() {
       }
     } catch (error) {
       console.error('Failed to send message:', error);
+      setNewMessage(messageContent); // Restore message on error
       toast({
         title: "Error",
         description: "Failed to send message",
@@ -346,87 +440,30 @@ export default function Messages() {
                     {messages
                       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
                       .map((message, index, array) => {
-                        const isOwn = message.senderId === user.id;
-                        const prevMessage = array[index - 1];
-                        const isFirstInGroup = !prevMessage || prevMessage.senderId !== message.senderId;
+                        const isOwn = message.senderId === user?.id;
+                        const nextMessage = array[index + 1];
+                        const isLastInGroup = !nextMessage || nextMessage.senderId !== message.senderId;
+                        
+                        // Create message object compatible with ChatBubble
+                        const chatMessage = {
+                          ...message,
+                          sender: message.sender || {
+                            id: message.senderId,
+                            username: 'unknown',
+                            displayName: 'Unknown User',
+                            profileImageUrl: undefined
+                          }
+                        };
                         
                         return (
-                          <div
+                          <ChatBubble
                             key={message.id}
-                            className={`flex items-end space-x-2 ${isOwn ? 'justify-end' : 'justify-start'} group`}
-                          >
-                            {!isOwn && (
-                              <Avatar className="w-6 h-6 flex-shrink-0">
-                                <AvatarImage src={getProfileImageUrl(message.sender?.profileImageUrl)} />
-                                <AvatarFallback className="text-xs">
-                                  {message.sender?.displayName?.[0] || message.sender?.username?.[0] || '?'}
-                                </AvatarFallback>
-                              </Avatar>
-                            )}
-                            
-                            <div className={`max-w-[70%] ${isOwn ? 'order-first' : ''}`}>
-                              {!isOwn && isFirstInGroup && (
-                                <div className="mb-1 px-3">
-                                  <span className="text-xs font-medium text-muted-foreground">
-                                    {message.sender?.displayName || message.sender?.username || 'Unknown User'}
-                                  </span>
-                                </div>
-                              )}
-                              
-                              <div className="relative">
-                                <div
-                                  className={`px-4 py-2 rounded-2xl max-w-full break-words relative ${
-                                    isOwn
-                                      ? 'bg-blue-500 text-white rounded-br-md'
-                                      : 'bg-gray-200 dark:bg-gray-700 text-foreground rounded-bl-md'
-                                  }`}
-                                >
-                                  <p className="text-sm leading-relaxed">{message.content}</p>
-                                </div>
-                                
-                                {/* Message options */}
-                                {isOwn && (
-                                  <div className="absolute -top-2 -left-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="w-6 h-6 p-0 rounded-full bg-background shadow-md hover:bg-muted"
-                                        >
-                                          <MoreHorizontal className="w-3 h-3" />
-                                        </Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent>
-                                        <DropdownMenuItem
-                                          onClick={() => handleUnsendMessage(message.id)}
-                                          className="text-destructive"
-                                        >
-                                          <Trash2 className="w-4 h-4 mr-2" />
-                                          Unsend message
-                                        </DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
-                                  </div>
-                                )}
-                              </div>
-                              
-                              <div className={`mt-1 px-3 ${isOwn ? 'text-right' : 'text-left'}`}>
-                                <span className="text-xs text-muted-foreground">
-                                  {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
-                                </span>
-                              </div>
-                            </div>
-                            
-                            {isOwn && (
-                              <Avatar className="w-6 h-6 flex-shrink-0">
-                                <AvatarImage src={getProfileImageUrl(user.profileImageUrl)} />
-                                <AvatarFallback className="text-xs">
-                                  {user.displayName?.[0] || user.username?.[0] || '?'}
-                                </AvatarFallback>
-                              </Avatar>
-                            )}
-                          </div>
+                            message={chatMessage}
+                            isOwn={isOwn}
+                            isLastInGroup={isLastInGroup}
+                            onReact={handleEmojiReact}
+                            onReply={handleReply}
+                          />
                         );
                       })}
                   </div>
