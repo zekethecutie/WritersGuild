@@ -9,7 +9,7 @@ interface ImageGalleryProps {
   maxHeight?: number;
 }
 
-export default function ImageGallery({
+function ImageGallery({
   images,
   onRemove,
   className = "",
@@ -128,3 +128,6 @@ export default function ImageGallery({
     </>
   );
 }
+
+export default ImageGallery;
+export { ImageGallery };

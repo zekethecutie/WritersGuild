@@ -39,7 +39,7 @@ interface PostCardProps {
   onShare?: (postId: string) => void;
 }
 
-export default function PostCard({ 
+function PostCard({ 
   post, 
   showActions = true,
   onLike,
@@ -285,3 +285,5 @@ export default function PostCard({
     </article>
   );
 }
+
+export default PostCard;
