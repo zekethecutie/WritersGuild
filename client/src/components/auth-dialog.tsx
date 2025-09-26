@@ -50,7 +50,10 @@ export default function AuthDialog({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(loginData)
+        body: JSON.stringify({
+          email: loginData.username, // This field accepts both username and email
+          password: loginData.password
+        })
       });
 
       if (response.ok) {
@@ -96,7 +99,12 @@ export default function AuthDialog({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(signupData)
+        body: JSON.stringify({
+          username: signupData.username,
+          email: signupData.email,
+          password: signupData.password,
+          displayName: `${signupData.firstName} ${signupData.lastName}`.trim() || signupData.username
+        })
       });
 
       if (response.ok) {
@@ -167,12 +175,12 @@ export default function AuthDialog({
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signin-username">Username</Label>
+                  <Label htmlFor="signin-username">Username or Email</Label>
                   <Input
                     id="signin-username"
                     value={loginData.username}
                     onChange={(e) => setLoginData({ ...loginData, username: e.target.value })}
-                    placeholder="Enter your username"
+                    placeholder="Enter your username or email"
                   />
                 </div>
                 <div className="space-y-2">
