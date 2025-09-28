@@ -12,7 +12,7 @@ import MemoryStore from "memorystore";
 import rateLimit from "express-rate-limit";
 import { eq, desc, asc, like, ilike, and, or, isNull, sql, gt, lt, gte, lte, ne, count, inArray } from "drizzle-orm";
 import { db } from "./db"; // Assuming db is your Drizzle client instance
-import { conversations, messages, users, posts, comments, notifications, series, chapters, bookmarks, likes, follows, reposts } from "../shared/schema"; // Import necessary tables and schema
+import { conversations, messages, users, posts, comments, notifications, series, chapters, bookmarks, likes, follows, reposts, postCollaborators } from "../shared/schema"; // Import necessary tables and schema
 import { insertPostSchema, insertCommentSchema } from "@shared/schema";
 import { DatabaseStorage } from "./storage";
 import { getSpotifyClient } from "./spotifyClient";
@@ -65,9 +65,17 @@ function createSessionMiddleware() {
 // Create single session middleware instance to share
 const sessionMiddleware = createSessionMiddleware();
 
+// Session type extension
+declare module 'express-session' {
+  interface SessionData {
+    userId: string;
+    user: any;
+  }
+}
+
 // Auth middleware
 const requireAuth = (req: any, res: any, next: any) => {
-  if (!req.session.userId) {
+  if (!req.session?.userId) {
     return res.status(401).json({ message: "Unauthorized" });
   }
   next();
@@ -266,14 +274,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  app.get('/api/auth/user', requireAuth, async (req: any, res) => {
+  app.get('/api/auth/user', async (req: any, res) => {
     try {
+      console.log('GET /api/auth/user - Session ID:', req.session?.userId);
+      console.log('GET /api/auth/user - Session data:', req.session);
+      
+      if (!req.session?.userId) {
+        console.log('No session found, user not authenticated');
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
       const userId = req.session.userId;
       const user = await storage.getUser(userId);
       if (!user) {
+        console.log('User not found in database:', userId);
         return res.status(401).json({ message: "User not found" });
       }
-      res.json({ ...user, password: undefined });
+      
+      console.log('User found, returning user data:', user.username);
+      res.json({ user: { ...user, password: undefined } });
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -343,7 +362,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get posts with engagement data
   app.get("/api/posts", async (req, res) => {
     try {
-      const userId = req.session?.user?.id;
+      const userId = req.session?.userId;
 
       const postsQuery = db
         .select({
@@ -401,6 +420,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const bookmarkedPostIds = new Set(userBookmarks.map(bookmark => bookmark.postId));
       const repostedPostIds = new Set(userReposts.map(repost => repost.postId));
 
+      // Get collaborators for all posts
+      const postIds = postsData.map(post => post.id);
+      const collaboratorsData = await db
+        .select({
+          postId: postCollaborators.postId,
+          collaboratorId: postCollaborators.collaboratorId,
+          collaboratorUsername: users.username,
+          collaboratorDisplayName: users.displayName,
+          collaboratorProfileImageUrl: users.profileImageUrl,
+          status: postCollaborators.status
+        })
+        .from(postCollaborators)
+        .leftJoin(users, eq(postCollaborators.collaboratorId, users.id))
+        .where(and(
+          inArray(postCollaborators.postId, postIds),
+          eq(postCollaborators.status, 'accepted')
+        ));
+
+      // Group collaborators by post ID
+      const collaboratorsByPost = collaboratorsData.reduce((acc, collab) => {
+        if (!acc[collab.postId]) {
+          acc[collab.postId] = [];
+        }
+        acc[collab.postId].push({
+          id: collab.collaboratorId,
+          username: collab.collaboratorUsername,
+          displayName: collab.collaboratorDisplayName,
+          profileImageUrl: collab.collaboratorProfileImageUrl
+        });
+        return acc;
+      }, {} as Record<string, any[]>);
+
       const postsWithEngagement = postsData.map(post => ({
         id: post.id,
         authorId: post.authorId,
@@ -427,6 +478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isSuperAdmin: post.authorIsSuperAdmin,
           userRole: post.authorUserRole,
         },
+        collaborators: collaboratorsByPost[post.id] || [],
         isLiked: likedPostIds.has(post.id),
         isBookmarked: bookmarkedPostIds.has(post.id),
         isReposted: repostedPostIds.has(post.id),
@@ -456,7 +508,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/posts/:id", async (req, res) => {
     try {
       const postId = req.params.id;
-      const userId = req.session?.user?.id;
+      const userId = req.session?.userId;
 
       // Get the post with author data in one query
       const [postData] = await db
@@ -1379,6 +1431,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating conversation:", error);
       res.status(500).json({ message: "Failed to create conversation" });
+    }
+  });
+
+  // Collaborator routes
+  app.post('/api/posts/:id/collaborators', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { id: postId } = req.params;
+      const { collaboratorIds } = req.body;
+
+      if (!Array.isArray(collaboratorIds) || collaboratorIds.length === 0) {
+        return res.status(400).json({ message: "Collaborator IDs are required" });
+      }
+
+      // Verify user owns the post
+      const [post] = await db
+        .select({ authorId: posts.authorId })
+        .from(posts)
+        .where(eq(posts.id, postId))
+        .limit(1);
+
+      if (!post || post.authorId !== userId) {
+        return res.status(403).json({ message: "You can only add collaborators to your own posts" });
+      }
+
+      // Remove existing collaborators
+      await db.delete(postCollaborators).where(eq(postCollaborators.postId, postId));
+
+      // Add new collaborators
+      if (collaboratorIds.length > 0) {
+        await db.insert(postCollaborators).values(
+          collaboratorIds.map((collaboratorId: string) => ({
+            postId,
+            collaboratorId,
+            invitedById: userId,
+            status: 'accepted' // Auto-accept for now
+          }))
+        );
+      }
+
+      res.json({ message: "Collaborators updated successfully" });
+    } catch (error) {
+      console.error("Error updating collaborators:", error);
+      res.status(500).json({ message: "Failed to update collaborators" });
+    }
+  });
+
+  app.get('/api/posts/:id/collaborators', async (req, res) => {
+    try {
+      const { id: postId } = req.params;
+      
+      const collaborators = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          displayName: users.displayName,
+          profileImageUrl: users.profileImageUrl,
+          status: postCollaborators.status
+        })
+        .from(postCollaborators)
+        .leftJoin(users, eq(postCollaborators.collaboratorId, users.id))
+        .where(eq(postCollaborators.postId, postId));
+
+      res.json(collaborators);
+    } catch (error) {
+      console.error("Error fetching collaborators:", error);
+      res.status(500).json({ message: "Failed to fetch collaborators" });
+    }
+  });
+
+  app.delete('/api/posts/:id/collaborators/:userId', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { id: postId, userId: collaboratorId } = req.params;
+
+      // Verify user owns the post
+      const [post] = await db
+        .select({ authorId: posts.authorId })
+        .from(posts)
+        .where(eq(posts.id, postId))
+        .limit(1);
+
+      if (!post || post.authorId !== userId) {
+        return res.status(403).json({ message: "You can only remove collaborators from your own posts" });
+      }
+
+      await db
+        .delete(postCollaborators)
+        .where(and(
+          eq(postCollaborators.postId, postId),
+          eq(postCollaborators.collaboratorId, collaboratorId)
+        ));
+
+      res.json({ message: "Collaborator removed successfully" });
+    } catch (error) {
+      console.error("Error removing collaborator:", error);
+      res.status(500).json({ message: "Failed to remove collaborator" });
     }
   });
 

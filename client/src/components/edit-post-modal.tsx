@@ -61,6 +61,28 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
   const [collaborators, setCollaborators] = useState<any[]>([]);
   const [showCollaboratorSearch, setShowCollaboratorSearch] = useState(false);
   const [collaboratorSearchQuery, setCollaboratorSearchQuery] = useState("");
+
+  // Search for users to collaborate with
+  const searchUsersQuery = useQuery({
+    queryKey: ["/api/users/search", collaboratorSearchQuery],
+    queryFn: async () => {
+      if (!collaboratorSearchQuery.trim()) return [];
+      return apiRequest("GET", `/api/users/search?q=${encodeURIComponent(collaboratorSearchQuery)}`);
+    },
+    enabled: !!collaboratorSearchQuery.trim(),
+  });
+
+  const handleAddCollaborator = (user: any) => {
+    if (!collaborators.find(c => c.id === user.id)) {
+      setCollaborators([...collaborators, user]);
+    }
+    setCollaboratorSearchQuery("");
+    setShowCollaboratorSearch(false);
+  };
+
+  const handleRemoveCollaborator = (userId: string) => {
+    setCollaborators(collaborators.filter(c => c.id !== userId));
+  };
   const [mentions, setMentions] = useState<Set<string>>(new Set());
   const [hashtags, setHashtags] = useState<Set<string>>(new Set());
 
@@ -106,16 +128,6 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
     setMentions(newMentions);
     setHashtags(newHashtags);
   }, [content]);
-
-  // Search for users to collaborate with
-  const searchUsersQuery = useQuery({
-    queryKey: ["/api/users/search", collaboratorSearchQuery],
-    queryFn: async () => {
-      if (!collaboratorSearchQuery.trim()) return [];
-      return apiRequest("GET", `/api/users/search?q=${encodeURIComponent(collaboratorSearchQuery)}`);
-    },
-    enabled: !!collaboratorSearchQuery.trim(),
-  });
 
   const updatePostMutation = useMutation({
     mutationFn: async (postData: any) => {
@@ -220,18 +232,6 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
     }
   };
 
-  const handleAddCollaborator = (user: any) => {
-    if (!collaborators.find(c => c.id === user.id)) {
-      setCollaborators(prev => [...prev, user]);
-    }
-    setCollaboratorSearchQuery("");
-    setShowCollaboratorSearch(false);
-  };
-
-  const handleRemoveCollaborator = (userId: string) => {
-    setCollaborators(prev => prev.filter(c => c.id !== userId));
-  };
-
   const handleSubmit = () => {
     if (!content.trim()) {
       toast({
@@ -272,7 +272,7 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
       imageUrls: uploadedImages,
       mentions: Array.from(mentions),
       hashtags: Array.from(hashtags),
-      collaborators: collaborators.length > 0 ? collaborators : undefined,
+      collaborators: collaborators.length > 0 ? collaborators.map(c => c.id) : undefined,
       spotifyTrackData: selectedTrack ? {
         name: selectedTrack.name,
         artist: selectedTrack.artists[0]?.name,
@@ -499,6 +499,44 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
                   </div>
                 )}
 
+                {/* Collaborator Search */}
+                {showCollaboratorSearch && (
+                  <div className="mb-4 relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                    <Input
+                      value={collaboratorSearchQuery}
+                      onChange={(e) => setCollaboratorSearchQuery(e.target.value)}
+                      placeholder="Search users to add as collaborators..."
+                      className="pl-10"
+                      data-testid="input-collaborator-search"
+                    />
+                    {searchUsersQuery.data && Array.isArray(searchUsersQuery.data) && searchUsersQuery.data.length > 0 && (
+                      <div className="absolute z-10 w-full bg-background border border-border rounded-md mt-1 max-h-48 overflow-y-auto">
+                        {(searchUsersQuery.data as any[]).map((user: any) => (
+                          <div
+                            key={user.id}
+                            className="p-2 hover:bg-secondary cursor-pointer"
+                            onClick={() => handleAddCollaborator(user)}
+                            data-testid={`option-collaborator-${user.username}`}
+                          >
+                            <div className="flex items-center space-x-2">
+                              <img
+                                src={user.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`}
+                                alt={user.displayName}
+                                className="w-8 h-8 rounded-full"
+                              />
+                              <div>
+                                <p className="font-medium text-sm truncate">{user.displayName}</p>
+                                <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <Separator className="my-4" />
 
                 {/* Toolbar */}
@@ -569,6 +607,19 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
                         <Quote className="w-5 h-5" />
                       </Button>
                     )}
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowCollaboratorSearch(!showCollaboratorSearch)}
+                      className={`p-2 rounded-lg transition-colors ${
+                        showCollaboratorSearch || collaborators.length > 0 ? "text-blue-500 bg-blue-500/10" : "text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10"
+                      }`}
+                      title="Add Collaborators"
+                      data-testid="button-add-collaborators"
+                    >
+                      <UserPlus className="w-5 h-5" />
+                    </Button>
 
                     <Button
                       variant="ghost"

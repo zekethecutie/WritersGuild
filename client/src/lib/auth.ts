@@ -40,7 +40,8 @@ export class AuthService {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       
-      return await response.json();
+      const data = await response.json();
+      return data.user;
     } catch (error) {
       console.error('Failed to get current user:', error);
       return null;

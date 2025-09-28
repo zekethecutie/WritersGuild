@@ -235,7 +235,7 @@ export default function PostComposer() {
       imageUrls: uploadedImages,
       mentions: Array.from(mentions),
       hashtags: Array.from(hashtags),
-      collaborators: collaborators.length > 0 ? collaborators : undefined,
+      collaborators: collaborators.length > 0 ? collaborators.map(c => c.id) : undefined,
       spotifyTrackData: selectedTrack ? {
         name: selectedTrack.name,
         artist: selectedTrack.artists[0]?.name,

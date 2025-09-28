@@ -10,7 +10,7 @@ export function useAuth(): AuthState & { login: typeof authService.login } {
   });
 
   return {
-    user,
+    user: user || null,
     isLoading,
     isAuthenticated: !!user,
     login: authService.login.bind(authService),

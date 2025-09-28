@@ -86,8 +86,8 @@ function PostCard({
     id: post.authorId,
     email: null,
     password: null,
-    displayName: post.author?.displayName || `User ${post.authorId.slice(-4)}`,
-    username: post.author?.username || `user${post.authorId.slice(-4)}`,
+    displayName: `User ${post.authorId.slice(-4)}`,
+    username: `user${post.authorId.slice(-4)}`,
     bio: null,
     location: null,
     website: null,
@@ -452,6 +452,22 @@ function PostCard({
               <span className="text-muted-foreground text-sm">
                 @{author.username}
               </span>
+
+              {/* Instagram-style collaborators display */}
+              {(post as any).collaborators && (post as any).collaborators.length > 0 && (
+                <>
+                  <span className="text-muted-foreground text-sm">•</span>
+                  <span className="text-muted-foreground text-sm">with</span>
+                  {(post as any).collaborators.map((collaborator: any, index: number) => (
+                    <span key={collaborator.id || index} className="text-sm">
+                      <Link href={`/profile/${collaborator.username}`} className="text-blue-500 hover:underline">
+                        @{collaborator.username}
+                      </Link>
+                      {index < (post as any).collaborators.length - 1 && <span className="text-muted-foreground">, </span>}
+                    </span>
+                  ))}
+                </>
+              )}
 
               <span className="text-muted-foreground text-sm">•</span>
 
