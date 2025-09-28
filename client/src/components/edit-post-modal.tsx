@@ -67,7 +67,7 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
   const [showImageGeneration, setShowImageGeneration] = useState(false);
 
   // Search for users to collaborate with
-  const collaboratorSearchQuery = useQuery({
+  const collaboratorSearchResults = useQuery({
     queryKey: ["/api/users/search", collaboratorSearchQuery],
     queryFn: async () => {
       if (!collaboratorSearchQuery.trim()) return [];
@@ -549,9 +549,9 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
                           onChange={(e) => setCollaboratorSearchQuery(e.target.value)}
                         />
 
-                        {collaboratorSearchQuery.data && collaboratorSearchQuery.data.length > 0 && (
+                        {collaboratorSearchResults.data && collaboratorSearchResults.data.length > 0 && (
                           <div className="space-y-2 max-h-40 overflow-y-auto">
-                            {(collaboratorSearchQuery.data as any[]).map((user: any) => (
+                            {(collaboratorSearchResults.data as any[]).map((user: any) => (
                               <div
                                 key={user.id}
                                 className="flex items-center justify-between p-2 border rounded-lg cursor-pointer hover:bg-accent"
