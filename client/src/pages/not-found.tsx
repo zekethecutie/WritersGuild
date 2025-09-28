@@ -4,6 +4,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle, Home, ArrowLeft } from "lucide-react";
 
 export default function NotFound() {
+  // Check if we're actually on a 404 route vs being rendered incorrectly
+  if (window.location.pathname !== '/404' && !window.location.pathname.includes('not-found')) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
       <div className="max-w-md mx-auto px-4">

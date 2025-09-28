@@ -8,16 +8,14 @@ import { apiRequest } from "@/lib/queryClient";
 import Sidebar from "@/components/sidebar";
 import MobileNav from "@/components/mobile-nav";
 import PostCard from "@/components/post-card";
-import CommentCard from "@/components/comment-card";
+import CommentThread from "@/components/comment-thread";
 import LoadingScreen from "@/components/loading-screen";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { 
   ArrowLeft, 
   MessageSquare, 
-  Send,
   AlertCircle
 } from "lucide-react";
 import type { Post, Comment, User } from "@shared/schema";
@@ -29,9 +27,6 @@ export default function PostPage() {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [newComment, setNewComment] = useState("");
-  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
-
   // Fetch post
   const { 
     data: post, 
@@ -50,74 +45,6 @@ export default function PostPage() {
     },
     enabled: !!postId,
   });
-
-  // Fetch comments
-  const { 
-    data: comments = [], 
-    isLoading: commentsLoading 
-  } = useQuery({
-    queryKey: ["/api/posts", postId, "comments"],
-    queryFn: async () => {
-      const response = await fetch(`/api/posts/${postId}/comments`, {
-        credentials: 'include'
-      });
-      return response.json();
-    },
-    enabled: !!postId,
-  });
-
-  // Comment submission mutation
-  const commentMutation = useMutation({
-    mutationFn: async (content: string) => {
-      return apiRequest("POST", `/api/posts/${postId}/comments`, { content });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/posts", postId, "comments"] });
-      setNewComment("");
-      toast({
-        title: "Comment posted",
-        description: "Your comment has been added to the post.",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to post comment. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Comment like mutation
-  const commentLikeMutation = useMutation({
-    mutationFn: async (commentId: string) => {
-      return apiRequest("POST", `/api/comments/${commentId}/like`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/posts", postId, "comments"] });
-    },
-  });
-
-  const handleCommentSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newComment.trim() || !isAuthenticated) return;
-
-    setIsSubmittingComment(true);
-    commentMutation.mutate(newComment.trim());
-    setIsSubmittingComment(false);
-  };
-
-  const handleCommentLike = (commentId: string) => {
-    if (!isAuthenticated) {
-      toast({
-        title: "Sign in required",
-        description: "You need to be signed in to like comments",
-        variant: "default",
-      });
-      return;
-    }
-    commentLikeMutation.mutate(commentId);
-  };
 
   if (postLoading) {
     return <LoadingScreen title="Loading Post..." subtitle="Fetching post details" />;
@@ -189,85 +116,7 @@ export default function PostPage() {
           </div>
 
           {/* Comments Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="w-5 h-5" />
-                Comments ({Array.isArray(comments) ? comments.length : 0})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Comment form */}
-              {isAuthenticated ? (
-                <form onSubmit={handleCommentSubmit} className="space-y-3">
-                  <Textarea
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Share your thoughts about this post..."
-                    rows={3}
-                    className="resize-none"
-                  />
-                  <div className="flex justify-end">
-                    <Button 
-                      type="submit" 
-                      disabled={!newComment.trim() || isSubmittingComment || commentMutation.isPending}
-                      className="flex items-center gap-2"
-                    >
-                      <Send className="w-4 h-4" />
-                      {commentMutation.isPending ? "Posting..." : "Post Comment"}
-                    </Button>
-                  </div>
-                </form>
-              ) : (
-                <div className="text-center py-6 bg-muted/30 rounded-lg">
-                  <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-muted-foreground mb-3">
-                    Sign in to join the conversation
-                  </p>
-                  <Button onClick={() => setLocation("/")}>
-                    Sign In
-                  </Button>
-                </div>
-              )}
-
-              <Separator />
-
-              {/* Comments list */}
-              {commentsLoading ? (
-                <div className="space-y-4">
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="animate-pulse">
-                      <div className="flex space-x-3">
-                        <div className="w-8 h-8 bg-muted rounded-full" />
-                        <div className="flex-1 space-y-2">
-                          <div className="h-4 bg-muted rounded w-1/4" />
-                          <div className="h-3 bg-muted rounded w-3/4" />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : Array.isArray(comments) && comments.length > 0 ? (
-                <div className="space-y-4">
-                  {comments.map((comment: Comment & { author?: User; isLiked?: boolean }) => (
-                    <CommentCard
-                      key={comment.id}
-                      comment={comment}
-                      onLike={handleCommentLike}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <MessageSquare className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No comments yet</h3>
-                  <p className="text-muted-foreground">
-                    {isAuthenticated ? "Be the first to comment on this post!" : "Sign in to leave a comment."}
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <CommentThread postId={postId!} />
         </div>
       </div>
 

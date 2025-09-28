@@ -100,7 +100,14 @@ export default function Messages() {
   }, [messages]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messagesEndRef.current) {
+      const scrollArea = messagesEndRef.current.closest('[data-radix-scroll-area-viewport]');
+      if (scrollArea) {
+        scrollArea.scrollTop = scrollArea.scrollHeight;
+      } else {
+        messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+      }
+    }
   };
 
   // Handle WebSocket messages for real-time updates
@@ -238,11 +245,11 @@ export default function Messages() {
           });
         }
         
-        // Refresh conversations to update last message
-        fetchConversations();
+        // Auto-scroll immediately
+        scrollToBottom();
         
-        // Auto-scroll to bottom after sending message
-        setTimeout(scrollToBottom, 100);
+        // Refresh conversations asynchronously (don't wait for it)
+        fetchConversations();
       } else {
         // Restore message if sending failed
         setNewMessage(messageContent);

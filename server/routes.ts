@@ -1305,15 +1305,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         attachmentUrls
       );
 
-      // Broadcast message to other participant
-      const otherParticipantId = userConversation.otherParticipant.id;
-      (app as any).broadcastMessage?.(otherParticipantId, {
-        ...message,
-        conversation: userConversation,
-        sender: { id: userId }
-      });
-
+      // Send response immediately for better UX
       res.json(message);
+
+      // Broadcast message to other participant asynchronously
+      const otherParticipantId = userConversation.otherParticipant.id;
+      setImmediate(() => {
+        (app as any).broadcastMessage?.(otherParticipantId, {
+          ...message,
+          conversation: userConversation,
+          sender: { id: userId }
+        });
+      });
     } catch (error) {
       console.error("Error sending message:", error);
       res.status(500).json({ message: "Failed to send message" });
