@@ -174,9 +174,8 @@ export default function Landing() {
           <h2 className="text-3xl sm:text-4xl font-bold mb-6 text-foreground">
             Ready to Share Your <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">Voice</span>?
           </h2>
-          <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join thousands of writers who have found their home in the Writers Guild.
-            Your story matters, and we're here to help you tell it beautifully.
+          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+            Join a vibrant community of writers, share your stories, and discover amazing content.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">

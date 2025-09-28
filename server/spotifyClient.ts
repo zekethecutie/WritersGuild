@@ -52,7 +52,7 @@ export async function getSpotifyClient(): Promise<SpotifyApi> {
     connectionSettings = data.items?.[0];
 
     if (!connectionSettings || !connectionSettings.settings) {
-      throw new Error('Spotify not connected via Replit connector. Please connect Spotify in the Secrets/Connectors tab or add SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET to your secrets.');
+      throw new Error('Spotify not connected via connector. Please connect Spotify in the Secrets/Connectors tab or add SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET to your secrets.');
     }
 
     const settings = connectionSettings.settings;
@@ -61,7 +61,7 @@ export async function getSpotifyClient(): Promise<SpotifyApi> {
       throw new Error('Invalid Spotify connection settings');
     }
 
-    console.log('Successfully retrieved Spotify connection from Replit connector');
+    console.log('Successfully retrieved Spotify connection from connector');
 
     spotifyClient = SpotifyApi.withClientCredentials(
       settings.client_id,
