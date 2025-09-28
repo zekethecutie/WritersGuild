@@ -36,5 +36,9 @@ export default defineConfig({
       strict: true,
       deny: ["**/.*"],
     },
+    hmr: {
+      port: process.env.REPL_ID ? 443 : 24678,
+      clientPort: process.env.REPL_ID ? 443 : 24678,
+    },
   },
 });
