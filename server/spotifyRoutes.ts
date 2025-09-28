@@ -1,7 +1,35 @@
 
 import { Router } from "express";
 import { getSpotifyClient } from "./spotifyClient";
-import { isAuthenticated } from "./replitAuth";
+
+const router = Router();
+
+// Middleware to check authentication
+const requireAuth = (req: any, res: any, next: any) => {
+  if (!req.session?.userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  next();
+};
+
+// Search for tracks
+router.get("/search", requireAuth, async (req, res) => {
+  try {
+    const { q, limit = 10 } = req.query;
+    
+    if (!q || typeof q !== 'string') {
+      return res.status(400).json({ error: 'Search query is required' });
+    }
+
+    const spotify = await getSpotifyClient();
+    const results = await spotify.search(q, ['track'], 'US', parseInt(limit as string));
+    
+    res.json(results);
+  } catch (error) {
+    console.error('Spotify search error:', error);
+    res.status(500).json({ error: 'Failed to search Spotify' });
+  }
+});
 
 const router = Router();
 
@@ -82,8 +110,36 @@ router.get("/artist/:id", isAuthenticated, async (req, res) => {
   }
 });
 
+// Get specific track
+router.get("/track/:id", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const spotify = await getSpotifyClient();
+    const track = await spotify.tracks.get(id);
+    
+    res.json(track);
+  } catch (error) {
+    console.error('Get track error:', error);
+    res.status(500).json({ error: 'Failed to get track' });
+  }
+});
+
+// Get specific artist
+router.get("/artist/:id", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const spotify = await getSpotifyClient();
+    const artist = await spotify.artists.get(id);
+    
+    res.json(artist);
+  } catch (error) {
+    console.error('Get artist error:', error);
+    res.status(500).json({ error: 'Failed to get artist' });
+  }
+});
+
 // Get specific album
-router.get("/album/:id", isAuthenticated, async (req, res) => {
+router.get("/album/:id", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const spotify = await getSpotifyClient();
@@ -95,6 +151,8 @@ router.get("/album/:id", isAuthenticated, async (req, res) => {
     res.status(500).json({ error: 'Failed to get album' });
   }
 });
+
+export default router;
 
 // Get featured playlists
 router.get("/featured-playlists", isAuthenticated, async (req, res) => {

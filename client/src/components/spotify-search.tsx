@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -56,8 +55,10 @@ export function SpotifySearch({ onTrackSelect, selectedTrack, placeholder, class
     queryKey: ["/api/spotify/search", debouncedQuery],
     queryFn: async () => {
       if (!debouncedQuery.trim()) return { tracks: { items: [] } };
-      
-      const response = await fetch(`/api/spotify/search?q=${encodeURIComponent(debouncedQuery)}&limit=10`);
+
+      const response = await fetch(`/api/spotify/search?q=${encodeURIComponent(debouncedQuery)}&limit=10`, {
+        credentials: 'include'
+      });
       if (!response.ok) {
         throw new Error("Failed to search tracks");
       }
@@ -78,7 +79,8 @@ export function SpotifySearch({ onTrackSelect, selectedTrack, placeholder, class
   };
 
   const clearSelection = () => {
-    onTrackSelect(null as any);
+    setShowResults(false);
+    setSearchQuery("");
   };
 
   const formatDuration = (ms: number) => {
