@@ -1347,72 +1347,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.session.userId!;
       
-      // Get conversations with full participant data
-      const conversationsData = await db
-        .select({
-          id: conversations.id,
-          participantOneId: conversations.participantOneId,
-          participantTwoId: conversations.participantTwoId,
-          lastMessageId: conversations.lastMessageId,
-          lastMessageAt: conversations.lastMessageAt,
-          isArchived: conversations.isArchived,
-          createdAt: conversations.createdAt,
-          updatedAt: conversations.updatedAt,
-        })
-        .from(conversations)
-        .where(or(
-          eq(conversations.participantOneId, userId),
-          eq(conversations.participantTwoId, userId)
-        ))
-        .orderBy(desc(conversations.updatedAt));
-
-      // Get participant data and last messages
-      const conversationsWithData = await Promise.all(
-        conversationsData.map(async (conv) => {
-          // Determine the other participant ID
-          const otherParticipantId = conv.participantOneId === userId 
-            ? conv.participantTwoId 
-            : conv.participantOneId;
-
-          // Get other participant data
-          const [otherParticipant] = await db
-            .select({
-              id: users.id,
-              username: users.username,
-              displayName: users.displayName,
-              profileImageUrl: users.profileImageUrl,
-              isVerified: users.isVerified,
-            })
-            .from(users)
-            .where(eq(users.id, otherParticipantId))
-            .limit(1);
-
-          // Get last message if exists
-          let lastMessage = null;
-          if (conv.lastMessageId) {
-            const [message] = await db
-              .select()
-              .from(messages)
-              .where(eq(messages.id, conv.lastMessageId))
-              .limit(1);
-            lastMessage = message;
-          }
-
-          return {
-            ...conv,
-            otherParticipant: otherParticipant || {
-              id: otherParticipantId,
-              username: 'unknown',
-              displayName: 'Unknown User',
-              profileImageUrl: null,
-              isVerified: false,
-            },
-            lastMessage,
-          };
-        })
-      );
-
-      res.json(conversationsWithData);
+      const userConversations = await storage.getUserConversations(userId);
+      res.json(userConversations);
     } catch (error) {
       console.error("Failed to fetch conversations:", error);
       res.status(500).json({ message: "Failed to fetch conversations" });

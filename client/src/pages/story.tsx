@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -31,6 +30,44 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { getProfileImageUrl } from "@/lib/defaultImages";
+
+// Placeholder for the new StoryDescription component
+const StoryDescription = ({ description }: { description?: string }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const maxLines = 3; // Number of lines before "See more" is shown
+
+  if (!description) return null;
+
+  // Split description into lines
+  const lines = description.split('\n');
+  const isLong = lines.length > maxLines;
+
+  const toggleExpand = () => setIsExpanded(!isExpanded);
+
+  return (
+    <div>
+      <div
+        className="whitespace-pre-wrap text-muted-foreground leading-relaxed"
+        style={{
+          maxHeight: isExpanded ? 'none' : `calc(${maxLines} * 1.7em * 18px)`, // Approximate height based on maxLines, line-height, and font-size
+          overflow: 'hidden',
+        }}
+      >
+        {description}
+      </div>
+      {isLong && (
+        <Button
+          variant="link"
+          className="p-0 h-auto text-sm"
+          onClick={toggleExpand}
+        >
+          {isExpanded ? "See Less" : "See More"}
+        </Button>
+      )}
+    </div>
+  );
+};
+
 
 export default function StoryPage() {
   const { id, chapterId } = useParams<{ id: string; chapterId?: string }>();
@@ -219,7 +256,7 @@ export default function StoryPage() {
     if (chapterLoading) {
       return <LoadingScreen title="Loading Chapter..." subtitle="Fetching chapter content" />;
     }
-    
+
     if (!currentChapter) {
       return (
         <div className="min-h-screen bg-background flex items-center justify-center">
@@ -239,16 +276,16 @@ export default function StoryPage() {
         </div>
       );
     }
-    
+
     // Find current chapter index for navigation
     const currentChapterIndex = chapters.findIndex((ch: any) => ch.id === chapterId);
     const prevChapter = currentChapterIndex > 0 ? chapters[currentChapterIndex - 1] : null;
     const nextChapter = currentChapterIndex < chapters.length - 1 ? chapters[currentChapterIndex + 1] : null;
-    
+
     return (
       <div className="min-h-screen bg-background">
         <Sidebar />
-        
+
         <div className="lg:ml-64 min-h-screen">
           {/* Chapter header */}
           <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b">
@@ -272,7 +309,7 @@ export default function StoryPage() {
               </div>
             </div>
           </div>
-          
+
           {/* Chapter content */}
           <div className="max-w-4xl mx-auto p-6">
             <Card>
@@ -294,7 +331,7 @@ export default function StoryPage() {
                 </div>
               </CardContent>
             </Card>
-            
+
             {/* Chapter navigation */}
             <div className="flex justify-between items-center mt-8">
               <div>
@@ -328,7 +365,7 @@ export default function StoryPage() {
             </div>
           </div>
         </div>
-        
+
         <MobileNav />
       </div>
     );
@@ -466,7 +503,7 @@ export default function StoryPage() {
                             No Chapters Available
                           </Button>
                         )}
-                        
+
                         {isAuthenticated && !isOwner && (
                           <>
                             <Button 
@@ -514,9 +551,9 @@ export default function StoryPage() {
                   {story.description && (
                     <div className="mt-6">
                       <h3 className="font-semibold mb-2">Description</h3>
-                      <p className="text-muted-foreground leading-relaxed">
-                        {story.description}
-                      </p>
+                      <div className="text-muted-foreground leading-relaxed">
+                        <StoryDescription description={story.description} />
+                      </div>
                     </div>
                   )}
                 </CardContent>
@@ -559,7 +596,7 @@ export default function StoryPage() {
                           </CardContent>
                         </Card>
                       ))}
-                      
+
                       {isOwner && (
                         <Card className="border-dashed">
                           <CardContent className="p-4 text-center">

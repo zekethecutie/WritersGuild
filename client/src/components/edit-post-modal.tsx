@@ -271,9 +271,9 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
       spotifyTrackData: selectedTrack ? {
         id: selectedTrack.id,
         name: selectedTrack.name,
-        artist: selectedTrack.artists[0]?.name,
-        album: selectedTrack.album?.name,
-        image: selectedTrack.album?.images[0]?.url,
+        artist: selectedTrack.artists?.[0]?.name || selectedTrack.artist,
+        album: selectedTrack.album?.name || selectedTrack.album,
+        image: selectedTrack.album?.images?.[0]?.url || selectedTrack.image,
         preview_url: selectedTrack.preview_url,
         external_urls: selectedTrack.external_urls
       } : undefined,

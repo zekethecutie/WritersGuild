@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,12 +13,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { 
-  BookOpen, 
-  Plus, 
-  Heart, 
-  Users, 
-  Eye, 
+import {
+  BookOpen,
+  Plus,
+  Heart,
+  Users,
+  Eye,
   Calendar,
   User as UserIcon,
   Filter,
@@ -30,6 +29,55 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { getProfileImageUrl } from "@/lib/defaultImages";
 import LoadingScreen from "@/components/loading-screen";
+
+// Helper component for expandable description with line break support
+function SeriesDescription({ description }: { description: string }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const hasLineBreaks = description.includes('\n');
+
+  // Split description by newline and render paragraphs
+  const paragraphs = description.split('\n').map((paragraph, index) => (
+    <p key={index} className="mb-2 last:mb-0">
+      {paragraph}
+    </p>
+  ));
+
+  const toggleExpand = () => setIsExpanded(!isExpanded);
+
+  // Determine if "See More" should be shown
+  const shouldShowSeeMore = !isExpanded && (paragraphs.length > 2 || description.length > 150); // Heuristic for showing "See More"
+
+  return (
+    <div>
+      {isExpanded ? (
+        <div>
+          {paragraphs}
+        </div>
+      ) : (
+        <div>
+          {paragraphs.slice(0, 2)} {/* Show first two paragraphs */}
+          {shouldShowSeeMore && (
+            <span
+              className="text-primary cursor-pointer font-semibold"
+              onClick={toggleExpand}
+            >
+              ... See More
+            </span>
+          )}
+        </div>
+      )}
+      {!shouldShowSeeMore && paragraphs.length > 2 && (
+        <span
+          className="text-primary cursor-pointer font-semibold"
+          onClick={toggleExpand}
+        >
+          {isExpanded ? "See Less" : "See More"}
+        </span>
+      )}
+    </div>
+  );
+}
+
 
 interface Series {
   id: string;
@@ -114,8 +162,8 @@ function MyStoriesSection() {
         <Card key={story.id} className="group hover:shadow-lg transition-shadow">
           <div className="aspect-[3/4] bg-gradient-to-br from-primary/20 to-accent/20 rounded-t-lg flex items-center justify-center relative">
             {story.coverImageUrl ? (
-              <img 
-                src={story.coverImageUrl} 
+              <img
+                src={story.coverImageUrl}
                 alt={story.title}
                 className="w-full h-full object-cover rounded-t-lg"
               />
@@ -136,16 +184,16 @@ function MyStoriesSection() {
           <CardContent className="p-4">
             <div className="flex items-start justify-between mb-2">
               <h3 className="font-semibold text-lg line-clamp-1">{story.title}</h3>
-              <Button 
-                size="sm" 
-                variant="ghost" 
+              <Button
+                size="sm"
+                variant="ghost"
                 onClick={() => deleteSeriesMutation.mutate(story.id)}
                 className="opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <X className="w-4 h-4" />
               </Button>
             </div>
-            
+
             <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
               {story.description}
             </p>
@@ -199,10 +247,10 @@ export default function SeriesPage() {
   const [isUploadingCover, setIsUploadingCover] = useState(false);
 
   // Fetch series
-  const { 
-    data: seriesList = [], 
-    isLoading, 
-    error 
+  const {
+    data: seriesList = [],
+    isLoading,
+    error
   } = useQuery({
     queryKey: ["/api/series", { genre: selectedGenre !== "all" ? selectedGenre : undefined }],
     queryFn: () => {
@@ -270,7 +318,7 @@ export default function SeriesPage() {
 
       const data = await response.json();
       setNewSeries(prev => ({ ...prev, coverImageUrl: data.imageUrl }));
-      
+
       toast({
         title: "Cover uploaded!",
         description: "Cover image has been added to your series.",
@@ -313,7 +361,7 @@ export default function SeriesPage() {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-      
+
       <div className="lg:ml-64 min-h-screen">
         <div className="max-w-7xl mx-auto px-4 py-6">
           {/* Header */}
@@ -364,7 +412,7 @@ export default function SeriesPage() {
                             className="text-lg"
                           />
                         </div>
-                        
+
                         <div>
                           <label className="block text-sm font-medium mb-2">Genre</label>
                           <Select value={newSeries.genre} onValueChange={(value) => setNewSeries(prev => ({ ...prev, genre: value }))}>
@@ -406,13 +454,13 @@ export default function SeriesPage() {
                             {newSeries.coverImageUrl ? (
                               <div className="space-y-3">
                                 <div className="w-24 h-32 mx-auto rounded border overflow-hidden">
-                                  <img 
-                                    src={newSeries.coverImageUrl} 
+                                  <img
+                                    src={newSeries.coverImageUrl}
                                     alt="Cover preview"
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
-                                <Button 
+                                <Button
                                   type="button"
                                   variant="outline"
                                   size="sm"
@@ -426,7 +474,7 @@ export default function SeriesPage() {
                               <div className="space-y-3">
                                 <BookOpen className="w-12 h-12 text-muted-foreground mx-auto" />
                                 <div>
-                                  <Button 
+                                  <Button
                                     type="button"
                                     variant="outline"
                                     onClick={() => document.getElementById('cover-upload')?.click()}
@@ -459,13 +507,13 @@ export default function SeriesPage() {
                         This will be shown to readers on your story page
                       </p>
                     </div>
-                    
+
                     <div className="flex gap-2 pt-4">
                       <Button onClick={() => setShowCreateDialog(false)} variant="outline" className="flex-1">
                         Cancel
                       </Button>
-                      <Button 
-                        onClick={handleCreateSeries} 
+                      <Button
+                        onClick={handleCreateSeries}
                         disabled={createSeriesMutation.isPending}
                         className="flex-1"
                       >
@@ -518,15 +566,15 @@ export default function SeriesPage() {
           ) : filteredSeries.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredSeries.map((series: Series) => (
-                <Card 
-                  key={series.id} 
+                <Card
+                  key={series.id}
                   className="hover:shadow-lg transition-shadow cursor-pointer group"
                   onClick={() => window.location.href = `/story/${series.id}`}
                 >
                   <div className="aspect-[3/4] bg-gradient-to-br from-primary/20 to-accent/20 rounded-t-lg flex items-center justify-center">
                     {series.coverImageUrl ? (
-                      <img 
-                        src={series.coverImageUrl} 
+                      <img
+                        src={series.coverImageUrl}
                         alt={series.title}
                         className="w-full h-full object-cover rounded-t-lg"
                       />
@@ -543,10 +591,10 @@ export default function SeriesPage() {
                         <Badge variant="secondary" className="text-xs">Complete</Badge>
                       )}
                     </div>
-                    
-                    <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                      {series.description}
-                    </p>
+
+                    <div className="text-muted-foreground text-sm leading-relaxed">
+                      <SeriesDescription description={series.description} />
+                    </div>
 
                     {series.genre && (
                       <Badge variant="outline" className="mb-3 text-xs">
@@ -601,16 +649,16 @@ export default function SeriesPage() {
                     )}
 
                     <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
+                      <Button
+                        size="sm"
                         className="flex-1"
                         onClick={() => window.location.href = `/story/${series.id}`}
                       >
                         Read Now
                       </Button>
                       {isAuthenticated && (
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           variant="outline"
                           onClick={(e) => {
                             e.stopPropagation();
@@ -631,8 +679,8 @@ export default function SeriesPage() {
               <BookOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-semibold mb-2">No series found</h3>
               <p className="text-muted-foreground">
-                {searchQuery || selectedGenre !== "all" 
-                  ? "Try adjusting your filters or search terms" 
+                {searchQuery || selectedGenre !== "all"
+                  ? "Try adjusting your filters or search terms"
                   : "Be the first to create a series!"
                 }
               </p>
@@ -640,7 +688,7 @@ export default function SeriesPage() {
           )}
         </div>
       </div>
-      
+
       <MobileNav />
     </div>
   );
