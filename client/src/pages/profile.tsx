@@ -455,6 +455,13 @@ export default function Profile() {
                       <span className="text-blue-600 font-semibold text-sm">Verified</span>
                     </div>
                   )}
+                  {(profileUser as any)?.userRole && (
+                    <div className="flex items-center gap-1">
+                      <Badge variant="outline" className="text-xs">
+                        {(profileUser as any).userRole === 'writer' ? 'Writer' : 'Reader'}
+                      </Badge>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex items-center justify-between">

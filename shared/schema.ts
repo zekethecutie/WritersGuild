@@ -41,6 +41,8 @@ export const users = pgTable("users", {
   profileImageUrl: text("profile_image_url"),
   coverImageUrl: text("cover_image_url"),
   genres: text("genres").array(),
+  userRole: varchar("user_role").default("reader"), // 'writer' or 'reader'
+  preferredGenres: text("preferred_genres").array(),
   writingStreak: integer("writing_streak").default(0),
   wordCountGoal: integer("word_count_goal").default(500),
   weeklyPostsGoal: integer("weekly_posts_goal").default(5),

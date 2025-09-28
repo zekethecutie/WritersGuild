@@ -440,6 +440,12 @@ function PostCard({
                   )}
                 </div>
               </Link>
+              
+              {(author as any)?.userRole && (
+                <Badge variant="outline" className="text-xs">
+                  {(author as any).userRole === 'writer' ? 'Writer' : 'Reader'}
+                </Badge>
+              )}
 
               <span className="text-muted-foreground text-sm">
                 @{author.username}

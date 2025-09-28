@@ -76,7 +76,7 @@ const requireAuth = (req: any, res: any, next: any) => {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Create storage instance
   const storage = new DatabaseStorage();
-  
+
   // Initialize admin account
   await storage.initializeAdminAccount();
 
@@ -284,10 +284,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/users/profile', requireAuth, async (req: any, res) => {
     try {
       const userId = req.session.userId;
-      const updateData = req.body;
+      const { displayName, bio, location, website, genres, userRole, preferredGenres } = req.body;
 
-      const user = await storage.updateUserProfile(userId, updateData);
-      res.json(user);
+      const updatedUser = await storage.updateUserProfile(userId, {
+        displayName,
+        bio,
+        location,
+        website,
+        genres,
+        userRole,
+        preferredGenres,
+      });
+      res.json(updatedUser);
     } catch (error) {
       console.error("Error updating profile:", error);
       res.status(500).json({ message: "Failed to update profile" });

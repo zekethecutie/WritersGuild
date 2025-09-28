@@ -64,8 +64,8 @@ export default function SettingsPage() {
     location: user?.location || '',
     website: user?.website || '',
     genres: user?.genres || [],
-    userRole: user?.userRole || 'reader',
-    preferredGenres: user?.preferredGenres || []
+    userRole: (user as any)?.userRole || 'reader',
+    preferredGenres: (user as any)?.preferredGenres || []
   });
 
   // Privacy settings state

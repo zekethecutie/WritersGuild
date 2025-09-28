@@ -104,13 +104,18 @@ export default function CommentCard({
               )}
               {author.isVerified && (
                 <div className="flex items-center gap-1">
-                  <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-                    <CheckCircle className="w-2.5 h-2.5 text-white fill-current" />
+                  <div className="w-4 h-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+                    <CheckCircle className="w-2.5 h-2.5 text-white" />
                   </div>
                   <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/30 px-1 py-0 h-4">
                     Verified
                   </Badge>
                 </div>
+              )}
+              {(author as any)?.userRole && (
+                <Badge variant="outline" className="text-xs px-1 py-0 h-4">
+                  {(author as any).userRole === 'writer' ? 'Writer' : 'Reader'}
+                </Badge>
               )}
             </div>
 
