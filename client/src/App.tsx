@@ -17,6 +17,9 @@ import Notifications from "./pages/notifications";
 import Bookmarks from "./pages/bookmarks";
 import SearchPage from "./pages/search";
 import SettingsPage from "./pages/settings";
+import ChapterPage from "@/pages/chapter";
+import ChapterEditor from "@/pages/chapter-editor";
+import PostPage from "@/pages/post";
 import { lazy } from "react";
 
 function AppRouter() {
@@ -37,8 +40,11 @@ function AppRouter() {
       <Route path="/explore" component={Explore} />
       <Route path="/series" component={SeriesPage} />
       <Route path="/series/:id/edit" component={isAuthenticated ? SeriesEditPage : Landing} />
-      <Route path="/story/:id" component={StoryPage} />
       <Route path="/story/:id/chapter/:chapterId" component={StoryPage} />
+      <Route path="/story/:id" component={StoryPage} />
+      <Route path="/chapter/:id" component={ChapterPage} />
+      <Route path="/chapter/:id/edit" component={ChapterEditor} />
+      <Route path="/post/:id" component={PostPage} />
       <Route path="/story/:id/edit" component={lazy(() => import("./pages/series-edit"))} />
       <Route path="/story/:id/chapter/:chapterId/edit" component={lazy(() => import("./pages/chapter-editor"))} />
       <Route path="/leaderboard" component={lazy(() => import("./pages/leaderboard"))} />
@@ -48,7 +54,6 @@ function AppRouter() {
       <Route path="/bookmarks" component={isAuthenticated ? Bookmarks : Explore} />
       <Route path="/profile/:username" component={Profile} />
       <Route path="/settings" component={isAuthenticated ? SettingsPage : Landing} />
-      <Route path="/chapter/:id" component={lazy(() => import("@/pages/chapter"))} />
       <Route component={NotFound} />
     </Router>
   );
