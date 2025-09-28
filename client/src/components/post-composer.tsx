@@ -5,7 +5,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import RichTextEditor from "@/components/rich-text-editor";
-import SpotifyPlayer from "@/components/spotify-player";
+import { SpotifyTrackDisplay } from "@/components/spotify-track-display";
+import { SpotifySearch } from "@/components/spotify-search";
 import ImageGallery from "@/components/image-gallery";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +34,8 @@ import {
   Users,
   X,
   UserPlus,
-  Search
+  Search,
+  Star
 } from "lucide-react";
 
 export default function PostComposer() {
@@ -54,6 +56,73 @@ export default function PostComposer() {
   const [collaborators, setCollaborators] = useState<any[]>([]);
   const [showCollaboratorSearch, setShowCollaboratorSearch] = useState(false);
   const [collaboratorSearchQuery, setCollaboratorSearchQuery] = useState("");
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [imagePrompt, setImagePrompt] = useState("");
+  const [showImageGeneration, setShowImageGeneration] = useState(false);
+  const [mentions, setMentions] = useState<Set<string>>(new Set());
+  const [hashtags, setHashtags] = useState<Set<string>>(new Set());
+
+  // Parse mentions and hashtags from content
+  useEffect(() => {
+    const newMentions = new Set<string>();
+    const newHashtags = new Set<string>();
+
+    // Extract mentions (@username)
+    const mentionMatches = content.match(/@(\w+)/g);
+    if (mentionMatches) {
+      mentionMatches.forEach((match: string) => {
+        newMentions.add(match.substring(1)); // Remove @
+      });
+    }
+
+    // Extract hashtags (#hashtag)
+    const hashtagMatches = content.match(/#(\w+)/g);
+    if (hashtagMatches) {
+      hashtagMatches.forEach((match: string) => {
+        newHashtags.add(match.substring(1)); // Remove #
+      });
+    }
+
+    setMentions(newMentions);
+    setHashtags(newHashtags);
+  }, [content]);
+
+  const generateImageMutation = useMutation({
+    mutationFn: async (prompt: string) => {
+      return apiRequest("POST", "/api/generate-image", { prompt });
+    },
+    onSuccess: (data) => {
+      if (data.imageUrls && data.imageUrls.length > 0) {
+        setSelectedImages(prev => [...prev, ...data.imageUrls]);
+        toast({
+          title: "Image generated!",
+          description: "AI-generated image has been added to your post.",
+        });
+      }
+      setImagePrompt("");
+      setShowImageGeneration(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Generation failed",
+        description: "Failed to generate image. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleGenerateImage = () => {
+    if (!imagePrompt.trim()) {
+      toast({
+        title: "Prompt required",
+        description: "Please enter a description for the image you want to generate.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsGeneratingImage(true);
+    generateImageMutation.mutate(imagePrompt);
+  };
 
   // Search for users to collaborate with
   const searchUsersQuery = useQuery({
@@ -83,6 +152,11 @@ export default function PostComposer() {
       setCollaborators([]);
       setShowCollaboratorSearch(false);
       setCollaboratorSearchQuery("");
+      setIsGeneratingImage(false);
+      setImagePrompt("");
+      setShowImageGeneration(false);
+      setMentions(new Set());
+      setHashtags(new Set());
 
       // Invalidate queries to refresh feed
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
@@ -221,11 +295,7 @@ export default function PostComposer() {
       return;
     }
 
-    // Mocking uploadedImages, mentions, and hashtags as they are not defined in the provided snippet
-    // In a real scenario, these would be managed state variables.
-    const uploadedImages = selectedImages; 
-    const mentions = new Set<string>(); // Placeholder
-    const hashtags = new Set<string>(); // Placeholder
+    const uploadedImages = selectedImages;
 
     const postData = {
       title: title.trim() || undefined,
@@ -237,6 +307,7 @@ export default function PostComposer() {
       hashtags: Array.from(hashtags),
       collaborators: collaborators.length > 0 ? collaborators.map(c => c.id) : undefined,
       spotifyTrackData: selectedTrack ? {
+        id: selectedTrack.id,
         name: selectedTrack.name,
         artist: selectedTrack.artists[0]?.name,
         album: selectedTrack.album?.name,
@@ -444,27 +515,147 @@ export default function PostComposer() {
               </div>
             )}
 
+            {/* Spotify Track Display */}
             {selectedTrack && (
               <div className="mb-4">
-                <SpotifyPlayer
-                  track={selectedTrack}
-                  onRemove={() => setSelectedTrack(null)}
-                  compact
+                <SpotifyTrackDisplay 
+                  track={selectedTrack} 
+                  size="md"
+                  showPreview={true}
                 />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedTrack(null)}
+                  className="mt-2 text-muted-foreground hover:text-destructive"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Remove track
+                </Button>
               </div>
             )}
 
+            {/* Spotify Search */}
             {showSpotify && (
               <div className="mb-4">
-                <SpotifyPlayer
+                <SpotifySearch
                   onTrackSelect={(track) => {
                     setSelectedTrack(track);
                     setShowSpotify(false);
                   }}
-                  onClose={() => setShowSpotify(false)}
-                  searchMode
+                  selectedTrack={selectedTrack}
+                  placeholder="Search for a song to add..."
                 />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowSpotify(false)}
+                  className="mt-2"
+                >
+                  Cancel
+                </Button>
               </div>
+            )}
+
+            {/* Collaborator Search */}
+            {showCollaboratorSearch && (
+              <Card className="mb-4">
+                <CardContent className="pt-4">
+                  <div className="space-y-3">
+                    <Input
+                      placeholder="Search for collaborators..."
+                      value={collaboratorSearchQuery}
+                      onChange={(e) => setCollaboratorSearchQuery(e.target.value)}
+                    />
+
+                    {searchUsersQuery.data && searchUsersQuery.data.length > 0 && (
+                      <div className="space-y-2 max-h-40 overflow-y-auto">
+                        {(searchUsersQuery.data as any[]).map((user: any) => (
+                          <div
+                            key={user.id}
+                            className="flex items-center justify-between p-2 border rounded-lg cursor-pointer hover:bg-accent"
+                            onClick={() => handleAddCollaborator(user)}
+                            data-testid={`option-collaborator-${user.username}`}
+                          >
+                            <div className="flex items-center space-x-2">
+                              <img
+                                src={user.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`}
+                                alt={user.displayName}
+                                className="w-8 h-8 rounded-full"
+                              />
+                              <div>
+                                <p className="font-medium text-sm truncate">{user.displayName}</p>
+                                <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {collaborators.length > 0 && (
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-2">Selected collaborators:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {collaborators.map((collaborator) => (
+                            <Badge key={collaborator.id} variant="secondary" className="text-xs">
+                              {collaborator.displayName}
+                              <X
+                                className="w-3 h-3 ml-1 cursor-pointer"
+                                onClick={() => handleRemoveCollaborator(collaborator.id)}
+                              />
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Image Generation */}
+            {showImageGeneration && (
+              <Card className="mb-4">
+                <CardContent className="pt-4">
+                  <div className="space-y-3">
+                    <label htmlFor="image-prompt" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Describe the image you want to generate:</label>
+                    <Textarea
+                      id="image-prompt"
+                      placeholder="A mystical forest with glowing trees under a starry sky..."
+                      value={imagePrompt}
+                      onChange={(e) => setImagePrompt(e.target.value)}
+                      rows={3}
+                    />
+                    <div className="flex justify-end space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowImageGeneration(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleGenerateImage}
+                        disabled={generateImageMutation.isPending || !imagePrompt.trim()}
+                      >
+                        {generateImageMutation.isPending ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-2" />
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4 mr-2" />
+                            Generate
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             )}
 
             <Separator className="my-4" />
@@ -541,11 +732,32 @@ export default function PostComposer() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="p-2 rounded-lg text-muted-foreground hover:text-accent hover:bg-accent/10 transition-colors"
-                  title="Generate Image"
+                  onClick={() => setShowCollaboratorSearch(!showCollaboratorSearch)}
+                  className={`p-2 rounded-lg transition-colors ${
+                    showCollaboratorSearch || collaborators.length > 0 ? "text-blue-500 bg-blue-500/10" : "text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10"
+                  }`}
+                  title="Add Collaborators"
+                  data-testid="button-add-collaborators"
+                >
+                  <Star className="w-5 h-5" />
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowImageGeneration(!showImageGeneration)}
+                  disabled={generateImageMutation.isPending}
+                  className={`p-2 rounded-lg transition-colors ${
+                    showImageGeneration || generateImageMutation.isPending ? "text-yellow-500 bg-yellow-500/10" : "text-muted-foreground hover:text-yellow-500 hover:bg-yellow-500/10"
+                  }`}
+                  title={generateImageMutation.isPending ? "Generating..." : "Generate Image"}
                   data-testid="button-generate-image"
                 >
-                  <Sparkles className="w-5 h-5" />
+                  {generateImageMutation.isPending ? (
+                    <div className="w-5 h-5 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Sparkles className="w-5 h-5" />
+                  )}
                 </Button>
               </div>
 

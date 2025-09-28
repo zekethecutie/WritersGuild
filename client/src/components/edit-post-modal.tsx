@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -5,7 +6,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import RichTextEditor from "@/components/rich-text-editor";
-import SpotifyPlayer from "@/components/spotify-player";
+import { SpotifyTrackDisplay } from "@/components/spotify-track-display";
+import { SpotifySearch } from "@/components/spotify-search";
 import ImageGallery from "@/components/image-gallery";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,13 +36,38 @@ import {
   Users,
   X,
   UserPlus,
-  Search
+  Search,
+  Star
 } from "lucide-react";
 
 interface EditPostModalProps {
   post: any;
   isOpen: boolean;
   onClose: () => void;
+}
+
+interface SpotifyTrack {
+  id: string;
+  name: string;
+  artists: Array<{
+    id: string;
+    name: string;
+  }>;
+  album: {
+    id: string;
+    name: string;
+    images: Array<{
+      url: string;
+      height: number | null;
+      width: number | null;
+    }>;
+  };
+  external_urls: {
+    spotify: string;
+  };
+  preview_url: string | null;
+  duration_ms: number;
+  popularity: number;
 }
 
 export default function EditPostModal({ post, isOpen, onClose }: EditPostModalProps) {
@@ -53,18 +80,19 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
   const [postType, setPostType] = useState<"text" | "poetry" | "story" | "challenge">(post?.postType || "text");
   const [genre, setGenre] = useState(post?.genre || "");
   const [privacy, setPrivacy] = useState<"public" | "followers" | "private">(post?.isPrivate ? "private" : "public");
-  const [selectedTrack, setSelectedTrack] = useState<any>(post?.spotifyTrackData || null);
+  const [selectedTrack, setSelectedTrack] = useState<SpotifyTrack | null>(post?.spotifyTrackData || null);
   const [selectedImages, setSelectedImages] = useState<string[]>(post?.imageUrls || []);
-  const [isRichEditor, setIsRichEditor] = useState(false);
+  const [isRichTextMode, setIsRichTextMode] = useState(false);
   const [showSpotify, setShowSpotify] = useState(false);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [collaborators, setCollaborators] = useState<any[]>(post?.collaborators || []);
   const [showCollaboratorSearch, setShowCollaboratorSearch] = useState(false);
   const [collaboratorSearchQuery, setCollaboratorSearchQuery] = useState("");
-  const [isRichTextMode, setIsRichTextMode] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [imagePrompt, setImagePrompt] = useState("");
   const [showImageGeneration, setShowImageGeneration] = useState(false);
+  const [mentions, setMentions] = useState<Set<string>>(new Set());
+  const [hashtags, setHashtags] = useState<Set<string>>(new Set());
 
   // Search for users to collaborate with
   const collaboratorSearchResults = useQuery({
@@ -109,9 +137,9 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
       });
       return;
     }
+    setIsGeneratingImage(true);
     generateImageMutation.mutate(imagePrompt);
   };
-
 
   const handleAddCollaborator = (user: any) => {
     if (!collaborators.find(c => c.id === user.id)) {
@@ -124,8 +152,6 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
   const handleRemoveCollaborator = (userId: string) => {
     setCollaborators(collaborators.filter(c => c.id !== userId));
   };
-  const [mentions, setMentions] = useState<Set<string>>(new Set());
-  const [hashtags, setHashtags] = useState<Set<string>>(new Set());
 
   // Reset form when post changes
   useEffect(() => {
@@ -315,6 +341,7 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
       hashtags: Array.from(hashtags),
       collaborators: collaborators.length > 0 ? collaborators.map(c => c.id) : undefined,
       spotifyTrackData: selectedTrack ? {
+        id: selectedTrack.id,
         name: selectedTrack.name,
         artist: selectedTrack.artists[0]?.name,
         album: selectedTrack.album?.name,
@@ -423,22 +450,22 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
 
                 {/* Editor */}
                 {isRichTextMode ? (
-                <RichTextEditor
-                  content={content}
-                  onChange={setContent}
-                  placeholder="Share your thoughts, poetry, or stories..."
-                  className="min-h-[120px]"
-                  postType={postType}
-                />
-              ) : (
-                <Textarea
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  placeholder="Share your thoughts, poetry, or stories..."
-                  className="resize-none border-none outline-none bg-transparent text-lg placeholder-muted-foreground min-h-[120px] p-0"
-                  data-testid="textarea-post-content"
-                />
-              )}
+                  <RichTextEditor
+                    content={content}
+                    onChange={setContent}
+                    placeholder="Share your thoughts, poetry, or stories..."
+                    className="min-h-[120px]"
+                    postType={postType}
+                  />
+                ) : (
+                  <Textarea
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    placeholder="Share your thoughts, poetry, or stories..."
+                    className="resize-none border-none outline-none bg-transparent text-lg placeholder-muted-foreground min-h-[120px] p-0"
+                    data-testid="textarea-post-content"
+                  />
+                )}
 
                 {/* Genre Selection */}
                 {(postType === "poetry" || postType === "story") && (
@@ -515,26 +542,45 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
                   </div>
                 )}
 
+                {/* Spotify Track Display */}
                 {selectedTrack && (
                   <div className="mb-4">
-                    <SpotifyPlayer
-                      track={selectedTrack}
-                      onRemove={() => setSelectedTrack(null)}
-                      compact
+                    <SpotifyTrackDisplay 
+                      track={selectedTrack} 
+                      size="md"
+                      showPreview={true}
                     />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedTrack(null)}
+                      className="mt-2 text-muted-foreground hover:text-destructive"
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Remove track
+                    </Button>
                   </div>
                 )}
 
+                {/* Spotify Search */}
                 {showSpotify && (
                   <div className="mb-4">
-                    <SpotifyPlayer
+                    <SpotifySearch
                       onTrackSelect={(track) => {
                         setSelectedTrack(track);
                         setShowSpotify(false);
                       }}
-                      onClose={() => setShowSpotify(false)}
-                      searchMode
+                      selectedTrack={selectedTrack}
+                      placeholder="Search for a song to add..."
                     />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowSpotify(false)}
+                      className="mt-2"
+                    >
+                      Cancel
+                    </Button>
                   </div>
                 )}
 
@@ -595,6 +641,7 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
                   </Card>
                 )}
 
+                {/* Image Generation */}
                 {showImageGeneration && (
                   <Card>
                     <CardContent className="pt-4">
@@ -637,7 +684,6 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
                     </CardContent>
                   </Card>
                 )}
-
 
                 <Separator className="my-4" />
 
@@ -720,7 +766,7 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
                       title="Add Collaborators"
                       data-testid="button-add-collaborators"
                     >
-                      <UserPlus className="w-5 h-5" />
+                      <Star className="w-5 h-5" />
                     </Button>
 
                     <Button

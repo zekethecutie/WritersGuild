@@ -3,6 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Music, ExternalLink, Play, Pause, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { SpotifyTrackDisplay } from "@/components/spotify-track-display";
+import { SpotifySearch } from "@/components/spotify-search";
 
 interface SpotifyTrack {
   id: string;
@@ -159,162 +161,29 @@ export default function SpotifyPlayer({
             </Button>
           )}
         </div>
-        <p className="text-muted-foreground text-center py-8">
-          Spotify search functionality would be implemented here.
-        </p>
+        <SpotifySearch onTrackSelect={onTrackSelect} />
       </div>
     );
   }
 
   if (!track) return null;
 
-  const sizeClasses = {
-    sm: {
-      container: "p-3",
-      image: "w-10 h-10",
-      title: "text-sm",
-      artist: "text-xs",
-      icon: "w-4 h-4",
-    },
-    md: {
-      container: "p-4",
-      image: "w-12 h-12",
-      title: "text-sm",
-      artist: "text-sm",
-      icon: "w-4 h-4",
-    },
-    lg: {
-      container: "p-6",
-      image: "w-16 h-16",
-      title: "text-base",
-      artist: "text-sm",
-      icon: "w-5 h-5",
-    },
-  };
-
-  const classes = sizeClasses[size];
-
   return (
-    <Card className={`bg-gradient-to-r from-green-500/10 to-green-600/10 border-green-200 dark:border-green-800 ${className}`}>
-      <CardContent className={classes.container}>
-        <div className="flex items-center gap-3">
-          {/* Album Art or Music Icon */}
-          {track.image ? (
-            <img
-              src={track.image}
-              alt={`${track.album} album art`}
-              className={`${classes.image} rounded object-cover`}
-            />
-          ) : (
-            <div className={`${classes.image} bg-green-100 dark:bg-green-900 rounded flex items-center justify-center`}>
-              <Music className={`${classes.icon} text-green-600 dark:text-green-400`} />
-            </div>
-          )}
-
-          {/* Track Info */}
-          <div className="flex-1 min-w-0">
-            <p className={`font-medium ${classes.title}`} style={{
-              whiteSpace: 'normal',
-              wordBreak: 'break-word',
-              overflow: 'visible',
-              textOverflow: 'clip',
-              lineHeight: '1.6',
-              minHeight: '1.6em',
-              paddingBottom: '2px'
-            }}>
-              {track.name}
-            </p>
-            <p className={`text-muted-foreground ${classes.artist}`} style={{
-              whiteSpace: 'normal',
-              wordBreak: 'break-word',
-              overflow: 'visible',
-              textOverflow: 'clip',
-              lineHeight: '1.5',
-              minHeight: '1.5em',
-              paddingBottom: '2px'
-            }}>
-              {track.artist}
-            </p>
-            {size !== "sm" && (
-              <p className="text-xs text-muted-foreground" style={{
-                whiteSpace: 'normal',
-                wordBreak: 'break-word',
-                overflow: 'visible',
-                textOverflow: 'clip',
-                lineHeight: '1.4',
-                minHeight: '1.4em',
-                paddingBottom: '2px'
-              }}>
-                {track.album}
-              </p>
-            )}
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-1">
-            {showPreview && track.preview_url && (
-              <div className="flex items-center gap-2 shrink-0">
-                <Button
-                  onClick={handlePlayPause}
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 w-8 p-0 hover:bg-white/20"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : isPlaying ? (
-                    <Pause className="h-4 w-4 text-white" />
-                  ) : (
-                    <Play className="h-4 w-4 text-white" />
-                  )}
-                </Button>
-                {duration > 0 && !isLoading && (
-                  <span className="text-xs text-muted-foreground min-w-[3rem]">
-                    {formatTime(currentTime)}/{formatTime(duration)}
-                  </span>
-                )}
-                <audio
-                  ref={audioRef}
-                  src={track.preview_url || ""}
-                  preload="metadata"
-                />
-              </div>
-            )}
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => window.open(track.external_urls.spotify, '_blank')}
-              className="p-2"
-              title="Open in Spotify"
-            >
-              <ExternalLink className={classes.icon} />
-            </Button>
-
-            {/* Remove button for compact mode */}
-            {onRemove && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onRemove}
-                className="p-2 hover:bg-red-100 hover:text-red-600"
-                title="Remove track"
-              >
-                <X className={classes.icon} />
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Spotify Badge */}
-        <div className="flex items-center justify-between mt-2">
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Music className="w-3 h-3" />
-            <span>Spotify</span>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <SpotifyTrackDisplay
+      track={track}
+      size={size}
+      showPreview={showPreview}
+      className={className}
+      onRemove={onRemove}
+      onClose={onClose}
+      onPlayPause={handlePlayPause}
+      isPlaying={isPlaying}
+      currentTime={currentTime}
+      duration={duration}
+      formatTime={formatTime}
+      audioRef={audioRef}
+      isLoading={isLoading}
+      toast={toast}
+    />
   );
 }
