@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -61,6 +61,8 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
   const [collaborators, setCollaborators] = useState<any[]>([]);
   const [showCollaboratorSearch, setShowCollaboratorSearch] = useState(false);
   const [collaboratorSearchQuery, setCollaboratorSearchQuery] = useState("");
+  const [mentions, setMentions] = useState<Set<string>>(new Set());
+  const [hashtags, setHashtags] = useState<Set<string>>(new Set());
 
   // Search for users to collaborate with
   const searchUsersQuery = useQuery({
@@ -85,8 +87,35 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
       setCollaborators([]);
       setShowCollaboratorSearch(false);
       setCollaboratorSearchQuery("");
+      setMentions(new Set());
+      setHashtags(new Set());
     }
   }, [post]);
+
+  // Parse mentions and hashtags from content
+  useEffect(() => {
+    const newMentions = new Set<string>();
+    const newHashtags = new Set<string>();
+    
+    // Extract mentions (@username)
+    const mentionMatches = content.match(/@(\w+)/g);
+    if (mentionMatches) {
+      mentionMatches.forEach(match => {
+        newMentions.add(match.substring(1)); // Remove @
+      });
+    }
+    
+    // Extract hashtags (#hashtag)
+    const hashtagMatches = content.match(/#(\w+)/g);
+    if (hashtagMatches) {
+      hashtagMatches.forEach(match => {
+        newHashtags.add(match.substring(1)); // Remove #
+      });
+    }
+    
+    setMentions(newMentions);
+    setHashtags(newHashtags);
+  }, [content]);
 
   const updatePostMutation = useMutation({
     mutationFn: async (postData: any) => {
@@ -230,11 +259,6 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
       return;
     }
 
-    // Mocking mentions and hashtags as they are not defined in the provided snippet
-    // In a real scenario, these would be managed state variables.
-    const mentions = new Set<string>(); // Placeholder
-    const hashtags = new Set<string>(); // Placeholder
-
     const postData = {
       title: title.trim() || undefined,
       content: content.trim(),
@@ -245,6 +269,7 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
       hashtags: Array.from(hashtags),
       collaborators: collaborators.length > 0 ? collaborators : undefined,
       spotifyTrackData: selectedTrack ? {
+        id: selectedTrack.id,
         name: selectedTrack.name,
         artist: selectedTrack.artists[0]?.name,
         album: selectedTrack.album?.name,
@@ -294,7 +319,7 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
         <div className="space-y-4">
           <div className="flex space-x-3">
             <img
-              src={user?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.username}`}
+              src={getProfileImageUrl(user.profileImageUrl)}
               alt="Your profile"
               className="w-12 h-12 rounded-full object-cover flex-shrink-0"
               data-testid="img-composer-avatar"
@@ -337,19 +362,17 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
                 </Select>
               </div>
 
-              {/* Title Input */}
-              {(postType === "story" || postType === "poetry") && (
-                <div className="mb-4">
-                  <Input
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder={`${postType === "story" ? "Story" : "Poem"} title (optional)`}
-                    className="text-lg font-medium bg-transparent border-none outline-none placeholder-muted-foreground"
-                    data-testid="input-post-title"
-                    maxLength={255}
-                  />
-                </div>
-              )}
+              {/* Title Field */}
+              <div className="mb-4">
+                <Input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Title (optional)"
+                  className="text-lg font-semibold border-none outline-none bg-transparent placeholder-muted-foreground"
+                  data-testid="input-post-title"
+                  maxLength={100}
+                />
+              </div>
 
               {/* Editor */}
               {isRichEditor ? (
@@ -367,7 +390,7 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   placeholder="Share your thoughts, poetry, or stories..."
-                  className="resize-none border-none outline-none bg-transparent text-lg placeholder-muted-foreground min-h-[120px] p-0"
+                  className="resize-none border-none outline-none bg-transparent text-base placeholder-muted-foreground min-h-[120px] p-0"
                   data-testid="textarea-post-content"
                 />
               )}
@@ -404,6 +427,66 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
                       )}
                     </SelectContent>
                   </Select>
+                </div>
+              )}
+
+              {/* Collaborators */}
+              {collaborators.length > 0 && (
+                <div className="mb-4">
+                  <div className="flex flex-wrap gap-2">
+                    {collaborators.map((collaborator) => (
+                      <Badge key={collaborator.id} variant="secondary" className="flex items-center gap-1">
+                        <UserPlus className="w-3 h-3" />
+                        {collaborator.displayName}
+                        <X 
+                          className="w-3 h-3 cursor-pointer hover:text-destructive" 
+                          onClick={() => handleRemoveCollaborator(collaborator.id)}
+                        />
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Collaborator Search */}
+              {showCollaboratorSearch && (
+                <div className="mb-4 p-3 border border-border rounded-lg">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Search className="w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search for collaborators..."
+                      value={collaboratorSearchQuery}
+                      onChange={(e) => setCollaboratorSearchQuery(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setShowCollaboratorSearch(false)}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  
+                  {searchUsersQuery.data && searchUsersQuery.data.length > 0 && (
+                    <div className="max-h-32 overflow-y-auto space-y-1">
+                      {searchUsersQuery.data.map((user: any) => (
+                        <div
+                          key={user.id}
+                          className="flex items-center space-x-2 p-2 hover:bg-muted rounded cursor-pointer"
+                          onClick={() => handleAddCollaborator(user)}
+                        >
+                          <img
+                            src={getProfileImageUrl(user.profileImageUrl)}
+                            alt={user.displayName}
+                            className="w-6 h-6 rounded-full"
+                          />
+                          <span className="text-sm">{user.displayName}</span>
+                          <span className="text-xs text-muted-foreground">@{user.username}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -497,6 +580,18 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
                     title="Add Music"
                   >
                     <Music className="w-5 h-5" />
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowCollaboratorSearch(!showCollaboratorSearch)}
+                    className={`p-2 rounded-lg transition-colors ${
+                      showCollaboratorSearch || collaborators.length > 0 ? "text-blue-500 bg-blue-500/10" : "text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10"
+                    }`}
+                    title="Add Collaborators"
+                  >
+                    <UserPlus className="w-5 h-5" />
                   </Button>
 
                   {postType === "poetry" && (
