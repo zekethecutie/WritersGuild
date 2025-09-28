@@ -97,7 +97,12 @@ export default function Messages() {
   useEffect(() => {
     if (lastMessage) {
       if (lastMessage.type === 'new_message' && selectedConversation?.id === lastMessage.data.conversationId) {
-        setMessages(prev => [...prev, lastMessage.data]);
+        // Only add message if it's not already in the list (avoid duplicates)
+        setMessages(prev => {
+          const messageExists = prev.some(msg => msg.id === lastMessage.data.id);
+          if (messageExists) return prev;
+          return [...prev, lastMessage.data];
+        });
       } else if (lastMessage.type === 'message_reaction' && selectedConversation?.id === lastMessage.data.conversationId) {
         // Handle emoji reactions
         console.log('Message reaction received:', lastMessage.data);
@@ -193,18 +198,7 @@ export default function Messages() {
     setNewMessage(""); // Clear input immediately for better UX
 
     try {
-      // Send via WebSocket for real-time delivery if connected
-      if (isConnected) {
-        sendWebSocketMessage({
-          type: 'send_message',
-          data: {
-            conversationId: selectedConversation.id,
-            content: messageContent
-          }
-        });
-      }
-
-      // Also persist via REST API
+      // Always persist via REST API first
       const response = await fetch(`/api/conversations/${selectedConversation.id}/messages`, {
         method: 'POST',
         headers: {
@@ -217,12 +211,25 @@ export default function Messages() {
       });
 
       if (response.ok) {
+        const newMessageData = await response.json();
+        
+        // Add message to local state immediately
+        setMessages(prev => [...prev, newMessageData]);
+        
+        // Send via WebSocket for real-time delivery to other user
+        if (isConnected) {
+          sendWebSocketMessage({
+            type: 'send_message',
+            data: {
+              conversationId: selectedConversation.id,
+              content: messageContent,
+              messageId: newMessageData.id
+            }
+          });
+        }
+        
         // Refresh conversations to update last message
         fetchConversations();
-        // If WebSocket failed, refetch messages
-        if (!isConnected) {
-          fetchMessages(selectedConversation.id);
-        }
       } else {
         // Restore message if sending failed
         setNewMessage(messageContent);
@@ -417,7 +424,7 @@ export default function Messages() {
                 </div>
 
                 {/* Messages */}
-                <ScrollArea className="flex-1 p-4 bg-gray-50/50 dark:bg-gray-900/20">
+                <ScrollArea className="flex-1 p-4">
                   <div className="space-y-1">
                     {messages
                       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
