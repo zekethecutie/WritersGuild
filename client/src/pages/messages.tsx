@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useToast } from "@/hooks/use-toast";
@@ -65,6 +65,7 @@ export default function Messages() {
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Check for conversation ID in URL parameters
   useEffect(() => {
@@ -92,6 +93,15 @@ export default function Messages() {
       fetchMessages(selectedConversation.id);
     }
   }, [selectedConversation]);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   // Handle WebSocket messages for real-time updates
   useEffect(() => {
@@ -230,6 +240,9 @@ export default function Messages() {
         
         // Refresh conversations to update last message
         fetchConversations();
+        
+        // Auto-scroll to bottom after sending message
+        setTimeout(scrollToBottom, 100);
       } else {
         // Restore message if sending failed
         setNewMessage(messageContent);
@@ -455,6 +468,8 @@ export default function Messages() {
                           />
                         );
                       })}
+                    {/* Invisible element to scroll to */}
+                    <div ref={messagesEndRef} />
                   </div>
                 </ScrollArea>
 
