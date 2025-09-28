@@ -40,6 +40,12 @@ export default function MessageButton({
     onSuccess: (conversation) => {
       // Navigate to messages page with the conversation
       setLocation(`/messages?conversation=${conversation.id}`);
+      
+      // Show success message
+      toast({
+        title: "Conversation created",
+        description: "You can now start messaging!",
+      });
     },
     onError: (error: Error) => {
       console.error("Message error:", error);

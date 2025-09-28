@@ -1173,69 +1173,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get conversations for current user
   app.get("/api/conversations", requireAuth, async (req, res) => {
     try {
-      const userConversations = await db
-        .select({
-          id: conversations.id,
-          name: conversations.name,
-          isGroup: conversations.isGroup,
-          createdAt: conversations.createdAt,
-          updatedAt: conversations.updatedAt,
-          lastMessageId: conversations.lastMessageId,
-          participantOneId: conversations.participantOneId,
-          participantTwoId: conversations.participantTwoId,
-        })
-        .from(conversations)
-        .where(
-          or(
-            eq(conversations.participantOneId, req.session.userId!),
-            eq(conversations.participantTwoId, req.session.userId!)
-          )
-        )
-        .orderBy(desc(conversations.updatedAt));
-
-      // Get participants for each conversation
-      const conversationsWithParticipants = await Promise.all(
-        conversations.map(async (conv) => {
-          // Get both participants
-          const participantIds = [conv.participantOneId, conv.participantTwoId].filter(Boolean);
-          const participants = await db
-            .select({
-              id: users.id,
-              username: users.username,
-              displayName: users.displayName,
-              profileImageUrl: users.profileImageUrl,
-            })
-            .from(users)
-            .where(inArray(users.id, participantIds));
-
-          // Get last message if exists
-          let lastMessage = null;
-          if (conv.lastMessageId) {
-            const lastMessages = await db
-              .select({
-                id: messages.id,
-                content: messages.content,
-                senderId: messages.senderId,
-                createdAt: messages.createdAt,
-              })
-              .from(messages)
-              .where(eq(messages.id, conv.lastMessageId))
-              .limit(1);
-
-            if (lastMessages.length > 0) {
-              lastMessage = lastMessages[0];
-            }
-          }
-
-          return {
-            ...conv,
-            participants,
-            lastMessage,
-          };
-        })
-      );
-
-      res.json(conversationsWithParticipants);
+      const userId = req.session.userId!;
+      const userConversations = await storage.getUserConversations(userId);
+      res.json(userConversations);
     } catch (error) {
       console.error("Failed to fetch conversations:", error);
       res.status(500).json({ message: "Failed to fetch conversations" });

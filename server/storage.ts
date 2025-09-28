@@ -1267,47 +1267,47 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserConversations(userId: string): Promise<(Conversation & { otherParticipant: User; lastMessage?: Message })[]> {
-    const result = await db
-      .select({
-        id: conversations.id,
-        participantOneId: conversations.participantOneId,
-        participantTwoId: conversations.participantTwoId,
-        lastMessageId: conversations.lastMessageId,
-        lastMessageAt: conversations.lastMessageAt,
-        isArchived: conversations.isArchived,
-        createdAt: conversations.createdAt,
-        updatedAt: conversations.updatedAt,
-        otherParticipant: users,
-        lastMessage: messages,
-      })
+    const userConversations = await db
+      .select()
       .from(conversations)
-      .leftJoin(users,
-        or(
-          and(eq(conversations.participantOneId, userId), eq(users.id, conversations.participantTwoId)),
-          and(eq(conversations.participantTwoId, userId), eq(users.id, conversations.participantOneId))
-        )
-      )
-      .leftJoin(messages, eq(messages.id, conversations.lastMessageId))
       .where(
         or(
           eq(conversations.participantOneId, userId),
           eq(conversations.participantTwoId, userId)
         )
       )
-      .orderBy(desc(conversations.lastMessageAt));
+      .orderBy(desc(conversations.updatedAt));
 
-    return result.map(row => ({
-      id: row.id,
-      participantOneId: row.participantOneId,
-      participantTwoId: row.participantTwoId,
-      lastMessageId: row.lastMessageId,
-      lastMessageAt: row.lastMessageAt,
-      isArchived: row.isArchived,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
-      otherParticipant: row.otherParticipant!,
-      lastMessage: row.lastMessage || undefined,
-    }));
+    const conversationsWithData = await Promise.all(
+      userConversations.map(async (conv) => {
+        // Get the other participant
+        const otherParticipantId = conv.participantOneId === userId
+          ? conv.participantTwoId
+          : conv.participantOneId;
+
+        const otherParticipant = await this.getUser(otherParticipantId);
+        if (!otherParticipant) throw new Error("Participant not found");
+
+        // Get last message if exists
+        let lastMessage: Message | undefined;
+        if (conv.lastMessageId) {
+          const [message] = await db
+            .select()
+            .from(messages)
+            .where(eq(messages.id, conv.lastMessageId))
+            .limit(1);
+          lastMessage = message;
+        }
+
+        return {
+          ...conv,
+          otherParticipant,
+          lastMessage,
+        };
+      })
+    );
+
+    return conversationsWithData;
   }
 
   async sendMessage(conversationId: string, senderId: string, content: string, messageType = "text", attachmentUrls: string[] = []): Promise<Message> {
@@ -1395,30 +1395,19 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getMessageById(messageId: string): Promise<Message | null> {
-    try {
-      const result = await db
-        .select()
-        .from(messages)
-        .where(eq(messages.id, messageId))
-        .limit(1);
-
-      return result[0] || null;
-    } catch (error) {
-      console.error("Error getting message by ID:", error);
-      throw error;
-    }
+  async getMessageById(messageId: string): Promise<Message | undefined> {
+    const [message] = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.id, messageId))
+      .limit(1);
+    return message;
   }
 
   async deleteMessage(messageId: string): Promise<void> {
-    try {
-      await db
-        .delete(messages)
-        .where(eq(messages.id, messageId));
-    } catch (error) {
-      console.error("Error deleting message:", error);
-      throw error;
-    }
+    await db
+      .delete(messages)
+      .where(eq(messages.id, messageId));
   }
 
   async getConversationById(conversationId: string): Promise<Conversation | undefined> {

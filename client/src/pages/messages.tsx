@@ -38,17 +38,20 @@ interface Message {
 
 interface Conversation {
   id: string;
-  name?: string;
-  isGroup: boolean;
+  participantOneId: string;
+  participantTwoId: string;
+  lastMessageId?: string;
+  lastMessageAt: string;
+  isArchived: boolean;
   createdAt: string;
   updatedAt: string;
   lastMessage?: Message;
-  participants: Array<{
+  otherParticipant: {
     id: string;
     username: string;
     displayName: string;
     profileImageUrl?: string;
-  }>;
+  };
   unreadCount?: number;
 }
 
@@ -62,6 +65,21 @@ export default function Messages() {
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Check for conversation ID in URL parameters
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const conversationId = urlParams.get('conversation');
+    
+    if (conversationId && conversations.length > 0) {
+      const targetConversation = conversations.find(c => c.id === conversationId);
+      if (targetConversation) {
+        setSelectedConversation(targetConversation);
+        // Clean up URL parameter
+        window.history.replaceState({}, '', '/messages');
+      }
+    }
+  }, [conversations]);
 
   useEffect(() => {
     if (user) {
@@ -270,22 +288,15 @@ export default function Messages() {
   };
 
   const getConversationName = (conversation: Conversation) => {
-    if (conversation.name) return conversation.name;
-    if (conversation.isGroup) return "Group Chat";
-
-    const otherParticipant = conversation.participants?.find(p => p.id !== user?.id);
-    return otherParticipant?.displayName || otherParticipant?.username || "Unknown User";
+    return conversation.otherParticipant?.displayName || conversation.otherParticipant?.username || "Unknown User";
   };
 
   const getConversationImage = (conversation: Conversation) => {
-    if (conversation.isGroup) return null;
-
-    const otherParticipant = conversation.participants?.find(p => p.id !== user?.id);
-    return getProfileImageUrl(otherParticipant?.profileImageUrl);
+    return getProfileImageUrl(conversation.otherParticipant?.profileImageUrl);
   };
 
   const getOtherParticipant = (conversation: Conversation) => {
-    return conversation.participants?.find(p => p.id !== user?.id);
+    return conversation.otherParticipant;
   };
 
   const filteredConversations = conversations.filter(conversation =>
@@ -347,7 +358,7 @@ export default function Messages() {
                         <Avatar className="w-10 h-10">
                           <AvatarImage src={getConversationImage(conversation) || undefined} />
                           <AvatarFallback>
-                            {conversation.isGroup ? <Users className="w-4 h-4" /> : getConversationName(conversation)[0]}
+                            {getConversationName(conversation)[0] || 'U'}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
@@ -390,19 +401,16 @@ export default function Messages() {
                     <Avatar className="w-10 h-10">
                       <AvatarImage src={getConversationImage(selectedConversation) || undefined} />
                       <AvatarFallback>
-                        {selectedConversation.isGroup ? <Users className="w-4 h-4" /> : getConversationName(selectedConversation)[0]}
+                        {getConversationName(selectedConversation)[0] || 'U'}
                       </AvatarFallback>
                     </Avatar>
                     <div>
                       <h2 className="font-semibold">{getConversationName(selectedConversation)}</h2>
                       <p className="text-sm text-muted-foreground">
-                        {selectedConversation.isGroup
-                          ? `${selectedConversation.participants.length} members`
-                          : (() => {
-                              const otherUser = getOtherParticipant(selectedConversation);
-                              return otherUser ? `@${otherUser.username}` : "Direct message";
-                            })()
-                        }
+                        {(() => {
+                          const otherUser = getOtherParticipant(selectedConversation);
+                          return otherUser ? `@${otherUser.username}` : "Direct message";
+                        })()}
                       </p>
                     </div>
                   </div>
