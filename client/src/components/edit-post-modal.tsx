@@ -58,19 +58,60 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
   const [isRichEditor, setIsRichEditor] = useState(false);
   const [showSpotify, setShowSpotify] = useState(false);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
-  const [collaborators, setCollaborators] = useState<any[]>([]);
+  const [collaborators, setCollaborators] = useState<any[]>(post?.collaborators || []);
   const [showCollaboratorSearch, setShowCollaboratorSearch] = useState(false);
   const [collaboratorSearchQuery, setCollaboratorSearchQuery] = useState("");
+  const [isRichTextMode, setIsRichTextMode] = useState(false);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [imagePrompt, setImagePrompt] = useState("");
+  const [showImageGeneration, setShowImageGeneration] = useState(false);
 
   // Search for users to collaborate with
-  const searchUsersQuery = useQuery({
+  const collaboratorSearchQuery = useQuery({
     queryKey: ["/api/users/search", collaboratorSearchQuery],
     queryFn: async () => {
       if (!collaboratorSearchQuery.trim()) return [];
       return apiRequest("GET", `/api/users/search?q=${encodeURIComponent(collaboratorSearchQuery)}`);
     },
-    enabled: !!collaboratorSearchQuery.trim(),
+    enabled: !!collaboratorSearchQuery.trim() && showCollaboratorSearch,
   });
+
+  const generateImageMutation = useMutation({
+    mutationFn: async (prompt: string) => {
+      return apiRequest("POST", "/api/generate-image", { prompt });
+    },
+    onSuccess: (data) => {
+      if (data.imageUrls && data.imageUrls.length > 0) {
+        setSelectedImages(prev => [...prev, ...data.imageUrls]);
+        toast({
+          title: "Image generated!",
+          description: "AI-generated image has been added to your post.",
+        });
+      }
+      setImagePrompt("");
+      setShowImageGeneration(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Generation failed",
+        description: "Failed to generate image. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleGenerateImage = () => {
+    if (!imagePrompt.trim()) {
+      toast({
+        title: "Prompt required",
+        description: "Please enter a description for the image you want to generate.",
+        variant: "destructive",
+      });
+      return;
+    }
+    generateImageMutation.mutate(imagePrompt);
+  };
+
 
   const handleAddCollaborator = (user: any) => {
     if (!collaborators.find(c => c.id === user.id)) {
@@ -108,7 +149,7 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
   useEffect(() => {
     const newMentions = new Set<string>();
     const newHashtags = new Set<string>();
-    
+
     // Extract mentions (@username)
     const mentionMatches = content.match(/@(\w+)/g);
     if (mentionMatches) {
@@ -116,7 +157,7 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
         newMentions.add(match.substring(1)); // Remove @
       });
     }
-    
+
     // Extract hashtags (#hashtag)
     const hashtagMatches = content.match(/#(\w+)/g);
     if (hashtagMatches) {
@@ -124,7 +165,7 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
         newHashtags.add(match.substring(1)); // Remove #
       });
     }
-    
+
     setMentions(newMentions);
     setHashtags(newHashtags);
   }, [content]);
@@ -381,25 +422,23 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
                 )}
 
                 {/* Editor */}
-                {isRichEditor ? (
-                  <div className="mb-4">
-                    <RichTextEditor
-                      content={content}
-                      onChange={setContent}
-                      placeholder="Share your thoughts, poetry, or stories..."
-                      className="min-h-[120px]"
-                      postType={postType}
-                    />
-                  </div>
-                ) : (
-                  <Textarea
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    placeholder="Share your thoughts, poetry, or stories..."
-                    className="resize-none border-none outline-none bg-transparent text-lg placeholder-muted-foreground min-h-[120px] p-0"
-                    data-testid="textarea-post-content"
-                  />
-                )}
+                {isRichTextMode ? (
+                <RichTextEditor
+                  content={content}
+                  onChange={setContent}
+                  placeholder="Share your thoughts, poetry, or stories..."
+                  className="min-h-[120px]"
+                  postType={postType}
+                />
+              ) : (
+                <Textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="Share your thoughts, poetry, or stories..."
+                  className="resize-none border-none outline-none bg-transparent text-lg placeholder-muted-foreground min-h-[120px] p-0"
+                  data-testid="textarea-post-content"
+                />
+              )}
 
                 {/* Genre Selection */}
                 {(postType === "poetry" || postType === "story") && (
@@ -501,41 +540,104 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
 
                 {/* Collaborator Search */}
                 {showCollaboratorSearch && (
-                  <div className="mb-4 relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                    <Input
-                      value={collaboratorSearchQuery}
-                      onChange={(e) => setCollaboratorSearchQuery(e.target.value)}
-                      placeholder="Search users to add as collaborators..."
-                      className="pl-10"
-                      data-testid="input-collaborator-search"
-                    />
-                    {searchUsersQuery.data && Array.isArray(searchUsersQuery.data) && searchUsersQuery.data.length > 0 && (
-                      <div className="absolute z-10 w-full bg-background border border-border rounded-md mt-1 max-h-48 overflow-y-auto">
-                        {(searchUsersQuery.data as any[]).map((user: any) => (
-                          <div
-                            key={user.id}
-                            className="p-2 hover:bg-secondary cursor-pointer"
-                            onClick={() => handleAddCollaborator(user)}
-                            data-testid={`option-collaborator-${user.username}`}
-                          >
-                            <div className="flex items-center space-x-2">
-                              <img
-                                src={user.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`}
-                                alt={user.displayName}
-                                className="w-8 h-8 rounded-full"
-                              />
-                              <div>
-                                <p className="font-medium text-sm truncate">{user.displayName}</p>
-                                <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
+                  <Card>
+                    <CardContent className="pt-4">
+                      <div className="space-y-3">
+                        <Input
+                          placeholder="Search for collaborators..."
+                          value={collaboratorSearchQuery}
+                          onChange={(e) => setCollaboratorSearchQuery(e.target.value)}
+                        />
+
+                        {collaboratorSearchQuery.data && collaboratorSearchQuery.data.length > 0 && (
+                          <div className="space-y-2 max-h-40 overflow-y-auto">
+                            {(collaboratorSearchQuery.data as any[]).map((user: any) => (
+                              <div
+                                key={user.id}
+                                className="flex items-center justify-between p-2 border rounded-lg cursor-pointer hover:bg-accent"
+                                onClick={() => handleAddCollaborator(user)}
+                                data-testid={`option-collaborator-${user.username}`}
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <img
+                                    src={user.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`}
+                                    alt={user.displayName}
+                                    className="w-8 h-8 rounded-full"
+                                  />
+                                  <div>
+                                    <p className="font-medium text-sm truncate">{user.displayName}</p>
+                                    <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
+                                  </div>
+                                </div>
                               </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {collaborators.length > 0 && (
+                          <div>
+                            <p className="text-sm text-muted-foreground mb-2">Selected collaborators:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {collaborators.map((collaborator) => (
+                                <Badge key={collaborator.id} variant="secondary" className="text-xs">
+                                  {collaborator.displayName}
+                                  <X
+                                    className="w-3 h-3 ml-1 cursor-pointer"
+                                    onClick={() => handleRemoveCollaborator(collaborator.id)}
+                                  />
+                                </Badge>
+                              ))}
                             </div>
                           </div>
-                        ))}
+                        )}
                       </div>
-                    )}
-                  </div>
+                    </CardContent>
+                  </Card>
                 )}
+
+                {showImageGeneration && (
+                  <Card>
+                    <CardContent className="pt-4">
+                      <div className="space-y-3">
+                        <label htmlFor="image-prompt" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Describe the image you want to generate:</label>
+                        <Textarea
+                          id="image-prompt"
+                          placeholder="A mystical forest with glowing trees under a starry sky..."
+                          value={imagePrompt}
+                          onChange={(e) => setImagePrompt(e.target.value)}
+                          rows={3}
+                        />
+                        <div className="flex justify-end space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowImageGeneration(false)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={handleGenerateImage}
+                            disabled={generateImageMutation.isPending || !imagePrompt.trim()}
+                          >
+                            {generateImageMutation.isPending ? (
+                              <>
+                                <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-2" />
+                                Generating...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="w-4 h-4 mr-2" />
+                                Generate
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
 
                 <Separator className="my-4" />
 
@@ -545,9 +647,9 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setIsRichEditor(!isRichEditor)}
+                      onClick={() => setIsRichTextMode(!isRichTextMode)}
                       className={`p-2 rounded-lg transition-colors ${
-                        isRichEditor ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-primary hover:bg-primary/10"
+                        isRichTextMode ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-primary hover:bg-primary/10"
                       }`}
                       title="Rich Text Formatting"
                       data-testid="button-rich-text"
@@ -624,11 +726,19 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="p-2 rounded-lg text-muted-foreground hover:text-accent hover:bg-accent/10 transition-colors"
-                      title="Generate Image"
+                      onClick={() => setShowImageGeneration(!showImageGeneration)}
+                      disabled={generateImageMutation.isPending}
+                      className={`p-2 rounded-lg transition-colors ${
+                        showImageGeneration || generateImageMutation.isPending ? "text-yellow-500 bg-yellow-500/10" : "text-muted-foreground hover:text-yellow-500 hover:bg-yellow-500/10"
+                      }`}
+                      title={generateImageMutation.isPending ? "Generating..." : "Generate Image"}
                       data-testid="button-generate-image"
                     >
-                      <Sparkles className="w-5 h-5" />
+                      {generateImageMutation.isPending ? (
+                        <div className="w-5 h-5 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Sparkles className="w-5 h-5" />
+                      )}
                     </Button>
                   </div>
 
