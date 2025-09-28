@@ -91,12 +91,12 @@ function PostCard({
     bio: null,
     location: null,
     website: null,
-    profileImageUrl: post.author?.profileImageUrl || null,
+    profileImageUrl: null,
     coverImageUrl: null,
-    isVerified: post.author?.isVerified || false,
-    isAdmin: post.author?.isAdmin || false,
-    isSuperAdmin: post.author?.isSuperAdmin || false,
-    userRole: post.author?.userRole || 'reader',
+    isVerified: false,
+    isAdmin: false,
+    isSuperAdmin: false,
+    userRole: 'reader',
     writingStreak: 0,
     wordCountGoal: 500,
     weeklyPostsGoal: 5,
@@ -111,6 +111,9 @@ function PostCard({
   const isOwnPost = user?.id === post.authorId;
   const canModerate = (user as any)?.isAdmin || (user as any)?.isSuperAdmin;
 
+  // Add state to prevent rapid clicking
+  const [isLiking, setIsLiking] = useState(false);
+
   const handleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -124,6 +127,10 @@ function PostCard({
       return;
     }
 
+    // Prevent rapid clicking
+    if (isLiking) return;
+    setIsLiking(true);
+
     // Instant optimistic update
     const wasLiked = optimisticLiked;
     setOptimisticLiked(!wasLiked);
@@ -131,7 +138,7 @@ function PostCard({
 
     try {
       const method = wasLiked ? 'DELETE' : 'POST';
-      const endpoint = wasLiked ? `/api/posts/${post.id}/like` : `/api/posts/${post.id}/like`;
+      const endpoint = `/api/posts/${post.id}/like`;
       
       const response = await fetch(endpoint, {
         method,
@@ -147,12 +154,18 @@ function PostCard({
 
       onLike?.(post.id);
     } catch (error) {
-      console.error('Like error:', error);
+      // Revert on error
+      setOptimisticLiked(wasLiked);
+      setOptimisticLikesCount(prev => wasLiked ? prev + 1 : prev - 1);
+      
       toast({
         title: "Error",
         description: "Failed to like post",
         variant: "destructive",
       });
+    } finally {
+      // Allow clicking again after a small delay
+      setTimeout(() => setIsLiking(false), 500);
     }
   };
 
@@ -551,9 +564,9 @@ function PostCard({
             }}
           >
             {post.content.includes('<') ? (
-              <div dangerouslySetInnerHTML={{ __html: displayContent }} />
+              <div dangerouslySetInnerHTML={{ __html: displayContent as string }} />
             ) : (
-              <span>{displayContent}</span>
+              <span>{displayContent as string}</span>
             )}
           </div>
           {shouldTruncate && (
