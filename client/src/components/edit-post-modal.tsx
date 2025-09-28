@@ -335,6 +335,7 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
       title: title.trim() || undefined,
       content: content.trim(),
       postType,
+      genre: genre || undefined,
       privacy,
       imageUrls: uploadedImages,
       mentions: Array.from(mentions),

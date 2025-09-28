@@ -1773,7 +1773,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.session.userId;
       const { id: postId } = req.params;
-      const { title, content } = req.body;
+      const { title, content, postType, genre, privacy, imageUrls, spotifyTrackData, collaborators } = req.body;
 
       if (!content || !content.trim()) {
         return res.status(400).json({ message: "Content is required" });
@@ -1790,10 +1790,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You can only edit your own posts" });
       }
 
-      const updatedPost = await storage.updatePost(postId, {
+      const updateData: any = {
         title: title?.trim() || null,
         content: content.trim(),
-      });
+      };
+
+      if (postType) updateData.postType = postType;
+      if (genre) updateData.genre = genre;
+      if (privacy !== undefined) updateData.isPrivate = privacy === 'private';
+      if (imageUrls) updateData.imageUrls = imageUrls;
+      if (spotifyTrackData) updateData.spotifyTrackData = spotifyTrackData;
+
+      const updatedPost = await storage.updatePost(postId, updateData);
+
+      // Handle collaborators separately if provided
+      if (collaborators !== undefined) {
+        // Remove existing collaborators
+        await db.delete(postCollaborators).where(eq(postCollaborators.postId, postId));
+
+        // Add new collaborators
+        if (collaborators && collaborators.length > 0) {
+          await db.insert(postCollaborators).values(
+            collaborators.map((collaboratorId: string) => ({
+              postId,
+              collaboratorId,
+              invitedById: userId,
+              status: 'accepted'
+            }))
+          );
+        }
+      }
 
       res.json(updatedPost);
     } catch (error) {

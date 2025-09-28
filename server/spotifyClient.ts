@@ -1,58 +1,41 @@
 import { SpotifyApi } from "@spotify/web-api-ts-sdk";
 
-let connectionSettings: any;
+let spotifyClient: SpotifyApi | null = null;
+let connectionSettings: any = null;
 
-async function getAccessToken() {
-  // Try environment variables first
-  const clientId = process.env.SPOTIFY_CLIENT_ID;
-  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
-  
-  if (clientId && clientSecret) {
-    // Use client credentials flow for app-only access
-    const response = await fetch('https://accounts.spotify.com/api/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`
-      },
-      body: 'grant_type=client_credentials'
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      return {
-        accessToken: data.access_token,
-        clientId,
-        refreshToken: null,
-        expiresIn: data.expires_in
-      };
-    }
-  }
-
-  // Fallback to Replit connector if environment variables not set
-  if (connectionSettings && connectionSettings.settings?.expires_at && new Date(connectionSettings.settings.expires_at).getTime() > Date.now()) {
-    return {
-      accessToken: connectionSettings.settings.access_token,
-      clientId: connectionSettings.settings.oauth?.credentials?.client_id,
-      refreshToken: connectionSettings.settings.oauth?.credentials?.refresh_token,
-      expiresIn: connectionSettings.settings.oauth?.credentials?.expires_in
-    };
-  }
-  
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY 
-    ? 'repl ' + process.env.REPL_IDENTITY 
-    : process.env.WEB_REPL_RENEWAL 
-    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
-    : null;
-
-  if (!hostname || !xReplitToken) {
-    throw new Error('Spotify credentials not found. Please set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET environment variables, or connect Spotify via Replit connector.');
+export async function getSpotifyClient(): Promise<SpotifyApi> {
+  if (spotifyClient && connectionSettings) {
+    return spotifyClient;
   }
 
   try {
+    // First try to get from Replit secrets
+    const clientId = process.env.SPOTIFY_CLIENT_ID;
+    const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+
+    if (clientId && clientSecret) {
+      console.log('Using Spotify credentials from environment variables');
+
+      spotifyClient = SpotifyApi.withClientCredentials(
+        clientId,
+        clientSecret
+      );
+
+      return spotifyClient;
+    }
+
+    // Fallback to Replit connector
+    const hostname = process.env.REPL_SLUG ? `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` : 'localhost';
+    const xReplitToken = process.env.REPLIT_DB_URL?.split('//')[1]?.split('@')[0] || '';
+
+    if (!xReplitToken) {
+      throw new Error('No Spotify credentials found. Please add SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET to your secrets.');
+    }
+
+    console.log('Attempting to fetch Spotify connection from Replit connector...');
+
     const response = await fetch(
-      'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=spotify',
+      `https://${hostname}/api/v2/connection?include_secrets=true&connector_names=spotify`,
       {
         headers: {
           'Accept': 'application/json',
@@ -60,49 +43,42 @@ async function getAccessToken() {
         }
       }
     );
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch Spotify connection: ${response.status}`);
     }
-    
+
     const data = await response.json();
     connectionSettings = data.items?.[0];
-    
+
     if (!connectionSettings || !connectionSettings.settings) {
-      throw new Error('Spotify not connected via Replit connector. Please connect Spotify in the Secrets/Connectors tab.');
+      throw new Error('Spotify not connected via Replit connector. Please connect Spotify in the Secrets/Connectors tab or add SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET to your secrets.');
     }
 
-    const refreshToken = connectionSettings.settings.oauth?.credentials?.refresh_token;
-    const accessToken = connectionSettings.settings.access_token || connectionSettings.settings.oauth?.credentials?.access_token;
-    const connectorClientId = connectionSettings.settings.oauth?.credentials?.client_id;
-    const expiresIn = connectionSettings.settings.oauth?.credentials?.expires_in;
-    
-    if (!accessToken || !connectorClientId) {
-      throw new Error('Invalid Spotify connection settings. Please reconnect Spotify in the Secrets/Connectors tab.');
+    const settings = connectionSettings.settings;
+
+    if (!settings.client_id || !settings.client_secret) {
+      throw new Error('Invalid Spotify connection settings');
     }
-    
-    return {accessToken, clientId: connectorClientId, refreshToken, expiresIn};
+
+    console.log('Successfully retrieved Spotify connection from Replit connector');
+
+    spotifyClient = SpotifyApi.withClientCredentials(
+      settings.client_id,
+      settings.client_secret
+    );
+
+    return spotifyClient;
+
   } catch (error) {
-    console.error('Error fetching Spotify connection:', error);
-    throw new Error('Failed to connect to Spotify. Please check your Spotify connection in the Secrets/Connectors tab or set environment variables.');
+    console.error('Spotify client initialization error:', error);
+    throw new Error(`Failed to initialize Spotify client: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
-// WARNING: Never cache this client.
-// Access tokens expire, so a new client must be created each time.
-// Always call this function again to get a fresh client.
-export async function getSpotifyClient() {
-  const {accessToken, clientId, refreshToken, expiresIn} = await getAccessToken();
-
-  const spotify = SpotifyApi.withAccessToken(clientId, {
-    access_token: accessToken,
-    token_type: "Bearer",
-    expires_in: expiresIn || 3600,
-    refresh_token: refreshToken,
-  });
-
-  return spotify;
+// Helper function to refresh client if needed
+export async function refreshSpotifyClient(): Promise<void> {
+  spotifyClient = null;
+  connectionSettings = null;
+  await getSpotifyClient();
 }
-
-// Convenience function for consistent usage throughout the app
-export { getSpotifyClient as getUncachableSpotifyClient };
