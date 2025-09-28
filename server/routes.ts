@@ -340,19 +340,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/posts', async (req: any, res) => {
+  // Get posts with engagement data
+  app.get("/api/posts", async (req, res) => {
     try {
-      const { limit = 20, offset = 0 } = req.query;
-      const userId = req.session?.userId; // Get current user ID from session
-      const posts = await storage.getPosts(
-        parseInt(limit as string),
-        parseInt(offset as string),
-        userId
-      );
-      res.json(posts);
+      const userId = req.session?.user?.id;
+
+      const postsQuery = db
+        .select({
+          id: posts.id,
+          authorId: posts.authorId,
+          title: posts.title,
+          content: posts.content,
+          postType: posts.postType,
+          genre: posts.genre,
+          spotifyTrackData: posts.spotifyTrackData,
+          imageUrls: posts.imageUrls,
+          isPrivate: posts.isPrivate,
+          likesCount: posts.likesCount,
+          commentsCount: posts.commentsCount,
+          repostsCount: posts.repostsCount,
+          viewsCount: posts.viewsCount,
+          createdAt: posts.createdAt,
+          updatedAt: posts.updatedAt,
+          // Include author data directly in the query
+          authorDisplayName: users.displayName,
+          authorUsername: users.username,
+          authorProfileImageUrl: users.profileImageUrl,
+          authorIsVerified: users.isVerified,
+          authorIsAdmin: users.isAdmin,
+          authorIsSuperAdmin: users.isSuperAdmin,
+          authorUserRole: users.userRole,
+        })
+        .from(posts)
+        .leftJoin(users, eq(posts.authorId, users.id))
+        .where(eq(posts.isPrivate, false))
+        .orderBy(desc(posts.createdAt))
+        .limit(50);
+
+      const postsData = await postsQuery;
+
+      // Get engagement data for current user if logged in
+      let userLikes: any[] = [];
+      let userBookmarks: any[] = [];
+      let userReposts: any[] = [];
+
+      if (userId) {
+        const postIds = postsData.map(post => post.id);
+
+        [userLikes, userBookmarks, userReposts] = await Promise.all([
+          db.select({ postId: likes.postId }).from(likes)
+            .where(and(eq(likes.userId, userId), inArray(likes.postId, postIds))),
+          db.select({ postId: bookmarks.postId }).from(bookmarks)
+            .where(and(eq(bookmarks.userId, userId), inArray(bookmarks.postId, postIds))),
+          db.select({ postId: reposts.postId }).from(reposts)
+            .where(and(eq(reposts.userId, userId), inArray(reposts.postId, postIds)))
+        ]);
+      }
+
+      const likedPostIds = new Set(userLikes.map(like => like.postId));
+      const bookmarkedPostIds = new Set(userBookmarks.map(bookmark => bookmark.postId));
+      const repostedPostIds = new Set(userReposts.map(repost => repost.postId));
+
+      const postsWithEngagement = postsData.map(post => ({
+        id: post.id,
+        authorId: post.authorId,
+        title: post.title,
+        content: post.content,
+        postType: post.postType,
+        genre: post.genre,
+        spotifyTrackData: post.spotifyTrackData,
+        imageUrls: post.imageUrls,
+        isPrivate: post.isPrivate,
+        likesCount: post.likesCount,
+        commentsCount: post.commentsCount,
+        repostsCount: post.repostsCount,
+        viewsCount: post.viewsCount,
+        createdAt: post.createdAt,
+        updatedAt: post.updatedAt,
+        author: {
+          id: post.authorId,
+          displayName: post.authorDisplayName,
+          username: post.authorUsername,
+          profileImageUrl: post.authorProfileImageUrl,
+          isVerified: post.authorIsVerified,
+          isAdmin: post.authorIsAdmin,
+          isSuperAdmin: post.authorIsSuperAdmin,
+          userRole: post.authorUserRole,
+        },
+        isLiked: likedPostIds.has(post.id),
+        isBookmarked: bookmarkedPostIds.has(post.id),
+        isReposted: repostedPostIds.has(post.id),
+      }));
+
+      res.json(postsWithEngagement);
     } catch (error) {
       console.error("Error fetching posts:", error);
-      res.status(500).json({ message: "Failed to fetch posts" });
+      res.status(500).json({ error: "Failed to fetch posts" });
     }
   });
 
@@ -369,19 +452,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/posts/:id', async (req, res) => {
+  // Get single post with comments
+  app.get("/api/posts/:id", async (req, res) => {
     try {
-      const { id } = req.params;
-      const post = await storage.getPost(id);
+      const postId = req.params.id;
+      const userId = req.session?.user?.id;
 
-      if (!post) {
-        return res.status(404).json({ message: "Post not found" });
+      // Get the post with author data in one query
+      const [postData] = await db
+        .select({
+          id: posts.id,
+          authorId: posts.authorId,
+          title: posts.title,
+          content: posts.content,
+          postType: posts.postType,
+          genre: posts.genre,
+          spotifyTrackData: posts.spotifyTrackData,
+          imageUrls: posts.imageUrls,
+          isPrivate: posts.isPrivate,
+          likesCount: posts.likesCount,
+          commentsCount: posts.commentsCount,
+          repostsCount: posts.repostsCount,
+          viewsCount: posts.viewsCount,
+          createdAt: posts.createdAt,
+          updatedAt: posts.updatedAt,
+          // Author data
+          authorDisplayName: users.displayName,
+          authorUsername: users.username,
+          authorProfileImageUrl: users.profileImageUrl,
+          authorIsVerified: users.isVerified,
+          authorIsAdmin: users.isAdmin,
+          authorIsSuperAdmin: users.isSuperAdmin,
+          authorUserRole: users.userRole,
+        })
+        .from(posts)
+        .leftJoin(users, eq(posts.authorId, users.id))
+        .where(eq(posts.id, postId))
+        .limit(1);
+
+      if (!postData) {
+        return res.status(404).json({ error: "Post not found" });
       }
 
-      res.json(post);
+      // Get engagement data for current user if logged in
+      let isLiked = false;
+      let isBookmarked = false;
+      let isReposted = false;
+
+      if (userId) {
+        const [userLike, userBookmark, userRepost] = await Promise.all([
+          db.select().from(likes).where(and(eq(likes.userId, userId), eq(likes.postId, postId))).limit(1),
+          db.select().from(bookmarks).where(and(eq(bookmarks.userId, userId), eq(bookmarks.postId, postId))).limit(1),
+          db.select().from(reposts).where(and(eq(reposts.userId, userId), eq(reposts.postId, postId))).limit(1)
+        ]);
+
+        isLiked = userLike.length > 0;
+        isBookmarked = userBookmark.length > 0;
+        isReposted = userRepost.length > 0;
+      }
+
+      const postWithEngagement = {
+        id: postData.id,
+        authorId: postData.authorId,
+        title: postData.title,
+        content: postData.content,
+        postType: postData.postType,
+        genre: postData.genre,
+        spotifyTrackData: postData.spotifyTrackData,
+        imageUrls: postData.imageUrls,
+        isPrivate: postData.isPrivate,
+        likesCount: postData.likesCount,
+        commentsCount: postData.commentsCount,
+        repostsCount: postData.repostsCount,
+        viewsCount: postData.viewsCount,
+        createdAt: postData.createdAt,
+        updatedAt: postData.updatedAt,
+        author: {
+          id: postData.authorId,
+          displayName: postData.authorDisplayName,
+          username: postData.authorUsername,
+          profileImageUrl: postData.authorProfileImageUrl,
+          isVerified: postData.authorIsVerified,
+          isAdmin: postData.authorIsAdmin,
+          isSuperAdmin: postData.authorIsSuperAdmin,
+          userRole: postData.authorUserRole,
+        },
+        isLiked,
+        isBookmarked,
+        isReposted,
+      };
+
+      res.json(postWithEngagement);
     } catch (error) {
       console.error("Error fetching post:", error);
-      res.status(500).json({ message: "Failed to fetch post" });
+      res.status(500).json({ error: "Failed to fetch post" });
     }
   });
 
