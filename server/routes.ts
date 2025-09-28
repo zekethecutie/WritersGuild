@@ -1406,38 +1406,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Conversation not found" });
       }
 
+      // Get messages with proper sender data
       const conversationMessages = await db
         .select({
           id: messages.id,
           content: messages.content,
           senderId: messages.senderId,
           conversationId: messages.conversationId,
+          messageType: messages.messageType,
+          attachmentUrls: messages.attachmentUrls,
+          isRead: messages.isRead,
+          readAt: messages.readAt,
           createdAt: messages.createdAt,
-          senderUsername: users.username,
-          senderDisplayName: users.displayName,
-          senderProfileImageUrl: users.profileImageUrl,
+          updatedAt: messages.updatedAt,
+          sender: {
+            id: users.id,
+            username: users.username,
+            displayName: users.displayName,
+            profileImageUrl: users.profileImageUrl,
+          }
         })
         .from(messages)
         .leftJoin(users, eq(messages.senderId, users.id))
         .where(eq(messages.conversationId, conversationId))
         .orderBy(asc(messages.createdAt));
 
-      // Format messages to include sender data
-      const formattedMessages = conversationMessages.map(msg => ({
-        id: msg.id,
-        content: msg.content,
-        senderId: msg.senderId,
-        conversationId: msg.conversationId,
-        createdAt: msg.createdAt,
-        sender: {
-          id: msg.senderId,
-          username: msg.senderUsername || 'unknown',
-          displayName: msg.senderDisplayName || 'Unknown User',
-          profileImageUrl: msg.senderProfileImageUrl,
-        }
-      }));
-
-      res.json(formattedMessages);
+      res.json(conversationMessages);
     } catch (error) {
       console.error("Failed to fetch messages:", error);
       res.status(500).json({ message: "Failed to fetch messages" });
@@ -1455,13 +1449,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify user is part of the conversation
-      const conversations = await storage.getUserConversations(userId);
-      const userConversation = conversations.find(c => c.id === conversationId);
+      const conversation = await db
+        .select()
+        .from(conversations)
+        .where(
+          and(
+            eq(conversations.id, conversationId),
+            or(
+              eq(conversations.participantOneId, userId),
+              eq(conversations.participantTwoId, userId)
+            )
+          )
+        )
+        .limit(1);
 
-      if (!userConversation) {
+      if (conversation.length === 0) {
         return res.status(403).json({ message: "Access denied to this conversation" });
       }
 
+      // Send the message
       const message = await storage.sendMessage(
         conversationId,
         userId,
@@ -1470,17 +1476,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         attachmentUrls
       );
 
-      // Send response immediately for better UX
-      res.json(message);
+      // Get user data for the response
+      const [sender] = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          displayName: users.displayName,
+          profileImageUrl: users.profileImageUrl,
+        })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
 
-      // Broadcast message to other participant asynchronously
-      const otherParticipantId = userConversation.otherParticipant.id;
+      // Format response with sender data
+      const messageWithSender = {
+        ...message,
+        sender: sender || {
+          id: userId,
+          username: 'unknown',
+          displayName: 'Unknown User',
+          profileImageUrl: null,
+        }
+      };
+
+      res.json(messageWithSender);
+
+      // Determine other participant for broadcasting
+      const otherParticipantId = conversation[0].participantOneId === userId 
+        ? conversation[0].participantTwoId 
+        : conversation[0].participantOneId;
+
+      // Broadcast message to other participant
       setImmediate(() => {
-        (app as any).broadcastMessage?.(otherParticipantId, {
-          ...message,
-          conversation: userConversation,
-          sender: { id: userId }
-        });
+        if ((app as any).broadcastMessage) {
+          (app as any).broadcastMessage(otherParticipantId, messageWithSender);
+        }
       });
     } catch (error) {
       console.error("Error sending message:", error);

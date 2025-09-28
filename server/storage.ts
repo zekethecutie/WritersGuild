@@ -1267,45 +1267,51 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserConversations(userId: string): Promise<(Conversation & { otherParticipant: User; lastMessage?: Message })[]> {
-    // Get conversations with participant data in one query
+    // Get conversations for the user
     const userConversations = await db
-      .select({
-        id: conversations.id,
-        participantOneId: conversations.participantOneId,
-        participantTwoId: conversations.participantTwoId,
-        lastMessageId: conversations.lastMessageId,
-        lastMessageAt: conversations.lastMessageAt,
-        isArchived: conversations.isArchived,
-        createdAt: conversations.createdAt,
-        updatedAt: conversations.updatedAt,
-        // Participant one data
-        participantOneDisplayName: sql<string>`p1.display_name`.as('p1_display_name'),
-        participantOneUsername: sql<string>`p1.username`.as('p1_username'),
-        participantOneProfileImageUrl: sql<string>`p1.profile_image_url`.as('p1_profile_image_url'),
-        // Participant two data
-        participantTwoDisplayName: sql<string>`p2.display_name`.as('p2_display_name'),
-        participantTwoUsername: sql<string>`p2.username`.as('p2_username'),
-        participantTwoProfileImageUrl: sql<string>`p2.profile_image_url`.as('p2_profile_image_url'),
-      })
+      .select()
       .from(conversations)
-      .leftJoin(sql`${users} p1`, sql`${conversations.participantOneId} = p1.id`)
-      .leftJoin(sql`${users} p2`, sql`${conversations.participantTwoId} = p2.id`)
       .where(or(
         eq(conversations.participantOneId, userId),
         eq(conversations.participantTwoId, userId)
       ))
-      .orderBy(desc(conversations.updatedAt));
+      .orderBy(desc(conversations.lastMessageAt));
 
     const conversationsWithData = await Promise.all(
       userConversations.map(async (conv) => {
-        // Determine the other participant
-        const isUserParticipantOne = conv.participantOneId === userId;
-        const otherParticipant = {
-          id: isUserParticipantOne ? conv.participantTwoId : conv.participantOneId,
-          displayName: isUserParticipantOne ? conv.participantTwoDisplayName : conv.participantOneDisplayName,
-          username: isUserParticipantOne ? conv.participantTwoUsername : conv.participantOneUsername,
-          profileImageUrl: isUserParticipantOne ? conv.participantTwoProfileImageUrl : conv.participantOneProfileImageUrl,
-        };
+        // Determine the other participant ID
+        const otherParticipantId = conv.participantOneId === userId 
+          ? conv.participantTwoId 
+          : conv.participantOneId;
+
+        // Get the other participant's data
+        const [otherParticipant] = await db
+          .select({
+            id: users.id,
+            username: users.username,
+            displayName: users.displayName,
+            profileImageUrl: users.profileImageUrl,
+            email: users.email,
+            password: users.password,
+            bio: users.bio,
+            location: users.location,
+            website: users.website,
+            coverImageUrl: users.coverImageUrl,
+            genres: users.genres,
+            writingStreak: users.writingStreak,
+            wordCountGoal: users.wordCountGoal,
+            weeklyPostsGoal: users.weeklyPostsGoal,
+            isVerified: users.isVerified,
+            isAdmin: users.isAdmin,
+            isSuperAdmin: users.isSuperAdmin,
+            postsCount: users.postsCount,
+            commentsCount: users.commentsCount,
+            createdAt: users.createdAt,
+            updatedAt: users.updatedAt,
+          })
+          .from(users)
+          .where(eq(users.id, otherParticipantId))
+          .limit(1);
 
         // Get last message if exists
         let lastMessage: Message | undefined;
@@ -1319,15 +1325,13 @@ export class DatabaseStorage implements IStorage {
         }
 
         return {
-          id: conv.id,
-          participantOneId: conv.participantOneId,
-          participantTwoId: conv.participantTwoId,
-          lastMessageId: conv.lastMessageId,
-          lastMessageAt: conv.lastMessageAt,
-          isArchived: conv.isArchived,
-          createdAt: conv.createdAt,
-          updatedAt: conv.updatedAt,
-          otherParticipant: otherParticipant as User,
+          ...conv,
+          otherParticipant: otherParticipant || {
+            id: otherParticipantId,
+            username: 'unknown',
+            displayName: 'Unknown User',
+            profileImageUrl: null,
+          } as User,
           lastMessage,
         };
       })
