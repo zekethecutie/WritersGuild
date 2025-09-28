@@ -134,11 +134,8 @@ export default function Messages() {
       });
       if (response.ok) {
         const data = await response.json();
-        // Ensure participants have proper user data
-        const conversationsWithUsers = data.map((conv: Conversation) => ({
-          ...conv,
-          participants: conv.participants || []
-        }));
+        // Conversations already have the needed data structure
+        const conversationsWithUsers = data;
         setConversations(conversationsWithUsers);
       }
     } catch (error) {
