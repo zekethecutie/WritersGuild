@@ -69,7 +69,9 @@ export default function RichTextEditor({
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        link: false, // Disable the default link extension from StarterKit
+      }),
       TextAlign.configure({
         types: ['heading', 'paragraph'],
       }),

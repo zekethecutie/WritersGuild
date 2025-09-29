@@ -24,16 +24,7 @@ export const useWebSocket = () => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
 
-    // Handle Replit environment
-    if (host.includes('replit.dev') || host.includes('picard.replit.dev')) {
-      return `${protocol}//${host}/ws`;
-    }
-
-    // Handle local development
-    if (host.includes('localhost') || host.includes('127.0.0.1')) {
-      return `${protocol}//${host}/ws`;
-    }
-
+    // Always use the current host for WebSocket connection
     return `${protocol}//${host}/ws`;
   };
 
@@ -48,12 +39,14 @@ export const useWebSocket = () => {
       const newSocket = new WebSocket(wsUrl);
 
       newSocket.onopen = () => {
-        console.log('WebSocket connected, authenticating...');
+        console.log('WebSocket connected successfully');
         // Send authentication immediately
-        newSocket.send(JSON.stringify({
-          type: 'authenticate',
-          userId: user.id
-        }));
+        if (user?.id) {
+          newSocket.send(JSON.stringify({
+            type: 'authenticate',
+            userId: user.id
+          }));
+        }
       };
 
       newSocket.onmessage = (event) => {
@@ -88,17 +81,17 @@ export const useWebSocket = () => {
           heartbeatIntervalRef.current = null;
         }
 
-        // Attempt to reconnect
-        if (event.code !== 1000 && connectionAttempts < MAX_RECONNECT_ATTEMPTS) {
-          const delay = Math.min(1000 * Math.pow(2, connectionAttempts), 30000); // Exponential backoff
-          console.log(`Attempting to reconnect in ${delay}ms (attempt ${connectionAttempts + 1})`);
+        // Only attempt to reconnect if it's an unexpected close
+        if (event.code !== 1000 && event.code !== 1001 && connectionAttempts < MAX_RECONNECT_ATTEMPTS) {
+          const delay = Math.min(1000 * Math.pow(2, connectionAttempts), 10000); // Exponential backoff, max 10s
+          console.log(`Reconnecting in ${delay}ms (attempt ${connectionAttempts + 1}/${MAX_RECONNECT_ATTEMPTS})`);
 
           reconnectTimeoutRef.current = setTimeout(() => {
             setConnectionAttempts(prev => prev + 1);
             connect();
           }, delay);
         } else if (connectionAttempts >= MAX_RECONNECT_ATTEMPTS) {
-          console.error('Max reconnect attempts reached. WebSocket connection failed.');
+          console.log('Max reconnect attempts reached.');
         }
       };
 
