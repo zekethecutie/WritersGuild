@@ -378,3 +378,40 @@ html {
 .comment-level-3 { margin-left: 3rem; }
 .comment-level-4 { margin-left: 4rem; }
 .comment-level-5 { margin-left: 5rem; }
+
+/* Rich Text Editor Styling */
+.prose-invert strong {
+  color: white !important;
+}
+
+.prose-invert em {
+  color: white !important;
+}
+
+.prose-invert code {
+  color: white !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.prose-invert blockquote {
+  color: white !important;
+  border-left-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.prose-invert h1,
+.prose-invert h2,
+.prose-invert h3,
+.prose-invert h4,
+.prose-invert h5,
+.prose-invert h6 {
+  color: white !important;
+}
+
+.prose-invert a {
+  color: #3b82f6 !important;
+}
+
+.prose-invert mark {
+  background-color: rgba(255, 255, 0, 0.3) !important;
+  color: white !important;
+}

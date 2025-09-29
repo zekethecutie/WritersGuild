@@ -17,6 +17,7 @@ import { insertPostSchema, insertCommentSchema } from "@shared/schema";
 import { DatabaseStorage } from "./storage";
 import { getSpotifyClient } from "./spotifyClient";
 import spotifyRoutes from "./spotifyRoutes";
+import crypto from 'crypto';
 
 // Configure multer for image uploads
 const upload = multer({
@@ -79,6 +80,23 @@ const requireAuth = (req: any, res: any, next: any) => {
     return res.status(401).json({ message: "Unauthorized" });
   }
   next();
+};
+
+// Require admin middleware
+const requireAdmin = async (req: any, res: any, next: any) => {
+  if (!req.session?.userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  try {
+    const user = await storage.getUser(req.session.userId);
+    if (!user?.isAdmin && !user?.isSuperAdmin) {
+      return res.status(403).json({ message: "Forbidden: Admins only" });
+    }
+    next();
+  } catch (error) {
+    console.error("Admin check error:", error);
+    res.status(500).json({ message: "Internal server error during admin check" });
+  }
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -1770,6 +1788,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin routes
+  app.get('/api/admin/stats', requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const userCount = await db.select().from(users);
+      const postCount = await db.select().from(posts);
+      const commentCount = await db.select().from(comments);
+
+      res.json({
+        users: userCount.length,
+        posts: postCount.length,
+        comments: commentCount.length
+      });
+    } catch (error) {
+      console.error("Error fetching admin stats:", error);
+      res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
+  // Create test user for admin testing
+  app.post('/api/admin/create-test-user', requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const { username, displayName, email } = req.body;
+
+      // Check if user already exists
+      const existingUser = await db
+        .select()
+        .from(users)
+        .where(or(eq(users.username, username), eq(users.email, email)))
+        .limit(1);
+
+      if (existingUser.length > 0) {
+        return res.status(400).json({ message: "User already exists" });
+      }
+
+      // Create test user
+      const hashedPassword = await bcrypt.hash('testpassword123', 10);
+      const [newUser] = await db.insert(users).values({
+        id: crypto.randomUUID(),
+        username,
+        displayName,
+        email,
+        passwordHash: hashedPassword,
+        role: 'user',
+        bio: 'Test user for collaboration testing',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }).returning();
+
+      res.json({ 
+        message: "Test user created successfully",
+        user: {
+          id: newUser.id,
+          username: newUser.username,
+          displayName: newUser.displayName,
+          email: newUser.email
+        }
+      });
+    } catch (error) {
+      console.error("Error creating test user:", error);
+      res.status(500).json({ message: "Failed to create test user" });
+    }
+  });
+
   app.post('/api/admin/users/:id/admin', requireAuth, async (req: any, res) => {
     try {
       const adminUserId = req.session.userId;

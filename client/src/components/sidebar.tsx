@@ -19,7 +19,8 @@ import {
   HelpCircle, // Added HelpCircle icon for help center
   Shield, // Added Shield icon for rules
   ExternalLink, // Added ExternalLink icon for external links
-  Trophy // Added Trophy icon for leaderboard
+  Trophy, // Added Trophy icon for leaderboard
+  TestTube // Added TestTube icon for admin test
 } from "lucide-react";
 import { getProfileImageUrl } from "@/lib/defaultImages";
 import { Link, useLocation } from "wouter";

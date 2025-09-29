@@ -106,7 +106,7 @@ function AppRouter() {
       <Route path="/chapter/:id" component={ChapterPage} />
       <Route path="/chapter/:id/edit" component={ChapterEditor} />
       <Route path="/post/:id" component={PostPage} />
-      
+
       {/* Wrapped lazy components with Suspense */}
       <Route 
         path="/story/:id/edit" 
@@ -132,7 +132,7 @@ function AppRouter() {
           </Suspense>
         )} 
       />
-      
+
       {/* Protected routes with proper fallbacks */}
       <Route path="/search" component={isAuthenticated ? SearchPage : Explore} />
       <Route path="/notifications" component={isAuthenticated ? Notifications : Explore} />
@@ -140,6 +140,8 @@ function AppRouter() {
       <Route path="/bookmarks" component={isAuthenticated ? Bookmarks : Explore} />
       <Route path="/profile/:username" component={Profile} />
       <Route path="/settings" component={isAuthenticated ? SettingsPage : Landing} />
+      <Route path="/guidelines" component={Guidelines} />
+      <Route path="/admin-test" component={AdminTest} />
       <Route component={NotFound} />
     </Router>
   );
