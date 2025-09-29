@@ -27,7 +27,10 @@ import {
   Lock,
   Users,
   Eye,
-  EyeOff
+  EyeOff,
+  Camera,
+  Upload,
+  X
 } from "lucide-react";
 import Sidebar from "@/components/sidebar";
 import MobileNav from "@/components/mobile-nav";
@@ -66,6 +69,117 @@ export default function Settings() {
     fontSize: "medium",
     compactMode: false,
   });
+
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Error",
+        description: "Please select an image file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+      toast({
+        title: "Error", 
+        description: "Image size must be less than 10MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append('profilePicture', file);
+
+      const response = await fetch('/api/upload/profile-picture', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Profile picture updated successfully!",
+        });
+        // Refresh the page to show new image
+        window.location.reload();
+      } else {
+        throw new Error('Upload failed');
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to upload profile picture",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  const handleCoverUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Error",
+        description: "Please select an image file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+      toast({
+        title: "Error",
+        description: "Image size must be less than 10MB", 
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploadingCover(true);
+    try {
+      const formData = new FormData();
+      formData.append('coverPhoto', file);
+
+      const response = await fetch('/api/upload/user-cover', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Cover photo updated successfully!",
+        });
+        // Refresh the page to show new image
+        window.location.reload();
+      } else {
+        throw new Error('Upload failed');
+      }
+    } catch (error) {
+      toast({
+        title: "Error", 
+        description: "Failed to upload cover photo",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingCover(false);
+    }
+  };
 
   const handleProfileUpdate = async () => {
     try {
@@ -161,6 +275,122 @@ export default function Settings() {
                   <CardTitle>Profile Information</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Profile Image Uploads Section */}
+                  <div className="space-y-6 p-4 border rounded-lg">
+                    <h3 className="text-lg font-medium">Profile Images</h3>
+                    
+                    {/* Profile Avatar Upload */}
+                    <div className="space-y-3">
+                      <Label>Profile Picture</Label>
+                      <div className="flex items-center gap-4">
+                        <div className="relative">
+                          <img
+                            src={user.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`}
+                            alt="Profile"
+                            className="w-20 h-20 rounded-full object-cover border-2 border-border"
+                          />
+                          <div className="absolute inset-0 rounded-full bg-black bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
+                            <Camera className="w-5 h-5 text-white" />
+                          </div>
+                        </div>
+                        <div className="flex-1 space-y-2">
+                          <div>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleAvatarUpload}
+                              className="hidden"
+                              id="avatar-upload"
+                              disabled={isUploadingAvatar}
+                            />
+                            <Button
+                              variant="outline"
+                              onClick={() => document.getElementById('avatar-upload')?.click()}
+                              disabled={isUploadingAvatar}
+                              className="w-full"
+                            >
+                              {isUploadingAvatar ? (
+                                <>
+                                  <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2" />
+                                  Uploading...
+                                </>
+                              ) : (
+                                <>
+                                  <Upload className="w-4 h-4 mr-2" />
+                                  Change Profile Picture
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            JPG, PNG, WebP up to 10MB. Recommended size: 400x400px
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Cover Photo Upload */}
+                    <div className="space-y-3">
+                      <Label>Cover Photo</Label>
+                      <div className="space-y-3">
+                        <div className="relative">
+                          <div className="w-full h-32 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-lg overflow-hidden border-2 border-border">
+                            {user.coverImageUrl ? (
+                              <img
+                                src={user.coverImageUrl}
+                                alt="Cover"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                                <div className="text-center">
+                                  <Camera className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                                  <p className="text-sm">No cover photo</p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <div className="absolute inset-0 rounded-lg bg-black bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
+                            <Camera className="w-6 h-6 text-white" />
+                          </div>
+                        </div>
+                        <div>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleCoverUpload}
+                            className="hidden"
+                            id="cover-upload"
+                            disabled={isUploadingCover}
+                          />
+                          <Button
+                            variant="outline"
+                            onClick={() => document.getElementById('cover-upload')?.click()}
+                            disabled={isUploadingCover}
+                            className="w-full"
+                          >
+                            {isUploadingCover ? (
+                              <>
+                                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2" />
+                                Uploading...
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="w-4 h-4 mr-2" />
+                                {user.coverImageUrl ? 'Change Cover Photo' : 'Add Cover Photo'}
+                              </>
+                            )}
+                          </Button>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            JPG, PNG, WebP up to 10MB. Recommended size: 1500x500px
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="displayName">Display Name</Label>

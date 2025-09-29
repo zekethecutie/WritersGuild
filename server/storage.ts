@@ -1274,7 +1274,7 @@ export class DatabaseStorage implements IStorage {
     return conversation;
   }
 
-  async getUserConversations(userId: string): Promise<(Conversation & { otherParticipant: User; lastMessage?: Message })[]> {
+  async getUserConversations(userId: string): Promise<(Conversation & { otherParticipant: User; lastMessage?: Message; unreadCount: number })[]> {
     const userConversations = await db
       .select()
       .from(conversations)
@@ -1328,6 +1328,22 @@ export class DatabaseStorage implements IStorage {
           lastMessage = message;
         }
 
+        // Calculate unread count - count messages in this conversation that:
+        // 1. Are not from the current user (senderId !== userId)
+        // 2. Are not read by the current user (isRead = false)
+        const [unreadCountResult] = await db
+          .select({ count: count() })
+          .from(messages)
+          .where(
+            and(
+              eq(messages.conversationId, conv.id),
+              ne(messages.senderId, userId),
+              eq(messages.isRead, false)
+            )
+          );
+
+        const unreadCount = unreadCountResult?.count || 0;
+
         return {
           ...conv,
           otherParticipant: otherParticipant || {
@@ -1337,6 +1353,7 @@ export class DatabaseStorage implements IStorage {
             profileImageUrl: null,
           } as User,
           lastMessage,
+          unreadCount: Number(unreadCount),
         };
       })
     );
