@@ -62,7 +62,8 @@ export function SpotifySearch({ onTrackSelect, selectedTrack, placeholder, class
       if (!response.ok) {
         throw new Error("Failed to search tracks");
       }
-      return response.json();
+      const data = await response.json();
+      return data;
     },
     enabled: !!debouncedQuery.trim(),
   });

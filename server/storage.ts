@@ -90,12 +90,15 @@ export interface IStorage {
   // Writing goals
   updateWritingGoal(userId: string, date: Date, wordCount: number, postsCount: number): Promise<WritingGoal>;
   getUserWritingGoals(userId: string, startDate: Date, endDate: Date): Promise<WritingGoal[]>;
+  updateDailyWordCount(userId: string, wordCount: number): Promise<void>;
 
   // Search and discovery
   searchUsers(query: string, limit?: number): Promise<User[]>;
+  searchUsers(query: string, currentUserId: string, limit?: number): Promise<User[]>;
   searchPosts(query: string, limit?: number): Promise<Post[]>;
   getTrendingPosts(limit?: number): Promise<Post[]>;
   getSuggestedUsers(userId: string, limit?: number): Promise<User[]>;
+  getSuggestedUsers(currentUserId: string, limit?: number): Promise<User[]>;
 
   // Messaging operations
   createConversation(participantOneId: string, participantTwoId: string): Promise<Conversation>;
@@ -138,9 +141,6 @@ export class DatabaseStorage implements IStorage {
   // Initialize hardcoded admin account
   async initializeAdminAccount(): Promise<void> {
     try {
-      // Add a delay to ensure database is ready
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
       // Test basic connection first
       try {
         await db.select().from(users).limit(1);
@@ -160,7 +160,6 @@ export class DatabaseStorage implements IStorage {
       try {
         existingAdmin = await this.getUserByUsername("itsicxrus");
       } catch (error: any) {
-        // If column doesn't exist or database connection fails, database schema isn't ready
         if (error.code === '42703' || error.code === '42P01' || error.code === '28P01' || error.code === 'ECONNREFUSED') {
           console.log("⏳ Database schema not ready yet, skipping admin creation");
           return;
@@ -169,7 +168,6 @@ export class DatabaseStorage implements IStorage {
       }
 
       if (!existingAdmin) {
-        // Use dynamic import for ES modules
         const bcrypt = await import("bcrypt");
         const adminPassword = process.env.ADMIN_PASSWORD || "defaultAdminPassword123!";
         const hashedPassword = await bcrypt.hash(adminPassword, 10);
@@ -201,7 +199,6 @@ export class DatabaseStorage implements IStorage {
       } else {
         console.error("❌ Error creating admin account:", error.message);
       }
-      // Don't throw, let the app continue running
     }
   }
 
@@ -213,7 +210,6 @@ export class DatabaseStorage implements IStorage {
 
   async upsertUser(userData: UpsertUser): Promise<User> {
     if (userData.id) {
-      // Update existing user
       const [user] = await db
         .update(users)
         .set({ ...userData, updatedAt: new Date() })
@@ -221,8 +217,6 @@ export class DatabaseStorage implements IStorage {
         .returning();
       if (user) return user;
     }
-
-    // Insert new user
     const [user] = await db
       .insert(users)
       .values(userData)
@@ -275,16 +269,11 @@ export class DatabaseStorage implements IStorage {
   // Post operations
   async createPost(post: InsertPost): Promise<Post> {
     const [newPost] = await db.insert(posts).values(post).returning();
-
-    // Increment user's posts count
     await db
       .update(users)
       .set({ postsCount: sql`${users.postsCount} + 1` })
       .where(eq(users.id, post.authorId));
-
-    // Check auto verification
     await this.checkAutoVerification(post.authorId);
-
     return newPost;
   }
 
@@ -360,7 +349,6 @@ export class DatabaseStorage implements IStorage {
       .offset(offset);
 
     const results = await postsQuery;
-
     return results.map(row => ({
       id: row.id,
       authorId: row.authorId,
@@ -438,7 +426,6 @@ export class DatabaseStorage implements IStorage {
       .offset(offset);
 
     const results = await postsQuery;
-
     return results.map(row => ({
       id: row.id,
       authorId: row.authorId,
@@ -480,20 +467,15 @@ export class DatabaseStorage implements IStorage {
   // Engagement operations
   async likePost(userId: string, postId: string): Promise<Like> {
     const [like] = await db.insert(likes).values({ userId, postId }).returning();
-
-    // Increment likes count
     await db
       .update(posts)
       .set({ likesCount: sql`${posts.likesCount} + 1` })
       .where(eq(posts.id, postId));
-
     return like;
   }
 
   async unlikePost(userId: string, postId: string): Promise<void> {
     await db.delete(likes).where(and(eq(likes.userId, userId), eq(likes.postId, postId)));
-
-    // Decrement likes count
     await db
       .update(posts)
       .set({ likesCount: sql`${posts.likesCount} - 1` })
@@ -511,27 +493,19 @@ export class DatabaseStorage implements IStorage {
   // Comment operations
   async createComment(comment: InsertComment): Promise<Comment> {
     const [newComment] = await db.insert(comments).values(comment).returning();
-
-    // Increment comments count on post
     await db
       .update(posts)
       .set({ commentsCount: sql`${posts.commentsCount} + 1` })
       .where(eq(posts.id, comment.postId));
-
-    // Increment user's comments count
     await db
       .update(users)
       .set({ commentsCount: sql`${users.commentsCount} + 1` })
       .where(eq(users.id, comment.userId));
-
-    // Check auto verification
     await this.checkAutoVerification(comment.userId);
-
     return newComment;
   }
 
   async getCommentsByPost(postId: string, userId?: string): Promise<Comment[]> {
-    // Get base comments with authors
     const baseComments = await db.select({
       id: comments.id,
       userId: comments.userId,
@@ -559,18 +533,17 @@ export class DatabaseStorage implements IStorage {
       return baseComments;
     }
 
-    // Get like status for current user
     const commentIds = baseComments.map(c => c.id);
     const userLikes = await db.select({ commentId: commentLikes.commentId })
       .from(commentLikes)
-      .where(and(
-        eq(commentLikes.userId, userId),
-        sql`${commentLikes.commentId}::text = ANY(ARRAY[${commentIds.map(id => `'${id}'`).join(',')}])`
-      ));
+      .where(
+        and(
+          eq(commentLikes.userId, userId),
+          sql`${commentLikes.commentId}::text = ANY(ARRAY[${commentIds.map(id => `'${id}'`).join(',')}])`
+        )
+      );
 
     const likedCommentIds = new Set(userLikes.map(like => like.commentId));
-
-    // Add isLiked status to comments
     return baseComments.map(comment => ({
       ...comment,
       isLiked: likedCommentIds.has(comment.id)
@@ -585,46 +558,35 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createReply(reply: InsertComment & { parentId: string }): Promise<Comment> {
-    // Get parent comment to determine level
     const parentComment = await db.select()
       .from(comments)
       .where(eq(comments.id, reply.parentId))
       .limit(1);
 
     const level = parentComment[0] ? (parentComment[0].level || 0) + 1 : 0;
-
     const [newReply] = await db.insert(comments).values({
       ...reply,
-      level: Math.min(level, 5) // Max 5 levels deep
+      level: Math.min(level, 5)
     }).returning();
 
-    // Increment comments count on post
     await db
       .update(posts)
       .set({ commentsCount: sql`${posts.commentsCount} + 1` })
       .where(eq(posts.id, reply.postId));
-
-    // Increment user's comments count
     await db
       .update(users)
       .set({ commentsCount: sql`${users.commentsCount} + 1` })
       .where(eq(users.id, reply.userId));
-
-    // Check auto verification
     await this.checkAutoVerification(reply.userId);
-
     return newReply;
   }
 
   // Comment engagement operations
   async likeComment(userId: string, commentId: string): Promise<void> {
-    // Insert like record (ignore if already exists)
     await db
       .insert(commentLikes)
       .values({ userId, commentId })
       .onConflictDoNothing();
-
-    // Increment likes count
     await db
       .update(comments)
       .set({ likesCount: sql`${comments.likesCount} + 1` })
@@ -632,12 +594,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async unlikeComment(userId: string, commentId: string): Promise<void> {
-    // Delete like record
     await db
       .delete(commentLikes)
       .where(and(eq(commentLikes.userId, userId), eq(commentLikes.commentId, commentId)));
-
-    // Decrement likes count (prevent negative)
     await db
       .update(comments)
       .set({ likesCount: sql`GREATEST(${comments.likesCount} - 1, 0)` })
@@ -735,20 +694,15 @@ export class DatabaseStorage implements IStorage {
   // Repost operations
   async repostPost(userId: string, postId: string, comment?: string): Promise<Repost> {
     const [repost] = await db.insert(reposts).values({ userId, postId, comment }).returning();
-
-    // Increment reposts count
     await db
       .update(posts)
       .set({ repostsCount: sql`${posts.repostsCount} + 1` })
       .where(eq(posts.id, postId));
-
     return repost;
   }
 
   async unrepost(userId: string, postId: string): Promise<void> {
     await db.delete(reposts).where(and(eq(reposts.userId, userId), eq(reposts.postId, postId)));
-
-    // Decrement reposts count
     await db
       .update(posts)
       .set({ repostsCount: sql`${posts.repostsCount} - 1` })
@@ -907,7 +861,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Search and discovery
-  async searchUsers(query: string, limit = 10): Promise<User[]> {
+  async searchUsers(query: string, limit: number = 10): Promise<User[]> {
     return db.select()
       .from(users)
       .where(
@@ -918,6 +872,36 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .limit(limit);
+  }
+
+  async searchUsers(query: string, currentUserId: string, limit: number = 10): Promise<User[]> {
+    const searchTerm = `%${query.toLowerCase()}%`;
+
+    const result = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        displayName: users.displayName,
+        profileImageUrl: users.profileImageUrl,
+        isVerified: users.isVerified,
+        bio: users.bio,
+        followersCount: users.followersCount,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .where(
+        and(
+          ne(users.id, currentUserId),
+          or(
+            sql`LOWER(${users.username}) LIKE ${searchTerm}`,
+            sql`LOWER(${users.displayName}) LIKE ${searchTerm}`
+          )
+        )
+      )
+      .orderBy(desc(users.followersCount))
+      .limit(limit);
+
+    return result;
   }
 
   async searchPosts(query: string, limit = 20): Promise<Post[]> {
@@ -1028,12 +1012,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSuggestedUsers(userId: string, limit = 5): Promise<User[]> {
-    // Get users not followed by the current user, ordered by follower count
     return db.select()
       .from(users)
       .where(
         and(
-          ne(users.id, userId), // Exclude current user
+          ne(users.id, userId),
           sql`${users.id} NOT IN (
             SELECT following_id FROM follows WHERE follower_id = ${userId}
           )`
@@ -1042,8 +1025,42 @@ export class DatabaseStorage implements IStorage {
       .limit(limit);
   }
 
+  async getSuggestedUsers(currentUserId: string, limit: number = 5): Promise<User[]> {
+    const result = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        displayName: users.displayName,
+        profileImageUrl: users.profileImageUrl,
+        isVerified: users.isVerified,
+        bio: users.bio,
+        followersCount: users.followersCount,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .where(
+        and(
+          ne(users.id, currentUserId),
+          notExists(
+            db
+              .select()
+              .from(follows)
+              .where(
+                and(
+                  eq(follows.followerId, currentUserId),
+                  eq(follows.followingId, users.id)
+                )
+              )
+          )
+        )
+      )
+      .orderBy(desc(users.followersCount))
+      .limit(limit);
+
+    return result;
+  }
+
   async getTrendingTopics(): Promise<{ rank: number; category: string; hashtag: string; posts: string }[]> {
-    // Get trending topics based on post genres and activity
     const topicData = await db.select({
       genre: posts.genre,
       count: sql<number>`count(*)::int`,
@@ -1059,7 +1076,6 @@ export class DatabaseStorage implements IStorage {
       .orderBy(sql`count(*) DESC`)
       .limit(10);
 
-    // Format the results to match the expected structure
     return topicData.map((item, index) => ({
       rank: index + 1,
       category: item.genre || "General",
@@ -1123,7 +1139,6 @@ export class DatabaseStorage implements IStorage {
     const startOfWeek = new Date(today);
     startOfWeek.setDate(today.getDate() - today.getDay());
 
-    // Get today's word count
     const [todayGoal] = await db.select()
       .from(writingGoals)
       .where(
@@ -1133,7 +1148,6 @@ export class DatabaseStorage implements IStorage {
         )
       );
 
-    // Get this week's posts
     const [weeklyPosts] = await db.select({
       count: sql<number>`count(*)::int`
     })
@@ -1167,7 +1181,6 @@ export class DatabaseStorage implements IStorage {
 
   // Admin operations
   async setUserAdmin(adminUserId: string, targetUserId: string, isAdmin: boolean): Promise<User | null> {
-    // Check if user making request is super admin
     const adminUser = await this.getUser(adminUserId);
     if (!adminUser?.isSuperAdmin) {
       throw new Error("Only super admins can set admin status");
@@ -1182,7 +1195,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async setUserVerified(adminUserId: string, targetUserId: string, isVerified: boolean): Promise<User | null> {
-    // Check if user making request is admin
     const adminUser = await this.getUser(adminUserId);
     if (!adminUser?.isAdmin && !adminUser?.isSuperAdmin) {
       throw new Error("Only admins can set verification status");
@@ -1197,7 +1209,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteUserAsAdmin(adminUserId: string, targetUserId: string): Promise<void> {
-    // Check if user making request is admin
     const adminUser = await this.getUser(adminUserId);
     if (!adminUser?.isAdmin && !adminUser?.isSuperAdmin) {
       throw new Error("Only admins can delete users");
@@ -1207,7 +1218,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deletePostAsAdmin(adminUserId: string, postId: string): Promise<void> {
-    // Check if user making request is admin
     const adminUser = await this.getUser(adminUserId);
     if (!adminUser?.isAdmin && !adminUser?.isSuperAdmin) {
       throw new Error("Only admins can delete posts");
@@ -1237,7 +1247,6 @@ export class DatabaseStorage implements IStorage {
 
   // Messaging implementation
   async createConversation(participantOneId: string, participantTwoId: string): Promise<Conversation> {
-    // Ensure consistent ordering to prevent duplicate conversations
     const [firstId, secondId] = [participantOneId, participantTwoId].sort();
 
     const [conversation] = await db
@@ -1251,7 +1260,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getConversation(participantOneId: string, participantTwoId: string): Promise<Conversation | undefined> {
-    // Ensure consistent ordering
     const [firstId, secondId] = [participantOneId, participantTwoId].sort();
 
     const [conversation] = await db
@@ -1267,7 +1275,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserConversations(userId: string): Promise<(Conversation & { otherParticipant: User; lastMessage?: Message })[]> {
-    // Get conversations for the user
     const userConversations = await db
       .select()
       .from(conversations)
@@ -1279,12 +1286,10 @@ export class DatabaseStorage implements IStorage {
 
     const conversationsWithData = await Promise.all(
       userConversations.map(async (conv) => {
-        // Determine the other participant ID
-        const otherParticipantId = conv.participantOneId === userId 
-          ? conv.participantTwoId 
+        const otherParticipantId = conv.participantOneId === userId
+          ? conv.participantTwoId
           : conv.participantOneId;
 
-        // Get the other participant's data
         const [otherParticipant] = await db
           .select({
             id: users.id,
@@ -1313,7 +1318,6 @@ export class DatabaseStorage implements IStorage {
           .where(eq(users.id, otherParticipantId))
           .limit(1);
 
-        // Get last message if exists
         let lastMessage: Message | undefined;
         if (conv.lastMessageId) {
           const [message] = await db
@@ -1352,7 +1356,6 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
 
-    // Update conversation's last message
     await db
       .update(conversations)
       .set({
@@ -1389,7 +1392,7 @@ export class DatabaseStorage implements IStorage {
       .from(messages)
       .leftJoin(users, eq(messages.senderId, users.id))
       .where(eq(messages.conversationId, conversationId))
-      .orderBy(asc(messages.createdAt)) // Changed to asc for chronological order
+      .orderBy(asc(messages.createdAt))
       .limit(limit)
       .offset(offset);
 
@@ -1450,7 +1453,6 @@ export class DatabaseStorage implements IStorage {
 
   // User discovery and search methods
   async getRecommendedUsers(userId: string): Promise<any[]> {
-    // Get users with similar genres or who are followed by people the user follows
     const result = await db
       .select({
         id: users.id,
@@ -1463,21 +1465,21 @@ export class DatabaseStorage implements IStorage {
         postsCount: users.postsCount,
         createdAt: users.createdAt,
         followersCount: sql<number>`(
-          SELECT COUNT(*) FROM ${follows} 
+          SELECT COUNT(*) FROM ${follows}
           WHERE ${follows.followingId} = ${users.id}
         )`.as('followersCount'),
         isFollowing: sql<boolean>`(
           SELECT CASE WHEN COUNT(*) > 0 THEN true ELSE false END
-          FROM ${follows} 
-          WHERE ${follows.followerId} = ${userId} 
+          FROM ${follows}
+          WHERE ${follows.followerId} = ${userId}
           AND ${follows.followingId} = ${users.id}
         )`.as('isFollowing'),
       })
       .from(users)
       .where(
         and(
-          ne(users.id, userId), // Exclude current user
-          isNotNull(users.genres), // Only users with genres
+          ne(users.id, userId),
+          isNotNull(users.genres),
         )
       )
       .orderBy(desc(users.postsCount))
@@ -1487,7 +1489,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTrendingUsers(): Promise<any[]> {
-    // Users with highest engagement in the last 30 days
     const result = await db
       .select({
         id: users.id,
@@ -1500,23 +1501,23 @@ export class DatabaseStorage implements IStorage {
         postsCount: users.postsCount,
         createdAt: users.createdAt,
         followersCount: sql<number>`(
-          SELECT COUNT(*) FROM ${follows} 
+          SELECT COUNT(*) FROM ${follows}
           WHERE ${follows.followingId} = ${users.id}
         )`.as('followersCount'),
         recentActivity: sql<number>`(
-          SELECT COUNT(*) FROM ${posts} 
-          WHERE ${posts.authorId} = ${users.id} 
+          SELECT COUNT(*) FROM ${posts}
+          WHERE ${posts.authorId} = ${users.id}
           AND ${posts.createdAt} > NOW() - INTERVAL '30 days'
         )`.as('recentActivity'),
       })
       .from(users)
       .orderBy(
         desc(sql`(
-          SELECT COUNT(*) FROM ${follows} 
+          SELECT COUNT(*) FROM ${follows}
           WHERE ${follows.followingId} = ${users.id}
         ) + (
-          SELECT COALESCE(SUM(${posts.likesCount}), 0) FROM ${posts} 
-          WHERE ${posts.authorId} = ${users.id} 
+          SELECT COALESCE(SUM(${posts.likesCount}), 0) FROM ${posts}
+          WHERE ${posts.authorId} = ${users.id}
           AND ${posts.createdAt} > NOW() - INTERVAL '30 days'
         )`)
       )
@@ -1526,7 +1527,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPopularPosts(): Promise<any[]> {
-    // Posts with highest engagement in the last 7 days
     const result = await db
       .select({
         id: posts.id,
@@ -1562,7 +1562,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPopularMusicPosts(limit: number = 20, userId?: string): Promise<(Post & { author?: User; isLiked?: boolean; isBookmarked?: boolean; isReposted?: boolean })[]> {
-    // Posts with Spotify tracks and highest engagement in the last 7 days
     const result = await db
       .select({
         id: posts.id,
@@ -1590,18 +1589,18 @@ export class DatabaseStorage implements IStorage {
           isVerified: users.isVerified,
         },
         isLiked: userId ? sql<boolean>`EXISTS (
-          SELECT 1 FROM ${likes} 
-          WHERE ${likes.userId} = ${userId} 
+          SELECT 1 FROM ${likes}
+          WHERE ${likes.userId} = ${userId}
           AND ${likes.postId} = ${posts.id}
         )` : sql<boolean>`false`,
         isBookmarked: userId ? sql<boolean>`EXISTS (
-          SELECT 1 FROM ${bookmarks} 
-          WHERE ${bookmarks.userId} = ${userId} 
+          SELECT 1 FROM ${bookmarks}
+          WHERE ${bookmarks.userId} = ${userId}
           AND ${bookmarks.postId} = ${posts.id}
         )` : sql<boolean>`false`,
         isReposted: userId ? sql<boolean>`EXISTS (
-          SELECT 1 FROM ${reposts} 
-          WHERE ${reposts.userId} = ${userId} 
+          SELECT 1 FROM ${reposts}
+          WHERE ${reposts.userId} = ${userId}
           AND ${reposts.postId} = ${posts.id}
         )` : sql<boolean>`false`,
       })
@@ -1610,7 +1609,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(posts.isPrivate, false),
-          isNotNull(posts.spotifyTrackData), // Only posts with Spotify track data
+          isNotNull(posts.spotifyTrackData),
           gte(posts.createdAt, sql`NOW() - INTERVAL '7 days'`)
         )
       )
@@ -1647,7 +1646,6 @@ export class DatabaseStorage implements IStorage {
   async searchContent(query: string): Promise<{ users: any[]; posts: any[] }> {
     const searchTerm = `%${query.toLowerCase()}%`;
 
-    // Search users
     const searchUsers = await db
       .select({
         id: users.id,
@@ -1660,7 +1658,7 @@ export class DatabaseStorage implements IStorage {
         postsCount: users.postsCount,
         createdAt: users.createdAt,
         followersCount: sql<number>`(
-          SELECT COUNT(*) FROM ${follows} 
+          SELECT COUNT(*) FROM ${follows}
           WHERE ${follows.followingId} = ${users.id}
         )`.as('followersCount'),
       })
@@ -1675,7 +1673,6 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(users.postsCount))
       .limit(20);
 
-    // Search posts
     const searchPosts = await db
       .select({
         id: posts.id,
@@ -1801,13 +1798,13 @@ export class DatabaseStorage implements IStorage {
           isVerified: users.isVerified,
         },
         isLiked: userId ? sql<boolean>`EXISTS (
-          SELECT 1 FROM ${seriesLikes} 
-          WHERE ${seriesLikes.userId} = ${userId} 
+          SELECT 1 FROM ${seriesLikes}
+          WHERE ${seriesLikes.userId} = ${userId}
           AND ${seriesLikes.seriesId} = ${series.id}
         )` : sql<boolean>`false`,
         isFollowing: userId ? sql<boolean>`EXISTS (
-          SELECT 1 FROM ${seriesFollowers} 
-          WHERE ${seriesFollowers.userId} = ${userId} 
+          SELECT 1 FROM ${seriesFollowers}
+          WHERE ${seriesFollowers.userId} = ${userId}
           AND ${seriesFollowers.seriesId} = ${series.id}
         )` : sql<boolean>`false`,
         isBookmarked: userId ? sql<boolean>`false` : sql<boolean>`false` // TODO: Implement series bookmarks
@@ -1829,8 +1826,6 @@ export class DatabaseStorage implements IStorage {
 
   async createChapter(chapterData: any): Promise<any> {
     const [newChapter] = await db.insert(chapters).values(chapterData).returning();
-
-    // Update series chapters count
     await db
       .update(series)
       .set({ chaptersCount: sql`${series.chaptersCount} + 1` })
@@ -1878,8 +1873,6 @@ export class DatabaseStorage implements IStorage {
 
   async followSeries(userId: string, seriesId: string): Promise<any> {
     const [follow] = await db.insert(seriesFollowers).values({ userId, seriesId }).returning();
-
-    // Update series followers count
     await db
       .update(series)
       .set({ followersCount: sql`${series.followersCount} + 1` })
@@ -1892,8 +1885,6 @@ export class DatabaseStorage implements IStorage {
     await db.delete(seriesFollowers).where(
       and(eq(seriesFollowers.userId, userId), eq(seriesFollowers.seriesId, seriesId))
     );
-
-    // Update series followers count
     await db
       .update(series)
       .set({ followersCount: sql`${series.followersCount} - 1` })
@@ -1940,7 +1931,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateReadingProgress(userId: string, seriesId: string, chapterIndex: number): Promise<void> {
-    // Get total chapters count for progress calculation
     const totalChapters = await db.select({ count: sql<number>`count(*)` })
       .from(chapters)
       .where(eq(chapters.seriesId, seriesId));
@@ -1980,16 +1970,11 @@ export class DatabaseStorage implements IStorage {
     return progress;
   }
 
-  // Add missing method for series comments
   async getSeriesComments(seriesId: string): Promise<any[]> {
-    // For now, return empty array - implement series comments later
     return [];
   }
 
-  // Duplicate getSeriesComments removed
-
   async createSeriesComment(userId: string, seriesId: string, content: string): Promise<any> {
-    // For now, return a placeholder - implement series comments later
     return {
       id: crypto.randomUUID(),
       userId,
@@ -2000,12 +1985,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async isSeriesBookmarked(userId: string, seriesId: string): Promise<boolean> {
-    // For now, return false - implement series bookmarks later
     return false;
   }
 
   async bookmarkSeries(userId: string, seriesId: string): Promise<any> {
-    // For now, return a placeholder - implement series bookmarks later
     return {
       id: crypto.randomUUID(),
       userId,
@@ -2015,7 +1998,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async removeSeriesBookmark(userId: string, seriesId: string): Promise<void> {
-    // For now, do nothing - implement series bookmarks later
+    // Do nothing
   }
 
   async updateSeries(seriesId: string, updateData: any): Promise<any> {
@@ -2044,13 +2027,9 @@ export class DatabaseStorage implements IStorage {
 
   async deleteChapter(chapterId: string): Promise<void> {
     try {
-      // Get chapter info before deleting to update series count
       const chapter = await this.getChapterById(chapterId);
-
       await db.delete(chapters)
         .where(eq(chapters.id, chapterId));
-
-      // Update series chapters count
       if (chapter) {
         await db
           .update(series)
@@ -2098,7 +2077,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async reactToSeries(userId: string, seriesId: string, reaction: string): Promise<any> {
-    // For now, return a placeholder - implement series reactions later
     return {
       id: crypto.randomUUID(),
       userId,
@@ -2214,17 +2192,13 @@ export class DatabaseStorage implements IStorage {
     return topAuthors;
   }
 
-  // Delete post method
-  async deletePost(postId: string): Promise<void> {
-    await db.delete(posts).where(eq(posts.id, postId));
-  }
+  // Delete post method (duplicate removed)
 
   // Update daily writing goals
   async updateDailyWritingGoals(userId: string, wordCount: number, postsCount: number): Promise<void> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Check if goal exists for today
     const existingGoal = await db
       .select()
       .from(writingGoals)
@@ -2235,7 +2209,6 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
 
     if (existingGoal.length > 0) {
-      // Update existing goal
       await db
         .update(writingGoals)
         .set({
@@ -2244,7 +2217,6 @@ export class DatabaseStorage implements IStorage {
         })
         .where(eq(writingGoals.id, existingGoal[0].id));
     } else {
-      // Create new goal
       await db
         .insert(writingGoals)
         .values({
@@ -2254,6 +2226,40 @@ export class DatabaseStorage implements IStorage {
           postsCount,
           goalMet: false,
         });
+    }
+  }
+
+  async updateDailyWordCount(userId: string, wordCount: number): Promise<void> {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+
+    try {
+      const result = await db
+        .update(writingGoals)
+        .set({
+          wordCount: sql`${writingGoals.wordCount} + ${wordCount}`, // Use wordCount field for daily updates
+          updatedAt: new Date()
+        })
+        .where(
+          and(
+            eq(writingGoals.userId, userId),
+            sql`DATE(${writingGoals.date}) = ${today}`
+          )
+        );
+
+      if (result.rowCount === 0) {
+        await db.insert(writingGoals).values({
+          id: crypto.randomUUID(),
+          userId,
+          date: new Date(today), // Ensure date is a Date object
+          wordCount: wordCount,
+          postsCount: 0, // Assuming this function only updates word count
+          goalMet: false,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+    } catch (error) {
+      console.error('Error updating daily word count:', error);
     }
   }
 
@@ -2280,6 +2286,7 @@ export class DatabaseStorage implements IStorage {
     };
 
     await db.insert(seriesLikes).values(like);
+    // Optionally update series likes count here if needed
     return like;
   }
 
@@ -2290,11 +2297,12 @@ export class DatabaseStorage implements IStorage {
         eq(seriesLikes.userId, userId),
         eq(seriesLikes.seriesId, seriesId)
       ));
+    // Optionally update series likes count here if needed
   }
 
   // Guest access restriction methods
   async isGuestReadable(entityType: string, entityId: string, userId?: string): Promise<boolean> {
-    if (userId) return true; // Logged-in users can always read
+    if (userId) return true;
 
     switch (entityType) {
       case 'post':
@@ -2304,14 +2312,12 @@ export class DatabaseStorage implements IStorage {
         const [series] = await db.select({ isPrivate: series.isPrivate }).from(series).where(eq(series.id, entityId));
         return !series?.isPrivate;
       default:
-        return true; // Default to readable if not specified
+        return true;
     }
   }
 
   async isGuestInteractable(entityType: string, entityId: string, userId?: string): Promise<boolean> {
-    if (userId) return true; // Logged-in users can interact
-
-    // Guests cannot interact with any social features
+    if (userId) return true;
     return false;
   }
 }

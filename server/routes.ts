@@ -278,7 +278,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('GET /api/auth/user - Session ID:', req.session?.userId);
       console.log('GET /api/auth/user - Session data:', req.session);
-      
+
       if (!req.session?.userId) {
         console.log('No session found, user not authenticated');
         return res.status(401).json({ message: "Unauthorized" });
@@ -290,7 +290,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('User not found in database:', userId);
         return res.status(401).json({ message: "User not found" });
       }
-      
+
       console.log('User found, returning user data:', user.username);
       res.json({ user: { ...user, password: undefined } });
     } catch (error) {
@@ -341,18 +341,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/posts', requireAuth, writeLimiter, async (req: any, res) => {
     try {
       const userId = req.session.userId;
-      const postData = insertPostSchema.parse({
-        ...req.body,
+      const { title, content, postType, genre, privacy, imageUrls, spotifyTrackData, collaborators: collaboratorIds, mentions, hashtags } = req.body;
+
+      // Validate content presence
+      if (!content || !content.trim()) {
+        return res.status(400).json({ message: "Content is required" });
+      }
+
+      // Placeholder for content processing (e.g., markdown to HTML)
+      const processedContent = content; // Replace with actual processing if needed
+
+      // Count words in content for tracking
+      const wordCount = content.trim().split(/\s+/).filter(word => word.length > 0).length;
+
+      // Create the post
+      const postData = {
         authorId: userId,
-      });
+        title: title || null,
+        content,
+        formattedContent: processedContent,
+        postType,
+        genre: genre || null,
+        spotifyTrackId: spotifyTrackData?.id || null,
+        spotifyTrackData: spotifyTrackData || null,
+        imageUrls: imageUrls || [],
+        isPrivate: privacy === "private",
+        collaborators: collaboratorIds,
+        mentions: mentions || [],
+        hashtags: hashtags || [],
+        likesCount: 0,
+        commentsCount: 0,
+        repostsCount: 0,
+        viewsCount: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
-      const post = await storage.createPost(postData);
+      const newPost = await storage.createPost(postData);
 
-      // Update daily word count and post count
-      const wordCount = postData.content.split(/\s+/).filter(word => word.length > 0).length;
-      await storage.updateDailyWritingGoals(userId, wordCount, 1);
+      // Update word count for today
+      if (wordCount > 0) {
+        await storage.updateDailyWordCount(userId, wordCount);
+      }
 
-      res.json(post);
+      res.json(newPost);
     } catch (error) {
       console.error("Error creating post:", error);
       res.status(500).json({ message: "Failed to create post" });
@@ -492,15 +524,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Popular music posts route - must come before general :id route
-  app.get('/api/posts/popular-music', async (req: any, res) => {
+  // Get popular music from posts
+  app.get("/api/posts/popular-music", async (req, res) => {
     try {
-      const { limit = 20 } = req.query;
       const userId = req.session?.userId;
-      const posts = await storage.getPopularMusicPosts(parseInt(limit as string), userId);
-      res.json(posts);
+      const musicPosts = await storage.getPopularMusicPosts(20, userId);
+
+      // Extract unique Spotify tracks with proper formatting
+      const tracks = musicPosts
+        .filter(post => post.spotifyTrackData)
+        .map(post => {
+          const trackData = post.spotifyTrackData;
+          return {
+            id: trackData.id,
+            name: trackData.name,
+            artist: trackData.artist,
+            album: trackData.album,
+            image: trackData.image,
+            preview_url: trackData.preview_url,
+            external_urls: trackData.external_urls
+          };
+        })
+        .filter((track, index, self) => 
+          index === self.findIndex(t => t?.id === track?.id)
+        )
+        .slice(0, 10);
+
+      res.json(tracks);
     } catch (error) {
-      console.error("Error fetching popular music posts:", error);
-      res.status(500).json({ message: "Failed to fetch popular music posts" });
+      console.error("Error fetching popular music:", error);
+      res.status(500).json({ error: "Failed to fetch popular music" });
     }
   });
 
@@ -1016,7 +1069,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Query parameter required" });
       }
 
-      const users = await storage.searchUsers(query as string, parseInt(limit as string));
+      const users = await storage.searchUsers(query as string, req.session?.userId, parseInt(limit as string));
       res.json(users);
     } catch (error) {
       console.error("Error searching users:", error);
@@ -1031,7 +1084,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Query parameter required" });
       }
 
-      const users = await storage.searchUsers(query as string, parseInt(limit as string));
+      const users = await storage.searchUsers(query as string, req.session?.userId, parseInt(limit as string));
       res.json(users);
     } catch (error) {
       console.error("Error searching users:", error);
@@ -1398,7 +1451,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/conversations", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      
+
       const userConversations = await storage.getUserConversations(userId);
       res.json(userConversations);
     } catch (error) {
@@ -1481,7 +1534,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/posts/:id/collaborators', async (req, res) => {
     try {
       const { id: postId } = req.params;
-      
+
       const collaborators = await db
         .select({
           id: users.id,
@@ -2480,7 +2533,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           connections.delete(ws);
         }
       });
-      
+
       console.log(`Message delivered to ${delivered} connection(s) for user ${userId}`);
     } else {
       console.log(`No active connections found for user ${userId}`);

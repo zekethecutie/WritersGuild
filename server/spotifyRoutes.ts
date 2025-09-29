@@ -20,16 +20,22 @@ router.get('/search', async (req, res) => {
     const tracks = results.tracks.items.map(track => ({
       id: track.id,
       name: track.name,
-      artists: track.artists.map(artist => ({ name: artist.name })),
+      artists: track.artists.map(artist => ({ 
+        id: artist.id,
+        name: artist.name 
+      })),
       album: {
+        id: track.album.id,
         name: track.album.name,
         images: track.album.images
       },
       preview_url: track.preview_url,
-      external_urls: track.external_urls
+      external_urls: track.external_urls,
+      duration_ms: track.duration_ms,
+      popularity: track.popularity
     }));
 
-    res.json({ tracks });
+    res.json({ tracks: { items: tracks } });
   } catch (error) {
     console.error('Spotify search error:', error);
     res.status(500).json({ 
