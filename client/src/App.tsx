@@ -20,6 +20,8 @@ import SettingsPage from "./pages/settings";
 import ChapterPage from "@/pages/chapter";
 import ChapterEditor from "@/pages/chapter-editor";
 import PostPage from "@/pages/post";
+import Guidelines from "@/pages/guidelines";
+import AdminTest from "@/pages/admin-test";
 import { lazy, Suspense, Component } from "react";
 
 // Simple Error Boundary component since react-error-boundary might not be installed
