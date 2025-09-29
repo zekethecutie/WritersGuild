@@ -343,7 +343,7 @@ export default function SettingsPage() {
     setProfileForm(prev => ({
       ...prev,
       genres: prev.genres.includes(genre)
-        ? prev.genres.filter(g => g !== genre)
+        ? prev.genres.filter((g: string) => g !== genre)
         : [...prev.genres, genre]
     }));
   };
@@ -352,7 +352,7 @@ export default function SettingsPage() {
     setProfileForm(prev => ({
       ...prev,
       preferredGenres: prev.preferredGenres.includes(genre)
-        ? prev.preferredGenres.filter(g => g !== genre)
+        ? prev.preferredGenres.filter((g: string) => g !== genre)
         : [...prev.preferredGenres, genre]
     }));
   };

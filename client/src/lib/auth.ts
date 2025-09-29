@@ -6,9 +6,26 @@ export interface User {
   profileImageUrl?: string;
   username: string;
   bio?: string;
-  url?: string;
+  location?: string;
+  website?: string;
+  coverImageUrl?: string;
+  genres?: string[];
+  userRole?: string;
+  preferredGenres?: string[];
+  writingStreak?: number;
+  wordCountGoal?: number;
+  weeklyPostsGoal?: number;
+  isVerified?: boolean;
+  isAdmin?: boolean;
+  isSuperAdmin?: boolean;
+  postsCount?: number;
+  commentsCount?: number;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+  // Legacy compatibility
   roles?: string[];
   teams?: string[];
+  url?: string;
 }
 
 export interface AuthState {
