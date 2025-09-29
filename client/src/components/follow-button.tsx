@@ -73,6 +73,10 @@ export default function FollowButton({
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
+          // Handle "already following" as success
+          if (response.status === 400 && errorData.message?.includes('Already following')) {
+            return { following: true };
+          }
           throw new Error(errorData.message || 'Failed to follow user');
         }
 
@@ -80,6 +84,9 @@ export default function FollowButton({
       }
     },
     onSuccess: (data) => {
+      // Update the follow status query data directly
+      queryClient.setQueryData(["follow-status", userId], data.following);
+      
       // Invalidate relevant queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["follow-status", userId] });
       queryClient.invalidateQueries({ queryKey: ["/api/users/recommended"] });

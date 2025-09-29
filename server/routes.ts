@@ -1656,11 +1656,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : conversation[0].participantOneId;
 
       // Broadcast message to other participant
-      setImmediate(() => {
+      try {
         if ((app as any).broadcastMessage) {
           (app as any).broadcastMessage(otherParticipantId, messageWithSender);
+          console.log(`Message broadcasted to user ${otherParticipantId}`);
         }
-      });
+      } catch (error) {
+        console.error('Failed to broadcast message:', error);
+      }
     } catch (error) {
       console.error("Error sending message:", error);
       res.status(500).json({ message: "Failed to send message" });
@@ -2457,17 +2460,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Decoupled message broadcaster
   const broadcastMessage = (userId: string, message: any) => {
     const connections = userConnections.get(userId);
-    if (connections) {
+    if (connections && connections.size > 0) {
       const payload = JSON.stringify({
         type: 'new_message',
         data: message,
       });
 
+      let delivered = 0;
       connections.forEach((ws) => {
         if (ws.readyState === WebSocket.OPEN) {
-          ws.send(payload);
+          try {
+            ws.send(payload);
+            delivered++;
+          } catch (error) {
+            console.error('Failed to send message to WebSocket:', error);
+          }
+        } else {
+          // Clean up dead connections
+          connections.delete(ws);
         }
       });
+      
+      console.log(`Message delivered to ${delivered} connection(s) for user ${userId}`);
+    } else {
+      console.log(`No active connections found for user ${userId}`);
     }
   };
 

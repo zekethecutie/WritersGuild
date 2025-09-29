@@ -83,6 +83,7 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
   const [selectedTrack, setSelectedTrack] = useState<SpotifyTrack | null>(post?.spotifyTrackData || null);
   const [selectedImages, setSelectedImages] = useState<string[]>(post?.imageUrls || []);
   const [isRichTextMode, setIsRichTextMode] = useState(false);
+  const [showImageGallery, setShowImageGallery] = useState(false);
   const [showSpotify, setShowSpotify] = useState(false);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [collaborators, setCollaborators] = useState<any[]>(post?.collaborators || []);
@@ -450,23 +451,25 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
                 )}
 
                 {/* Editor */}
-                {isRichTextMode ? (
-                  <RichTextEditor
-                    content={content}
-                    onChange={setContent}
-                    placeholder="Share your thoughts, poetry, or stories..."
-                    className="min-h-[120px]"
-                    postType={postType}
-                  />
-                ) : (
-                  <Textarea
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    placeholder="Share your thoughts, poetry, or stories..."
-                    className="resize-none border-none outline-none bg-transparent text-lg placeholder-muted-foreground min-h-[120px] p-0"
-                    data-testid="textarea-post-content"
-                  />
-                )}
+                <div className="mb-4">
+                  {isRichTextMode ? (
+                    <RichTextEditor
+                      content={content}
+                      onChange={setContent}
+                      placeholder="Share your thoughts, poetry, or stories..."
+                      className="min-h-[120px]"
+                      postType={postType}
+                    />
+                  ) : (
+                    <Textarea
+                      value={content}
+                      onChange={(e) => setContent(e.target.value)}
+                      placeholder="Share your thoughts, poetry, or stories..."
+                      className="resize-none border-none outline-none bg-transparent text-lg placeholder-muted-foreground min-h-[120px] p-0"
+                      data-testid="textarea-post-content"
+                    />
+                  )}
+                </div>
 
                 {/* Genre Selection */}
                 {(postType === "poetry" || postType === "story") && (
@@ -506,6 +509,20 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
                 {/* Media Attachments */}
                 {selectedImages.length > 0 && (
                   <div className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-muted-foreground">
+                        Attached Images ({selectedImages.length}/4)
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedImages([])}
+                        className="text-xs text-muted-foreground hover:text-destructive"
+                      >
+                        <X className="w-3 h-3 mr-1" />
+                        Remove All
+                      </Button>
+                    </div>
                     <ImageGallery
                       images={selectedImages}
                       onRemove={(index) => {
@@ -566,80 +583,116 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
                 {/* Spotify Search */}
                 {showSpotify && (
                   <div className="mb-4">
-                    <SpotifySearch
-                      onTrackSelect={(track) => {
-                        setSelectedTrack(track);
-                        setShowSpotify(false);
-                      }}
-                      selectedTrack={selectedTrack}
-                      placeholder="Search for a song to add..."
-                    />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowSpotify(false)}
-                      className="mt-2"
-                    >
-                      Cancel
-                    </Button>
+                    <Card className="border-green-200 bg-green-50/50">
+                      <CardContent className="pt-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center space-x-2">
+                            <Music className="w-4 h-4 text-green-600" />
+                            <h4 className="font-medium text-sm">Add Music</h4>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowSpotify(false)}
+                            className="h-6 w-6 p-0"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        
+                        <SpotifySearch
+                          onTrackSelect={(track) => {
+                            setSelectedTrack(track);
+                            setShowSpotify(false);
+                          }}
+                          selectedTrack={selectedTrack}
+                          placeholder="Search for a song to add..."
+                        />
+                      </CardContent>
+                    </Card>
                   </div>
                 )}
 
                 {/* Collaborator Search */}
                 {showCollaboratorSearch && (
-                  <Card>
-                    <CardContent className="pt-4">
-                      <div className="space-y-3">
-                        <Input
-                          placeholder="Search for collaborators..."
-                          value={collaboratorSearchQuery}
-                          onChange={(e) => setCollaboratorSearchQuery(e.target.value)}
-                        />
-
-                        {collaboratorSearchResults.data && collaboratorSearchResults.data.length > 0 && (
-                          <div className="space-y-2 max-h-40 overflow-y-auto">
-                            {(collaboratorSearchResults.data as any[]).map((user: any) => (
-                              <div
-                                key={user.id}
-                                className="flex items-center justify-between p-2 border rounded-lg cursor-pointer hover:bg-accent"
-                                onClick={() => handleAddCollaborator(user)}
-                                data-testid={`option-collaborator-${user.username}`}
-                              >
-                                <div className="flex items-center space-x-2">
-                                  <img
-                                    src={user.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`}
-                                    alt={user.displayName}
-                                    className="w-8 h-8 rounded-full"
-                                  />
-                                  <div>
-                                    <p className="font-medium text-sm truncate">{user.displayName}</p>
-                                    <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
+                  <div className="mb-4">
+                    <Card className="border-blue-200 bg-blue-50/50">
+                      <CardContent className="pt-4">
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-medium text-sm">Add Collaborators</h4>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setShowCollaboratorSearch(false)}
+                              className="h-6 w-6 p-0"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
                           </div>
-                        )}
+                          
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Input
+                              placeholder="Search for collaborators..."
+                              value={collaboratorSearchQuery}
+                              onChange={(e) => setCollaboratorSearchQuery(e.target.value)}
+                              className="pl-10"
+                            />
+                          </div>
 
-                        {collaborators.length > 0 && (
-                          <div>
-                            <p className="text-sm text-muted-foreground mb-2">Selected collaborators:</p>
-                            <div className="flex flex-wrap gap-2">
-                              {collaborators.map((collaborator) => (
-                                <Badge key={collaborator.id} variant="secondary" className="text-xs">
-                                  {collaborator.displayName}
-                                  <X
-                                    className="w-3 h-3 ml-1 cursor-pointer"
-                                    onClick={() => handleRemoveCollaborator(collaborator.id)}
-                                  />
-                                </Badge>
-                              ))}
+                          {collaboratorSearchResults.isLoading && (
+                            <div className="flex items-center justify-center py-4">
+                              <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2" />
+                              <span className="text-sm text-muted-foreground">Searching...</span>
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
+                          )}
+
+                          {collaboratorSearchResults.data && collaboratorSearchResults.data.length > 0 && (
+                            <div className="space-y-2 max-h-40 overflow-y-auto">
+                              {(collaboratorSearchResults.data as any[]).map((user: any) => {
+                                const isAlreadyCollaborator = collaborators.some(c => c.id === user.id);
+                                return (
+                                  <div
+                                    key={user.id}
+                                    className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${
+                                      isAlreadyCollaborator 
+                                        ? 'bg-green-50 border-green-200 cursor-not-allowed' 
+                                        : 'cursor-pointer hover:bg-accent border-border'
+                                    }`}
+                                    onClick={() => !isAlreadyCollaborator && handleAddCollaborator(user)}
+                                  >
+                                    <div className="flex items-center space-x-3">
+                                      <img
+                                        src={user.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`}
+                                        alt={user.displayName}
+                                        className="w-8 h-8 rounded-full object-cover"
+                                      />
+                                      <div>
+                                        <p className="font-medium text-sm truncate">{user.displayName}</p>
+                                        <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
+                                      </div>
+                                    </div>
+                                    {isAlreadyCollaborator && (
+                                      <Badge variant="secondary" className="text-xs">
+                                        Added
+                                      </Badge>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {collaboratorSearchQuery && collaboratorSearchResults.data?.length === 0 && !collaboratorSearchResults.isLoading && (
+                            <div className="text-center py-4">
+                              <p className="text-sm text-muted-foreground">No users found</p>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
                 )}
 
                 {/* Image Generation */}
@@ -767,7 +820,7 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
                       title="Add Collaborators"
                       data-testid="button-add-collaborators"
                     >
-                      <Star className="w-5 h-5" />
+                      <UserPlus className="w-5 h-5" />
                     </Button>
 
                     <Button
