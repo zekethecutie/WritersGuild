@@ -124,17 +124,23 @@ export class AuthService {
         credentials: "include",
       });
 
+      // Clear local storage and session storage
+      localStorage.clear();
+      sessionStorage.clear();
+
       if (response.ok) {
-        // Clear any cached user data and redirect
+        // Successful logout
         window.location.href = "/";
       } else {
         console.error("Logout failed:", response.statusText);
-        // Force redirect anyway
+        // Force redirect anyway for security
         window.location.href = "/";
       }
     } catch (error) {
       console.error("Logout error:", error);
-      // Force redirect on error
+      // Clear storage and force redirect on error
+      localStorage.clear();
+      sessionStorage.clear();
       window.location.href = "/";
     }
   }

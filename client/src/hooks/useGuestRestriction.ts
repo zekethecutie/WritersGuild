@@ -13,8 +13,14 @@ export function useGuestRestriction() {
       setShowAuthDialog(true);
       return false;
     }
-    action();
-    return true;
+    
+    try {
+      action();
+      return true;
+    } catch (error) {
+      console.error('Action execution failed:', error);
+      return false;
+    }
   };
 
   const handleGuestAction = (feature?: string) => {
@@ -34,8 +40,14 @@ export function useGuestRestriction() {
       setShowAuthDialog(true);
       return false;
     }
-    action();
-    return true;
+    
+    try {
+      action();
+      return true;
+    } catch (error) {
+      console.error(`${actionName || 'Action'} execution failed:`, error);
+      return false;
+    }
   };
 
   return {

@@ -97,6 +97,7 @@ export default function RichTextEditor({
         class: `prose prose-sm sm:prose-base lg:prose-lg xl:prose-2xl prose-invert mx-auto focus:outline-none min-h-[120px] ${
           postType === 'poetry' ? 'whitespace-pre-wrap font-serif leading-relaxed' : ''
         } ${className}`,
+        style: 'color: white;',
       },
     },
   });

@@ -31,8 +31,7 @@ export const useWebSocket = () => {
 
     // Handle local development
     if (host.includes('localhost') || host.includes('127.0.0.1')) {
-      const port = window.location.port || '5000';
-      return `${protocol}//localhost:${port}/ws`;
+      return `${protocol}//${host}/ws`;
     }
 
     return `${protocol}//${host}/ws`;
