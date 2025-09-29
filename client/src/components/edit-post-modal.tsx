@@ -392,7 +392,7 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
         <DialogHeader>
           <DialogTitle>Edit Post</DialogTitle>
           <DialogDescription>
-            Modify your post content, add media, set collaborators, and update post settings.
+            Modify your post content, settings, and attachments
           </DialogDescription>
         </DialogHeader>
 

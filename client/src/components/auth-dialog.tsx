@@ -230,10 +230,10 @@ export default function AuthDialog({
              "Customize your experience"}
           </DialogTitle>
           <DialogDescription className="text-center text-muted-foreground">
-            {activeTab === "login" ? "Sign in to your Writers Guild account" :
-             step === 1 ? "Create your Writers Guild account" :
-             step === 2 ? "Help us personalize your experience" :
-             "Choose your preferred content genres"}
+            {activeTab === "login" ? "Sign in to your Writers Guild account to access your profile, posts, and messages" :
+             step === 1 ? "Create your Writers Guild account to start sharing your creative writing" :
+             step === 2 ? "Help us personalize your experience by selecting your role in the community" :
+             "Choose your preferred content genres to customize your feed and discover relevant content"}
           </DialogDescription>
         </DialogHeader>
 
