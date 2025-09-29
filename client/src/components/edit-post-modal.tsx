@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,11 +12,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
-import { 
-  Separator 
-} from "@/components/ui/separator";
+import { Separator } from "@/components/ui/separator";
 import { 
   Select,
   SelectContent,
@@ -119,6 +116,7 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
       }
       setImagePrompt("");
       setShowImageGeneration(false);
+      setIsGeneratingImage(false);
     },
     onError: (error: Error) => {
       toast({
@@ -126,6 +124,7 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
         description: "Failed to generate image. Please try again.",
         variant: "destructive",
       });
+      setIsGeneratingImage(false);
     },
   });
 
@@ -381,491 +380,401 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Post</DialogTitle>
-          <DialogDescription>
-            Make changes to your post and save when you're ready.
-          </DialogDescription>
         </DialogHeader>
 
-        <Card className="bg-card border-border">
-          <CardContent className="p-6">
-            <div className="flex space-x-3">
-              <img
-                src={user?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.username}`}
-                alt="Your profile"
-                className="w-12 h-12 rounded-full object-cover flex-shrink-0"
-                data-testid="img-composer-avatar"
-              />
-              <div className="flex-1">
-                {/* Post Type and Privacy */}
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-2">
-                    <Select value={postType} onValueChange={(value: any) => setPostType(value)}>
-                      <SelectTrigger className="w-32 h-8 text-xs border-border">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="text">Text</SelectItem>
-                        <SelectItem value="poetry">Poetry</SelectItem>
-                        <SelectItem value="story">Story</SelectItem>
-                        <SelectItem value="challenge">Challenge</SelectItem>
-                      </SelectContent>
-                    </Select>
+        <div className="space-y-6">
+          {/* Title */}
+          <div>
+            <label htmlFor="title" className="text-sm font-medium">Title (optional)</label>
+            <Input
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Post title..."
+              className="mt-1"
+            />
+          </div>
 
-                    {postType !== "text" && (
-                      <Badge variant="outline" className={`text-xs ${getPostTypeColor()}`}>
-                        {postType.charAt(0).toUpperCase() + postType.slice(1)}
-                      </Badge>
-                    )}
-                  </div>
+          {/* Content */}
+          <div>
+            <label htmlFor="content" className="text-sm font-medium">Content</label>
+            <div className="mt-1">
+              {isRichTextMode ? (
+                <RichTextEditor
+                  content={content}
+                  onChange={setContent}
+                  placeholder="Share your thoughts, poetry, or stories..."
+                  className="min-h-[200px]"
+                  postType={postType}
+                />
+              ) : (
+                <Textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="Share your thoughts, poetry, or stories..."
+                  className="min-h-[200px]"
+                  rows={8}
+                />
+              )}
+            </div>
+          </div>
 
-                  <Select value={privacy} onValueChange={(value: any) => setPrivacy(value)}>
-                    <SelectTrigger className="w-28 h-8 text-xs border-border">
-                      <div className="flex items-center space-x-1">
-                        <PrivacyIcon className="w-3 h-3" />
-                        <SelectValue />
-                      </div>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="public">Public</SelectItem>
-                      <SelectItem value="followers">Followers</SelectItem>
-                      <SelectItem value="private">Private</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Title Input */}
-                {(postType === "story" || postType === "poetry") && (
-                  <div className="mb-4">
-                    <Input
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      placeholder={`${postType === "story" ? "Story" : "Poem"} title (optional)`}
-                      className="text-lg font-medium bg-transparent border-none outline-none placeholder-muted-foreground"
-                      data-testid="input-post-title"
-                      maxLength={255}
-                    />
-                  </div>
-                )}
-
-                {/* Editor */}
-                <div className="mb-4">
-                  {isRichTextMode ? (
-                    <RichTextEditor
-                      content={content}
-                      onChange={setContent}
-                      placeholder="Share your thoughts, poetry, or stories..."
-                      className="min-h-[120px]"
-                      postType={postType}
-                    />
-                  ) : (
-                    <Textarea
-                      value={content}
-                      onChange={(e) => setContent(e.target.value)}
-                      placeholder="Share your thoughts, poetry, or stories..."
-                      className="resize-none border-none outline-none bg-transparent text-lg placeholder-muted-foreground min-h-[120px] p-0"
-                      data-testid="textarea-post-content"
-                    />
+          {/* Genre Selection */}
+          {(postType === "poetry" || postType === "story") && (
+            <div>
+              <label className="text-sm font-medium">Genre</label>
+              <Select value={genre} onValueChange={setGenre}>
+                <SelectTrigger className="mt-1 w-full">
+                  <SelectValue placeholder={`Select ${postType} genre`} />
+                </SelectTrigger>
+                <SelectContent>
+                  {postType === "poetry" && (
+                    <>
+                      <SelectItem value="free-verse">Free Verse</SelectItem>
+                      <SelectItem value="sonnet">Sonnet</SelectItem>
+                      <SelectItem value="haiku">Haiku</SelectItem>
+                      <SelectItem value="spoken-word">Spoken Word</SelectItem>
+                      <SelectItem value="limerick">Limerick</SelectItem>
+                      <SelectItem value="ballad">Ballad</SelectItem>
+                    </>
                   )}
-                </div>
+                  {postType === "story" && (
+                    <>
+                      <SelectItem value="flash-fiction">Flash Fiction</SelectItem>
+                      <SelectItem value="short-story">Short Story</SelectItem>
+                      <SelectItem value="fantasy">Fantasy</SelectItem>
+                      <SelectItem value="sci-fi">Science Fiction</SelectItem>
+                      <SelectItem value="romance">Romance</SelectItem>
+                      <SelectItem value="mystery">Mystery</SelectItem>
+                      <SelectItem value="horror">Horror</SelectItem>
+                      <SelectItem value="literary">Literary</SelectItem>
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
-                {/* Genre Selection */}
-                {(postType === "poetry" || postType === "story") && (
-                  <div className="mb-4">
-                    <Select value={genre} onValueChange={setGenre}>
-                      <SelectTrigger className="w-48 border-border">
-                        <SelectValue placeholder={`Select ${postType} genre`} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {postType === "poetry" && (
-                          <>
-                            <SelectItem value="free-verse">Free Verse</SelectItem>
-                            <SelectItem value="sonnet">Sonnet</SelectItem>
-                            <SelectItem value="haiku">Haiku</SelectItem>
-                            <SelectItem value="spoken-word">Spoken Word</SelectItem>
-                            <SelectItem value="limerick">Limerick</SelectItem>
-                            <SelectItem value="ballad">Ballad</SelectItem>
-                          </>
-                        )}
-                        {postType === "story" && (
-                          <>
-                            <SelectItem value="flash-fiction">Flash Fiction</SelectItem>
-                            <SelectItem value="short-story">Short Story</SelectItem>
-                            <SelectItem value="fantasy">Fantasy</SelectItem>
-                            <SelectItem value="sci-fi">Science Fiction</SelectItem>
-                            <SelectItem value="romance">Romance</SelectItem>
-                            <SelectItem value="mystery">Mystery</SelectItem>
-                            <SelectItem value="horror">Horror</SelectItem>
-                            <SelectItem value="literary">Literary</SelectItem>
-                          </>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
+          {/* Images */}
+          {selectedImages.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium">Images ({selectedImages.length}/4)</label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedImages([])}
+                  className="text-destructive hover:text-destructive"
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Remove All
+                </Button>
+              </div>
+              <ImageGallery
+                images={selectedImages}
+                onRemove={(index) => {
+                  setSelectedImages(prev => prev.filter((_, i) => i !== index));
+                }}
+                className="rounded-lg overflow-hidden"
+              />
+            </div>
+          )}
 
-                {/* Media Attachments */}
-                {selectedImages.length > 0 && (
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-muted-foreground">
-                        Attached Images ({selectedImages.length}/4)
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedImages([])}
-                        className="text-xs text-muted-foreground hover:text-destructive"
-                      >
-                        <X className="w-3 h-3 mr-1" />
-                        Remove All
-                      </Button>
-                    </div>
-                    <ImageGallery
-                      images={selectedImages}
-                      onRemove={(index) => {
-                        setSelectedImages(prev => prev.filter((_, i) => i !== index));
-                      }}
-                      className="rounded-xl overflow-hidden"
+          {/* Collaborators */}
+          {collaborators.length > 0 && (
+            <div>
+              <label className="text-sm font-medium">Collaborators</label>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {collaborators.map((collaborator, index) => (
+                  <div key={collaborator.id} className="flex items-center bg-secondary rounded-full px-3 py-1.5 text-sm">
+                    <img
+                      src={collaborator.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${collaborator.username}`}
+                      alt={collaborator.displayName}
+                      className="w-5 h-5 rounded-full mr-2"
                     />
-                  </div>
-                )}
-
-                {/* Collaborators */}
-                {collaborators.length > 0 && (
-                  <div className="mb-4">
-                    <div className="flex flex-wrap gap-2">
-                      {collaborators.map((collaborator, index) => (
-                        <div key={collaborator.id} className="flex items-center bg-secondary rounded-full px-3 py-1.5 text-sm">
-                          <img
-                            src={collaborator.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${collaborator.username}`}
-                            alt={collaborator.displayName}
-                            className="w-5 h-5 rounded-full mr-2"
-                          />
-                          <span>@{collaborator.username}</span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveCollaborator(collaborator.id)}
-                            className="ml-2 h-4 w-4 p-0 text-muted-foreground hover:text-destructive"
-                            data-testid={`button-remove-collaborator-${index}`}
-                          >
-                            <X className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Spotify Track Display */}
-                {selectedTrack && (
-                  <div className="mb-4">
-                    <SpotifyTrackDisplay 
-                      track={selectedTrack} 
-                      size="md"
-                      showPreview={true}
-                    />
+                    <span>@{collaborator.username}</span>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setSelectedTrack(null)}
-                      className="mt-2 text-muted-foreground hover:text-destructive"
+                      onClick={() => handleRemoveCollaborator(collaborator.id)}
+                      className="ml-2 h-4 w-4 p-0 text-muted-foreground hover:text-destructive"
                     >
-                      <X className="w-4 h-4 mr-2" />
-                      Remove track
+                      <X className="w-3 h-3" />
                     </Button>
                   </div>
-                )}
-
-                {/* Spotify Search */}
-                {showSpotify && (
-                  <div className="mb-4">
-                    <Card className="border-green-200 bg-green-50/50">
-                      <CardContent className="pt-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center space-x-2">
-                            <Music className="w-4 h-4 text-green-600" />
-                            <h4 className="font-medium text-sm">Add Music</h4>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setShowSpotify(false)}
-                            className="h-6 w-6 p-0"
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </div>
-                        
-                        <SpotifySearch
-                          onTrackSelect={(track) => {
-                            setSelectedTrack(track);
-                            setShowSpotify(false);
-                          }}
-                          selectedTrack={selectedTrack}
-                          placeholder="Search for a song to add..."
-                        />
-                      </CardContent>
-                    </Card>
-                  </div>
-                )}
-
-                {/* Collaborator Search */}
-                {showCollaboratorSearch && (
-                  <div className="mb-4">
-                    <Card className="border-blue-200 bg-blue-50/50">
-                      <CardContent className="pt-4">
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-medium text-sm">Add Collaborators</h4>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setShowCollaboratorSearch(false)}
-                              className="h-6 w-6 p-0"
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                          </div>
-                          
-                          <div className="relative">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                            <Input
-                              placeholder="Search for collaborators..."
-                              value={collaboratorSearchQuery}
-                              onChange={(e) => setCollaboratorSearchQuery(e.target.value)}
-                              className="pl-10"
-                            />
-                          </div>
-
-                          {collaboratorSearchResults.isLoading && (
-                            <div className="flex items-center justify-center py-4">
-                              <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2" />
-                              <span className="text-sm text-muted-foreground">Searching...</span>
-                            </div>
-                          )}
-
-                          {collaboratorSearchResults.data && collaboratorSearchResults.data.length > 0 && (
-                            <div className="space-y-2 max-h-40 overflow-y-auto">
-                              {(collaboratorSearchResults.data as any[]).map((user: any) => {
-                                const isAlreadyCollaborator = collaborators.some(c => c.id === user.id);
-                                return (
-                                  <div
-                                    key={user.id}
-                                    className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${
-                                      isAlreadyCollaborator 
-                                        ? 'bg-green-50 border-green-200 cursor-not-allowed' 
-                                        : 'cursor-pointer hover:bg-accent border-border'
-                                    }`}
-                                    onClick={() => !isAlreadyCollaborator && handleAddCollaborator(user)}
-                                  >
-                                    <div className="flex items-center space-x-3">
-                                      <img
-                                        src={user.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`}
-                                        alt={user.displayName}
-                                        className="w-8 h-8 rounded-full object-cover"
-                                      />
-                                      <div>
-                                        <p className="font-medium text-sm truncate">{user.displayName}</p>
-                                        <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
-                                      </div>
-                                    </div>
-                                    {isAlreadyCollaborator && (
-                                      <Badge variant="secondary" className="text-xs">
-                                        Added
-                                      </Badge>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-
-                          {collaboratorSearchQuery && collaboratorSearchResults.data?.length === 0 && !collaboratorSearchResults.isLoading && (
-                            <div className="text-center py-4">
-                              <p className="text-sm text-muted-foreground">No users found</p>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                )}
-
-                {/* Image Generation */}
-                {showImageGeneration && (
-                  <Card>
-                    <CardContent className="pt-4">
-                      <div className="space-y-3">
-                        <label htmlFor="image-prompt" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Describe the image you want to generate:</label>
-                        <Textarea
-                          id="image-prompt"
-                          placeholder="A mystical forest with glowing trees under a starry sky..."
-                          value={imagePrompt}
-                          onChange={(e) => setImagePrompt(e.target.value)}
-                          rows={3}
-                        />
-                        <div className="flex justify-end space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setShowImageGeneration(false)}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={handleGenerateImage}
-                            disabled={generateImageMutation.isPending || !imagePrompt.trim()}
-                          >
-                            {generateImageMutation.isPending ? (
-                              <>
-                                <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-2" />
-                                Generating...
-                              </>
-                            ) : (
-                              <>
-                                <Sparkles className="w-4 h-4 mr-2" />
-                                Generate
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                <Separator className="my-4" />
-
-                {/* Toolbar */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setIsRichTextMode(!isRichTextMode)}
-                      className={`p-2 rounded-lg transition-colors ${
-                        isRichTextMode ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-primary hover:bg-primary/10"
-                      }`}
-                      title="Rich Text Formatting"
-                      data-testid="button-rich-text"
-                    >
-                      <Type className="w-5 h-5" />
-                    </Button>
-
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/jpeg,image/png,image/webp,image/gif"
-                      onChange={(e) => e.target.files && handleImageUpload(e.target.files)}
-                      className="hidden"
-                      id="image-upload"
-                    />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => document.getElementById('image-upload')?.click()}
-                      disabled={isUploadingImages || selectedImages.length >= 4}
-                      className={`p-2 rounded-lg transition-colors ${
-                        isUploadingImages ? "text-blue-400 bg-blue-400/10" : 
-                        selectedImages.length >= 4 ? "text-muted-foreground/50 cursor-not-allowed" :
-                        "text-muted-foreground hover:text-primary hover:bg-primary/10"
-                      }`}
-                      title={isUploadingImages ? "Uploading..." : selectedImages.length >= 4 ? "Maximum 4 images" : "Add Images"}
-                      data-testid="button-add-images"
-                    >
-                      {isUploadingImages ? (
-                        <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <ImageIcon className="w-5 h-5" />
-                      )}
-                    </Button>
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowSpotify(!showSpotify)}
-                      className={`p-2 rounded-lg transition-colors ${
-                        showSpotify || selectedTrack ? "text-green-500 bg-green-500/10" : "text-muted-foreground hover:text-green-500 hover:bg-green-500/10"
-                      }`}
-                      title="Add Music"
-                      data-testid="button-add-music"
-                    >
-                      <Music className="w-5 h-5" />
-                    </Button>
-
-                    {postType === "poetry" && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="p-2 rounded-lg text-muted-foreground hover:text-purple-400 hover:bg-purple-400/10 transition-colors"
-                        title="Poetry Formatting"
-                        data-testid="button-poetry-mode"
-                      >
-                        <Quote className="w-5 h-5" />
-                      </Button>
-                    )}
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowCollaboratorSearch(!showCollaboratorSearch)}
-                      className={`p-2 rounded-lg transition-colors ${
-                        showCollaboratorSearch || collaborators.length > 0 ? "text-blue-500 bg-blue-500/10" : "text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10"
-                      }`}
-                      title="Add Collaborators"
-                      data-testid="button-add-collaborators"
-                    >
-                      <UserPlus className="w-5 h-5" />
-                    </Button>
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowImageGeneration(!showImageGeneration)}
-                      disabled={generateImageMutation.isPending}
-                      className={`p-2 rounded-lg transition-colors ${
-                        showImageGeneration || generateImageMutation.isPending ? "text-yellow-500 bg-yellow-500/10" : "text-muted-foreground hover:text-yellow-500 hover:bg-yellow-500/10"
-                      }`}
-                      title={generateImageMutation.isPending ? "Generating..." : "Generate Image"}
-                      data-testid="button-generate-image"
-                    >
-                      {generateImageMutation.isPending ? (
-                        <div className="w-5 h-5 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <Sparkles className="w-5 h-5" />
-                      )}
-                    </Button>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    {content.length > 0 && (
-                      <span className="text-xs text-muted-foreground">
-                        {content.length} characters
-                      </span>
-                    )}
-
-                    <Button
-                      onClick={handleSubmit}
-                      disabled={updatePostMutation.isPending || !content.trim() || isUploadingImages}
-                      className="bg-primary text-primary-foreground px-6 py-2 rounded-full font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-                      data-testid="button-publish"
-                    >
-                      {updatePostMutation.isPending ? (
-                        <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-2" />
-                      ) : null}
-                      Update
-                    </Button>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
-          </CardContent>
-        </Card>
+          )}
+
+          {/* Spotify Track */}
+          {selectedTrack && (
+            <div>
+              <label className="text-sm font-medium">Music</label>
+              <div className="mt-2">
+                <SpotifyTrackDisplay 
+                  track={selectedTrack} 
+                  size="md"
+                  showPreview={true}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedTrack(null)}
+                  className="mt-2 text-destructive hover:text-destructive"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Remove track
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Spotify Search */}
+          {showSpotify && (
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-medium">Add Music</h4>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowSpotify(false)}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+                <SpotifySearch
+                  onTrackSelect={(track) => {
+                    setSelectedTrack(track);
+                    setShowSpotify(false);
+                  }}
+                  selectedTrack={selectedTrack}
+                  placeholder="Search for a song to add..."
+                />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Collaborator Search */}
+          {showCollaboratorSearch && (
+            <Card>
+              <CardContent className="p-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium">Add Collaborators</h4>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowCollaboratorSearch(false)}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search for collaborators..."
+                      value={collaboratorSearchQuery}
+                      onChange={(e) => setCollaboratorSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+
+                  {collaboratorSearchResults.isLoading && (
+                    <div className="flex items-center justify-center py-4">
+                      <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2" />
+                      <span className="text-sm text-muted-foreground">Searching...</span>
+                    </div>
+                  )}
+
+                  {collaboratorSearchResults.data && collaboratorSearchResults.data.length > 0 && (
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {(collaboratorSearchResults.data as any[]).map((user: any) => {
+                        const isAlreadyCollaborator = collaborators.some(c => c.id === user.id);
+                        return (
+                          <div
+                            key={user.id}
+                            className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${
+                              isAlreadyCollaborator 
+                                ? 'bg-green-50 border-green-200 cursor-not-allowed' 
+                                : 'cursor-pointer hover:bg-accent'
+                            }`}
+                            onClick={() => !isAlreadyCollaborator && handleAddCollaborator(user)}
+                          >
+                            <div className="flex items-center space-x-3">
+                              <img
+                                src={user.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`}
+                                alt={user.displayName}
+                                className="w-8 h-8 rounded-full object-cover"
+                              />
+                              <div>
+                                <p className="font-medium text-sm">{user.displayName}</p>
+                                <p className="text-xs text-muted-foreground">@{user.username}</p>
+                              </div>
+                            </div>
+                            {isAlreadyCollaborator && (
+                              <Badge variant="secondary" className="text-xs">
+                                Added
+                              </Badge>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {collaboratorSearchQuery && collaboratorSearchResults.data?.length === 0 && !collaboratorSearchResults.isLoading && (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-muted-foreground">No users found</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Image Generation */}
+          {showImageGeneration && (
+            <Card>
+              <CardContent className="p-4">
+                <div className="space-y-3">
+                  <h4 className="font-medium">Generate Image</h4>
+                  <Textarea
+                    placeholder="A mystical forest with glowing trees under a starry sky..."
+                    value={imagePrompt}
+                    onChange={(e) => setImagePrompt(e.target.value)}
+                    rows={3}
+                  />
+                  <div className="flex justify-end space-x-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowImageGeneration(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleGenerateImage}
+                      disabled={isGeneratingImage || !imagePrompt.trim()}
+                    >
+                      {isGeneratingImage ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-2" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          Generate
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <Separator />
+
+          {/* Toolbar */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsRichTextMode(!isRichTextMode)}
+                className={isRichTextMode ? "text-primary bg-primary/10" : ""}
+                title="Rich Text Editor"
+              >
+                <Type className="w-5 h-5" />
+              </Button>
+
+              <input
+                type="file"
+                multiple
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={(e) => e.target.files && handleImageUpload(e.target.files)}
+                className="hidden"
+                id="image-upload"
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => document.getElementById('image-upload')?.click()}
+                disabled={isUploadingImages || selectedImages.length >= 4}
+                title={isUploadingImages ? "Uploading..." : selectedImages.length >= 4 ? "Maximum 4 images" : "Add Images"}
+              >
+                {isUploadingImages ? (
+                  <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <ImageIcon className="w-5 h-5" />
+                )}
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSpotify(!showSpotify)}
+                className={showSpotify || selectedTrack ? "text-green-500 bg-green-500/10" : ""}
+                title="Add Music"
+              >
+                <Music className="w-5 h-5" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowCollaboratorSearch(!showCollaboratorSearch)}
+                className={showCollaboratorSearch || collaborators.length > 0 ? "text-blue-500 bg-blue-500/10" : ""}
+                title="Add Collaborators"
+              >
+                <UserPlus className="w-5 h-5" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowImageGeneration(!showImageGeneration)}
+                disabled={isGeneratingImage}
+                className={showImageGeneration || isGeneratingImage ? "text-yellow-500 bg-yellow-500/10" : ""}
+                title={isGeneratingImage ? "Generating..." : "Generate Image"}
+              >
+                {isGeneratingImage ? (
+                  <div className="w-5 h-5 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Sparkles className="w-5 h-5" />
+                )}
+              </Button>
+            </div>
+
+            <div className="flex items-center space-x-3">
+              {content.length > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  {content.length} characters
+                </span>
+              )}
+
+              <Button variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+
+              <Button
+                onClick={handleSubmit}
+                disabled={updatePostMutation.isPending || !content.trim() || isUploadingImages}
+              >
+                {updatePostMutation.isPending ? (
+                  <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-2" />
+                ) : null}
+                Update Post
+              </Button>
+            </div>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
