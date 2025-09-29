@@ -6,43 +6,62 @@ interface WebSocketMessage {
   data?: any;
 }
 
-export function useWebSocket() {
-  const { user } = useAuth();
+export const useWebSocket = () => {
+  const { user, isAuthenticated } = useAuth();
+  const [socket, setSocket] = useState<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
+  const [lastMessage, setLastMessage] = useState<any>(null);
+  const [connectionAttempts, setConnectionAttempts] = useState(0);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const reconnectAttempts = useRef(0);
-  const maxReconnectDelay = 30000; // Max 30 seconds between attempts
-  const [authError, setAuthError] = useState<string | null>(null);
-  const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
+  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const MAX_RECONNECT_ATTEMPTS = 5;
+  const HEARTBEAT_INTERVAL = 30000; // 30 seconds
+
+  const getWebSocketUrl = () => {
+    if (typeof window === 'undefined') return '';
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+
+    // Handle Replit environment
+    if (host.includes('replit.dev') || host.includes('picard.replit.dev')) {
+      return `${protocol}//${host}/ws`;
+    }
+
+    // Handle local development
+    if (host.includes('localhost') || host.includes('127.0.0.1')) {
+      const port = window.location.port || '5000';
+      return `${protocol}//localhost:${port}/ws`;
+    }
+
+    return `${protocol}//${host}/ws`;
+  };
 
   const connect = useCallback(() => {
-    if (!user?.id || wsRef.current?.readyState === WebSocket.OPEN) return;
+    if (!user?.id || socket?.readyState === WebSocket.OPEN) return;
+
+    const wsUrl = getWebSocketUrl();
+    if (!wsUrl) return;
 
     try {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.host;
-      const wsUrl = `${protocol}//${host}/ws`;
-      
       console.log('Connecting to WebSocket:', wsUrl);
-      wsRef.current = new WebSocket(wsUrl);
+      const newSocket = new WebSocket(wsUrl);
 
-      wsRef.current.onopen = () => {
+      newSocket.onopen = () => {
         console.log('WebSocket connected');
         // Wait for authentication before marking as connected
       };
 
-      wsRef.current.onmessage = (event) => {
+      newSocket.onmessage = (event) => {
         try {
           const message: WebSocketMessage = JSON.parse(event.data);
-          
+
           if (message.type === 'auth_success') {
             setIsConnected(true);
-            setAuthError(null);
-            reconnectAttempts.current = 0;
+            setConnectionAttempts(0); // Reset attempts on successful connection
             console.log('WebSocket authenticated successfully');
-            
+
             // Start heartbeat to keep connection alive
             startHeartbeat();
           } else if (message.type === 'pong') {
@@ -56,89 +75,90 @@ export function useWebSocket() {
         }
       };
 
-      wsRef.current.onclose = (event) => {
+      newSocket.onclose = (event) => {
         console.log(`WebSocket disconnected: ${event.code} ${event.reason}`);
         setIsConnected(false);
-        
+
         // Clear heartbeat on close
-        if (heartbeatRef.current) {
-          clearInterval(heartbeatRef.current);
-          heartbeatRef.current = null;
+        if (heartbeatIntervalRef.current) {
+          clearInterval(heartbeatIntervalRef.current);
+          heartbeatIntervalRef.current = null;
         }
-        
-        if (event.code === 4001) {
-          setAuthError('Authentication required');
-        } else if (event.code === 4000) {
-          setAuthError('Authentication failed');
-        }
-        
-        // Always attempt to reconnect unless explicitly closed
-        if (event.code !== 1000) {
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), maxReconnectDelay);
-          console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current + 1})`);
-          
+
+        // Attempt to reconnect
+        if (event.code !== 1000 && connectionAttempts < MAX_RECONNECT_ATTEMPTS) {
+          const delay = Math.min(1000 * Math.pow(2, connectionAttempts), 30000); // Exponential backoff
+          console.log(`Attempting to reconnect in ${delay}ms (attempt ${connectionAttempts + 1})`);
+
           reconnectTimeoutRef.current = setTimeout(() => {
-            reconnectAttempts.current++;
+            setConnectionAttempts(prev => prev + 1);
             connect();
           }, delay);
+        } else if (connectionAttempts >= MAX_RECONNECT_ATTEMPTS) {
+          console.error('Max reconnect attempts reached. WebSocket connection failed.');
         }
       };
 
-      wsRef.current.onerror = (error) => {
+      newSocket.onerror = (error) => {
         console.error('WebSocket error:', error);
-        if (wsRef.current?.readyState === WebSocket.CLOSED) {
-          setAuthError('Connection failed');
-        }
+        // The onclose event will handle reconnection logic
       };
+
+      setSocket(newSocket);
 
     } catch (error) {
       console.error('Failed to create WebSocket connection:', error);
+      setConnectionAttempts(prev => prev + 1);
+      if (connectionAttempts < MAX_RECONNECT_ATTEMPTS) {
+        const delay = Math.min(1000 * Math.pow(2, connectionAttempts), 30000);
+        reconnectTimeoutRef.current = setTimeout(connect, delay);
+      }
     }
-  }, [user?.id]);
+  }, [user?.id, connectionAttempts, isAuthenticated]); // Include isAuthenticated to re-evaluate connection on auth status change
 
   const startHeartbeat = useCallback(() => {
-    if (heartbeatRef.current) {
-      clearInterval(heartbeatRef.current);
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
     }
-    
-    heartbeatRef.current = setInterval(() => {
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ type: 'ping' }));
+
+    heartbeatIntervalRef.current = setInterval(() => {
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'ping' }));
       }
-    }, 30000); // Send ping every 30 seconds
-  }, []);
+    }, HEARTBEAT_INTERVAL);
+  }, [socket]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
     }
-    
-    if (heartbeatRef.current) {
-      clearInterval(heartbeatRef.current);
-      heartbeatRef.current = null;
+
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+      heartbeatIntervalRef.current = null;
     }
-    
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
+
+    if (socket) {
+      socket.close();
+      setSocket(null);
     }
-    
+
     setIsConnected(false);
-    reconnectAttempts.current = 0;
-  }, []);
+    setConnectionAttempts(0);
+  }, [socket]);
 
   const sendMessage = useCallback((message: WebSocketMessage) => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(message));
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify(message));
       return true;
     }
     return false;
-  }, []);
+  }, [socket]);
 
-  // Connect when user is available, disconnect when not
+  // Connect when user is available and authenticated, disconnect when not
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && isAuthenticated) {
       connect();
     } else {
       disconnect();
@@ -147,7 +167,7 @@ export function useWebSocket() {
     return () => {
       disconnect();
     };
-  }, [user?.id, connect, disconnect]);
+  }, [user?.id, isAuthenticated, connect, disconnect]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -159,9 +179,8 @@ export function useWebSocket() {
   return {
     isConnected,
     lastMessage,
-    authError,
     sendMessage,
     connect,
     disconnect
   };
-}
+};

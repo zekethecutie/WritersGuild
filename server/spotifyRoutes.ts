@@ -1,46 +1,52 @@
-
 import express from 'express';
 import { getSpotifyClient } from './spotifyClient.js';
 
 const router = express.Router();
 
-// Search for tracks
+// Search tracks
 router.get('/search', async (req, res) => {
   try {
-    const { q, limit = 20 } = req.query;
-    
+    const { q, limit = 10 } = req.query;
+
     if (!q || typeof q !== 'string') {
       return res.status(400).json({ error: 'Search query is required' });
     }
 
-    const spotify = await getSpotifyClient();
-    
-    const results = await spotify.search(q, ['track'], 'US', parseInt(limit as string));
-    
-    const tracks = results.tracks.items.map(track => ({
-      id: track.id,
-      name: track.name,
-      artists: track.artists.map(artist => ({ 
-        id: artist.id,
-        name: artist.name 
-      })),
-      album: {
-        id: track.album.id,
-        name: track.album.name,
-        images: track.album.images
-      },
-      preview_url: track.preview_url,
-      external_urls: track.external_urls,
-      duration_ms: track.duration_ms,
-      popularity: track.popularity
-    }));
+    const spotify = getSpotifyClient();
+    if (!spotify) {
+      return res.status(503).json({ 
+        error: 'Spotify service unavailable',
+        tracks: { items: [] }
+      });
+    }
 
-    res.json({ tracks: { items: tracks } });
-  } catch (error) {
+    try {
+      const results = await spotify.search(q, ['track'], 'US', { limit: parseInt(limit as string) });
+      res.json(results);
+    } catch (spotifyError: any) {
+      console.error('Spotify API error:', spotifyError);
+
+      // Return empty results instead of error to prevent UI breaks
+      res.json({
+        tracks: {
+          items: [],
+          total: 0,
+          limit: parseInt(limit as string),
+          offset: 0
+        }
+      });
+    }
+  } catch (error: any) {
     console.error('Spotify search error:', error);
-    res.status(500).json({ 
-      error: 'Failed to search Spotify',
-      details: error instanceof Error ? error.message : 'Unknown error'
+
+    // Always return a valid response structure
+    res.json({
+      tracks: {
+        items: [],
+        total: 0,
+        limit: parseInt(limit as string),
+        offset: 0
+      }
     });
   }
 });
@@ -49,15 +55,15 @@ router.get('/search', async (req, res) => {
 router.get('/track/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     if (!id) {
       return res.status(400).json({ error: 'Track ID is required' });
     }
 
     const spotify = await getSpotifyClient();
-    
+
     const track = await spotify.tracks.get(id, 'US');
-    
+
     const trackData = {
       id: track.id,
       name: track.name,
@@ -86,17 +92,17 @@ router.get('/track/:id', async (req, res) => {
 router.get('/tracks', async (req, res) => {
   try {
     const { ids } = req.query;
-    
+
     if (!ids || typeof ids !== 'string') {
       return res.status(400).json({ error: 'Track IDs are required' });
     }
 
     const trackIds = ids.split(',').slice(0, 50); // Spotify API limit
-    
+
     const spotify = await getSpotifyClient();
-    
+
     const tracks = await spotify.tracks.get(trackIds, 'US');
-    
+
     const tracksData = tracks.map(track => ({
       id: track.id,
       name: track.name,
@@ -125,15 +131,15 @@ router.get('/tracks', async (req, res) => {
 router.get('/artist/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     if (!id) {
       return res.status(400).json({ error: 'Artist ID is required' });
     }
 
     const spotify = await getSpotifyClient();
-    
+
     const artist = await spotify.artists.get(id);
-    
+
     const artistData = {
       id: artist.id,
       name: artist.name,
@@ -158,15 +164,15 @@ router.get('/artist/:id', async (req, res) => {
 router.get('/album/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     if (!id) {
       return res.status(400).json({ error: 'Album ID is required' });
     }
 
     const spotify = await getSpotifyClient();
-    
+
     const album = await spotify.albums.get(id, 'US');
-    
+
     const albumData = {
       id: album.id,
       name: album.name,

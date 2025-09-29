@@ -15,14 +15,14 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
+import {
   Image as ImageIcon,
   Music,
   Type,
@@ -34,7 +34,8 @@ import {
   X,
   UserPlus,
   Search,
-  Star
+  Star,
+  Upload
 } from "lucide-react";
 
 interface EditPostModalProps {
@@ -249,7 +250,7 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
 
       if (file.size > maxSize) {
         toast({
-          title: "File too large", 
+          title: "File too large",
           description: `${file.name} is larger than 10MB.`,
           variant: "destructive",
         });
@@ -515,8 +516,8 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
             <div>
               <label className="text-sm font-medium">Music</label>
               <div className="mt-2">
-                <SpotifyTrackDisplay 
-                  track={selectedTrack} 
+                <SpotifyTrackDisplay
+                  track={selectedTrack}
                   size="md"
                   showPreview={true}
                 />
@@ -600,8 +601,8 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
                           <div
                             key={user.id}
                             className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${
-                              isAlreadyCollaborator 
-                                ? 'bg-green-50 border-green-200 cursor-not-allowed' 
+                              isAlreadyCollaborator
+                                ? 'bg-green-50 border-green-200 cursor-not-allowed'
                                 : 'cursor-pointer hover:bg-accent'
                             }`}
                             onClick={() => !isAlreadyCollaborator && handleAddCollaborator(user)}

@@ -12,14 +12,17 @@ interface FollowButtonProps {
   size?: "sm" | "default" | "lg";
 }
 
-export default function FollowButton({ 
-  userId, 
-  isFollowing = false, 
+export default function FollowButton({
+  userId,
+  isFollowing = false,
   variant,
-  size = "sm" 
+  size = "sm"
 }: FollowButtonProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // State to manage optimistic updates
+  const [optimisticFollowing, setOptimisticFollowing] = React.useState(isFollowing);
 
   // Check current follow status on mount
   const { data: following, isLoading } = useQuery({
@@ -44,77 +47,72 @@ export default function FollowButton({
 
   const followMutation = useMutation({
     mutationFn: async () => {
-      if (following) {
-        // Unfollow - DELETE request
-        const response = await fetch(`/api/follows/${userId}`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-        });
+      const response = optimisticFollowing
+        ? await fetch(`/api/follows/${userId}`, {
+            method: 'DELETE',
+            credentials: 'include',
+          })
+        : await fetch('/api/follows', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ followingId: userId }),
+          });
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || 'Failed to unfollow user');
-        }
-
-        return { following: false };
-      } else {
-        // Follow - POST request
-        const response = await fetch('/api/follows', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify({ followingId: userId }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          // Handle "already following" as success
-          if (response.status === 400 && errorData.message?.includes('Already following')) {
-            return { following: true };
-          }
-          throw new Error(errorData.message || 'Failed to follow user');
-        }
-
-        return { following: true };
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(errorData || 'Failed to update follow status');
       }
+
+      return response.json();
+    },
+    onMutate: () => {
+      // Optimistic update
+      setOptimisticFollowing(!optimisticFollowing);
     },
     onSuccess: (data) => {
-      // Update the follow status query data directly
-      queryClient.setQueryData(["follow-status", userId], data.following);
-      
-      // Invalidate relevant queries to refresh data
+      // Update the actual following state based on server response
+      if (data && typeof data.following === 'boolean') {
+        setOptimisticFollowing(data.following);
+      }
+
       queryClient.invalidateQueries({ queryKey: ["follow-status", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users", userId, "stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users/recommended"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users/trending"] });
       queryClient.invalidateQueries({ queryKey: ["/api/search"] });
       queryClient.invalidateQueries({ queryKey: ["/api/follows"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/users", userId, "stats"] });
-      
+
       toast({
-        title: data.following ? "Following" : "Unfollowed",
-        description: data.following 
-          ? "You are now following this user" 
-          : "You have unfollowed this user",
+        title: data?.following ? "Following!" : "Unfollowed",
+        description: data?.following ? "You are now following this user" : "You are no longer following this user",
       });
     },
-    onError: (error) => {
-      console.error("Follow error:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update follow status",
-        variant: "destructive",
-      });
+    onError: (error: Error) => {
+      // Revert optimistic update
+      setOptimisticFollowing(isFollowing);
+
+      console.error('Follow error:', error);
+
+      if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+        toast({
+          title: "Sign in required",
+          description: "Please sign in to follow users",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to update follow status. Please try again.",
+          variant: "destructive",
+        });
+      }
     },
   });
 
   return (
     <Button
-      variant={variant || (following ? "outline" : "default")}
+      variant={variant || (optimisticFollowing ? "outline" : "default")}
       size={size}
       onClick={() => followMutation.mutate()}
       disabled={followMutation.isPending || isLoading}
@@ -122,7 +120,7 @@ export default function FollowButton({
     >
       {followMutation.isPending || isLoading ? (
         <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-      ) : following ? (
+      ) : optimisticFollowing ? (
         <>
           <UserCheck className="w-4 h-4 mr-1" />
           Following
