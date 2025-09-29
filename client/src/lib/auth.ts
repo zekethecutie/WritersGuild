@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   email?: string;
@@ -49,14 +48,14 @@ export class AuthService {
       const response = await fetch('/api/auth/user', {
         credentials: 'include',
       });
-      
+
       if (!response.ok) {
         if (response.status === 401) {
           return null;
         }
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
       return data.user;
     } catch (error) {
@@ -120,27 +119,23 @@ export class AuthService {
 
   async logout(): Promise<void> {
     try {
-      const response = await fetch('/api/logout', {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Accept': 'application/json'
-        }
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
       });
-      
+
       if (response.ok) {
-        const data = await response.json();
-        if (data.redirect) {
-          window.location.href = data.redirect;
-        } else {
-          window.location.href = '/';
-        }
+        // Clear any cached user data and redirect
+        window.location.href = "/";
       } else {
-        window.location.href = '/';
+        console.error("Logout failed:", response.statusText);
+        // Force redirect anyway
+        window.location.href = "/";
       }
     } catch (error) {
-      console.error('Logout failed:', error);
-      window.location.href = '/';
+      console.error("Logout error:", error);
+      // Force redirect on error
+      window.location.href = "/";
     }
   }
 

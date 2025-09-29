@@ -39,7 +39,7 @@ export const useWebSocket = () => {
   };
 
   const connect = useCallback(() => {
-    if (!user?.id || socket?.readyState === WebSocket.OPEN) return;
+    if (!user?.id || socket?.readyState === WebSocket.OPEN || socket?.readyState === WebSocket.CONNECTING) return;
 
     const wsUrl = getWebSocketUrl();
     if (!wsUrl) return;
@@ -49,8 +49,12 @@ export const useWebSocket = () => {
       const newSocket = new WebSocket(wsUrl);
 
       newSocket.onopen = () => {
-        console.log('WebSocket connected');
-        // Wait for authentication before marking as connected
+        console.log('WebSocket connected, authenticating...');
+        // Send authentication immediately
+        newSocket.send(JSON.stringify({
+          type: 'authenticate',
+          userId: user.id
+        }));
       };
 
       newSocket.onmessage = (event) => {

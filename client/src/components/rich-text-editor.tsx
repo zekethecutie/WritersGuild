@@ -94,7 +94,7 @@ export default function RichTextEditor({
     },
     editorProps: {
       attributes: {
-        class: `prose prose-sm sm:prose-base lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-[120px] ${
+        class: `prose prose-sm sm:prose-base lg:prose-lg xl:prose-2xl prose-invert mx-auto focus:outline-none min-h-[120px] ${
           postType === 'poetry' ? 'whitespace-pre-wrap font-serif leading-relaxed' : ''
         } ${className}`,
       },
@@ -133,7 +133,7 @@ export default function RichTextEditor({
           >
             <Bold className="w-4 h-4" />
           </Button>
-          
+
           <Button
             variant={editor.isActive('italic') ? 'default' : 'ghost'}
             size="sm"
@@ -142,7 +142,7 @@ export default function RichTextEditor({
           >
             <Italic className="w-4 h-4" />
           </Button>
-          
+
           <Button
             variant={editor.isActive('strike') ? 'default' : 'ghost'}
             size="sm"
@@ -151,7 +151,7 @@ export default function RichTextEditor({
           >
             <Strikethrough className="w-4 h-4" />
           </Button>
-          
+
           <Button
             variant={editor.isActive('code') ? 'default' : 'ghost'}
             size="sm"
@@ -174,7 +174,7 @@ export default function RichTextEditor({
           >
             <AlignLeft className="w-4 h-4" />
           </Button>
-          
+
           <Button
             variant={editor.isActive({ textAlign: 'center' }) ? 'default' : 'ghost'}
             size="sm"
@@ -183,7 +183,7 @@ export default function RichTextEditor({
           >
             <AlignCenter className="w-4 h-4" />
           </Button>
-          
+
           <Button
             variant={editor.isActive({ textAlign: 'right' }) ? 'default' : 'ghost'}
             size="sm"
@@ -192,7 +192,7 @@ export default function RichTextEditor({
           >
             <AlignRight className="w-4 h-4" />
           </Button>
-          
+
           <Button
             variant={editor.isActive({ textAlign: 'justify' }) ? 'default' : 'ghost'}
             size="sm"
@@ -215,7 +215,7 @@ export default function RichTextEditor({
           >
             <List className="w-4 h-4" />
           </Button>
-          
+
           <Button
             variant={editor.isActive('orderedList') ? 'default' : 'ghost'}
             size="sm"
@@ -224,7 +224,7 @@ export default function RichTextEditor({
           >
             <ListOrdered className="w-4 h-4" />
           </Button>
-          
+
           <Button
             variant={editor.isActive('blockquote') ? 'default' : 'ghost'}
             size="sm"
@@ -248,7 +248,7 @@ export default function RichTextEditor({
             >
               <Palette className="w-4 h-4" />
             </Button>
-            
+
             {showColorPicker && (
               <div className="absolute top-full left-0 mt-1 p-2 bg-background border border-border rounded-lg shadow-lg z-50 grid grid-cols-4 gap-1">
                 {COLORS.map((color) => (
@@ -266,7 +266,7 @@ export default function RichTextEditor({
               </div>
             )}
           </div>
-          
+
           <Button
             variant={editor.isActive('highlight') ? 'default' : 'ghost'}
             size="sm"
@@ -290,7 +290,7 @@ export default function RichTextEditor({
             <Type className="w-4 h-4 mr-1" />
             Font
           </Button>
-          
+
           {showFontPicker && (
             <div className="absolute top-full left-0 mt-1 p-1 bg-background border border-border rounded-lg shadow-lg z-50 min-w-[150px]">
               {FONT_FAMILIES.map((font) => (
@@ -322,7 +322,7 @@ export default function RichTextEditor({
           >
             <Link2 className="w-4 h-4" />
           </Button>
-          
+
           <Button
             variant="ghost"
             size="sm"

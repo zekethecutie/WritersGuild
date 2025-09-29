@@ -98,9 +98,16 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
     queryKey: ["/api/users/search", collaboratorSearchQuery],
     queryFn: async () => {
       if (!collaboratorSearchQuery.trim()) return [];
-      return apiRequest("GET", `/api/users/search?q=${encodeURIComponent(collaboratorSearchQuery)}`);
+      try {
+        return await apiRequest("GET", `/api/users/search?q=${encodeURIComponent(collaboratorSearchQuery)}`);
+      } catch (error) {
+        console.error("Error searching users:", error);
+        return [];
+      }
     },
     enabled: !!collaboratorSearchQuery.trim() && showCollaboratorSearch,
+    staleTime: 1000,
+    retry: 1,
   });
 
   const generateImageMutation = useMutation({

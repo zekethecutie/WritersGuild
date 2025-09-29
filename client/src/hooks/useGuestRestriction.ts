@@ -3,10 +3,12 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
 export function useGuestRestriction() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const [showAuthDialog, setShowAuthDialog] = useState(false);
 
   const checkAuthAndExecute = (action: () => void, feature?: string) => {
+    if (isLoading) return false;
+    
     if (!isAuthenticated) {
       setShowAuthDialog(true);
       return false;
@@ -16,6 +18,8 @@ export function useGuestRestriction() {
   };
 
   const handleGuestAction = (feature?: string) => {
+    if (isLoading) return false;
+    
     if (!isAuthenticated) {
       setShowAuthDialog(true);
       return false;
@@ -24,6 +28,8 @@ export function useGuestRestriction() {
   };
 
   const requireAuth = (action: () => void, actionName?: string) => {
+    if (isLoading) return false;
+    
     if (!isAuthenticated) {
       setShowAuthDialog(true);
       return false;
@@ -38,6 +44,7 @@ export function useGuestRestriction() {
     requireAuth,
     showAuthDialog,
     setShowAuthDialog,
-    isAuthenticated
+    isAuthenticated,
+    isLoading
   };
 }
