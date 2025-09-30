@@ -3,258 +3,109 @@ import { useAuth } from './useAuth';
 
 interface WebSocketMessage {
   type: string;
-  data?: any;
-  conversationId?: string; // Added for typing indicators
-  userId?: string; // Added for typing indicators and reactions
-  messageId?: string; // Added for reactions
-  emoji?: string; // Added for reactions
+  data: any;
 }
 
-export const useWebSocket = (selectedConversation?: { id: string }, setMessages?: (messages: any[]) => void, setConversations?: (conversations: any[]) => void) => {
-  const { user, isAuthenticated } = useAuth();
-  const [socket, setSocket] = useState<WebSocket | null>(null);
+export function useWebSocket(
+  conversationId: string | null,
+  setMessages: (updater: (prev: any[]) => any[]) => void,
+  setConversations: (updater: (prev: any[]) => any[]) => void
+) {
+  const { user } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
-  const [lastMessage, setLastMessage] = useState<any>(null);
-  const [connectionAttempts, setConnectionAttempts] = useState(0);
+  const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const MAX_RECONNECT_ATTEMPTS = 5;
-  const HEARTBEAT_INTERVAL = 30000; // 30 seconds
+  const sendMessage = useCallback((message: WebSocketMessage) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(message));
+    }
+  }, []);
 
-  const getWebSocketUrl = () => {
-    if (typeof window === 'undefined') return '';
-
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
-
-    // Always use the current host for WebSocket connection
-    return `${protocol}//${host}/ws`;
-  };
-
-  const connect = useCallback(() => {
-    if (!user?.id || socket?.readyState === WebSocket.OPEN || socket?.readyState === WebSocket.CONNECTING) return;
-
-    const wsUrl = getWebSocketUrl();
-    if (!wsUrl) return;
+  const connectWebSocket = useCallback(() => {
+    if (!user) return;
 
     try {
-      console.log('Connecting to WebSocket:', wsUrl);
-      const newSocket = new WebSocket(wsUrl);
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host;
+      const wsUrl = `${protocol}//${host}/ws`;
 
-      newSocket.onopen = () => {
-        console.log('WebSocket connected successfully');
-        // Send authentication immediately
-        if (user?.id) {
-          newSocket.send(JSON.stringify({
+      wsRef.current = new WebSocket(wsUrl);
+
+      wsRef.current.onopen = () => {
+        console.log('WebSocket connected');
+        setIsConnected(true);
+
+        // Send authentication
+        if (user) {
+          sendMessage({
             type: 'authenticate',
-            userId: user.id
-          }));
+            data: { userId: user.id }
+          });
         }
+
+        // Start ping interval
+        pingIntervalRef.current = setInterval(() => {
+          if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'ping' }));
+          }
+        }, 30000);
       };
 
-      newSocket.onmessage = (event) => {
+      wsRef.current.onmessage = (event) => {
         try {
-          const message: WebSocketMessage = JSON.parse(event.data);
-
-          if (message.type === 'auth_success') {
-            setIsConnected(true);
-            setConnectionAttempts(0); // Reset attempts on successful connection
-            console.log('WebSocket authenticated successfully');
-
-            // Start heartbeat to keep connection alive
-            startHeartbeat();
-          } else if (message.type === 'pong') {
-            // Handle heartbeat response
-            console.log('Received heartbeat pong');
-          } else {
-            setLastMessage(message);
-          }
+          const message = JSON.parse(event.data);
+          setLastMessage(message);
         } catch (error) {
           console.error('Failed to parse WebSocket message:', error);
         }
       };
 
-      newSocket.onclose = (event) => {
-        console.log(`WebSocket disconnected: ${event.code} ${event.reason}`);
+      wsRef.current.onclose = () => {
+        console.log('WebSocket disconnected');
         setIsConnected(false);
 
-        // Clear heartbeat on close
-        if (heartbeatIntervalRef.current) {
-          clearInterval(heartbeatIntervalRef.current);
-          heartbeatIntervalRef.current = null;
+        if (pingIntervalRef.current) {
+          clearInterval(pingIntervalRef.current);
         }
 
-        // Only attempt to reconnect if it's an unexpected close
-        if (event.code !== 1000 && event.code !== 1001 && connectionAttempts < MAX_RECONNECT_ATTEMPTS) {
-          const delay = Math.min(1000 * Math.pow(2, connectionAttempts), 10000); // Exponential backoff, max 10s
-          console.log(`Reconnecting in ${delay}ms (attempt ${connectionAttempts + 1}/${MAX_RECONNECT_ATTEMPTS})`);
-
-          reconnectTimeoutRef.current = setTimeout(() => {
-            setConnectionAttempts(prev => prev + 1);
-            connect();
-          }, delay);
-        } else if (connectionAttempts >= MAX_RECONNECT_ATTEMPTS) {
-          console.log('Max reconnect attempts reached.');
-        }
+        // Attempt to reconnect after 3 seconds
+        reconnectTimeoutRef.current = setTimeout(() => {
+          connectWebSocket();
+        }, 3000);
       };
 
-      newSocket.onerror = (error) => {
+      wsRef.current.onerror = (error) => {
         console.error('WebSocket error:', error);
-        // The onclose event will handle reconnection logic
+        setIsConnected(false);
       };
-
-      setSocket(newSocket);
 
     } catch (error) {
-      console.error('Failed to create WebSocket connection:', error);
-      setConnectionAttempts(prev => prev + 1);
-      if (connectionAttempts < MAX_RECONNECT_ATTEMPTS) {
-        const delay = Math.min(1000 * Math.pow(2, connectionAttempts), 30000);
-        reconnectTimeoutRef.current = setTimeout(connect, delay);
-      }
+      console.error('Failed to connect WebSocket:', error);
     }
-  }, [user?.id, connectionAttempts, isAuthenticated]); // Include isAuthenticated to re-evaluate connection on auth status change
+  }, [user, sendMessage]);
 
-  const startHeartbeat = useCallback(() => {
-    if (heartbeatIntervalRef.current) {
-      clearInterval(heartbeatIntervalRef.current);
-    }
-
-    heartbeatIntervalRef.current = setInterval(() => {
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: 'ping' }));
-      }
-    }, HEARTBEAT_INTERVAL);
-  }, [socket]);
-
-  const disconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-
-    if (heartbeatIntervalRef.current) {
-      clearInterval(heartbeatIntervalRef.current);
-      heartbeatIntervalRef.current = null;
-    }
-
-    if (socket) {
-      socket.close();
-      setSocket(null);
-    }
-
-    setIsConnected(false);
-    setConnectionAttempts(0);
-  }, [socket]);
-
-  const sendMessage = useCallback((message: WebSocketMessage) => {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify(message));
-      return true;
-    }
-    return false;
-  }, [socket]);
-
-  // Connect when user is available and authenticated, disconnect when not
   useEffect(() => {
-    if (user?.id && isAuthenticated) {
-      connect();
-    } else {
-      disconnect();
-    }
+    connectWebSocket();
 
     return () => {
-      disconnect();
-    };
-  }, [user?.id, isAuthenticated, connect, disconnect]);
-
-  // Handle WebSocket messages for real-time updates
-  useEffect(() => {
-    if (lastMessage) {
-      console.log('Received WebSocket message:', lastMessage);
-
-      if (lastMessage.type === 'new_message') {
-        const messageData = lastMessage.data;
-        console.log('Processing new message:', messageData);
-
-        // If this message is for the currently selected conversation, add it to messages
-        if (selectedConversation?.id === messageData.conversationId && setMessages) {
-          setMessages(prev => {
-            // Check if message already exists
-            const messageExists = prev.some(msg => msg.id === messageData.id);
-            if (messageExists) {
-              console.log('Message already exists, skipping');
-              return prev;
-            }
-            
-            // Ensure the message has proper sender data
-            const messageWithSender = {
-              ...messageData,
-              sender: messageData.sender || {
-                id: messageData.senderId,
-                username: 'unknown',
-                displayName: 'Unknown User',
-                profileImageUrl: null
-              }
-            };
-            
-            console.log('Adding message to conversation:', messageWithSender);
-            return [...prev, messageWithSender];
-          });
-        }
-
-        // Always update conversations list to show new message preview
-        if (setConversations) {
-          setConversations(prev => {
-            const updated = prev.map(conv => {
-              if (conv.id === messageData.conversationId) {
-                return {
-                  ...conv,
-                  lastMessage: messageData,
-                  lastMessageAt: messageData.createdAt
-                };
-              }
-              return conv;
-            });
-            console.log('Updated conversations:', updated);
-            return updated;
-          });
-        }
-      } else if (lastMessage.type === 'message_reaction' && selectedConversation?.id === lastMessage.data.conversationId && setMessages) {
-        // Handle emoji reactions
-        console.log('Message reaction received:', lastMessage.data);
-        setMessages(prev => prev.map(msg => {
-          if (msg.id === lastMessage.data.messageId) {
-            return {
-              ...msg,
-              reactions: [...(msg.reactions || []), {
-                emoji: lastMessage.data.emoji,
-                userId: lastMessage.data.userId
-              }]
-            };
-          }
-          return msg;
-        }));
-      } else if (lastMessage.type === 'typing_indicator') {
-        console.log('Typing indicator received:', lastMessage.data);
-        // This will be handled by the Messages component
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
       }
-    }
-  }, [lastMessage, selectedConversation?.id, setMessages, setConversations])
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      disconnect();
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+      }
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
     };
-  }, [disconnect]);
+  }, [connectWebSocket]);
 
   return {
     isConnected,
     lastMessage,
-    sendMessage,
-    connect,
-    disconnect
+    sendMessage
   };
-};
+}

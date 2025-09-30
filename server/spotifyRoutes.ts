@@ -12,16 +12,11 @@ router.get('/search', async (req, res) => {
       return res.status(400).json({ error: 'Search query is required' });
     }
 
-    const spotify = getSpotifyClient();
-    if (!spotify) {
-      return res.status(503).json({ 
-        error: 'Spotify service unavailable',
-        tracks: { items: [] }
-      });
-    }
-
+    const spotify = await getSpotifyClient();
+    
     try {
       const results = await spotify.search(q, ['track'], undefined, parseInt(limit as string));
+      console.log('Spotify search successful, found', results.tracks.items.length, 'tracks');
       res.json(results);
     } catch (spotifyError: any) {
       console.error('Spotify API error:', spotifyError);

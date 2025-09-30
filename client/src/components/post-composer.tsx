@@ -56,9 +56,6 @@ export default function PostComposer() {
   const [collaborators, setCollaborators] = useState<any[]>([]);
   const [showCollaboratorSearch, setShowCollaboratorSearch] = useState(false);
   const [collaboratorSearchQuery, setCollaboratorSearchQuery] = useState("");
-  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const [imagePrompt, setImagePrompt] = useState("");
-  const [showImageGeneration, setShowImageGeneration] = useState(false);
   const [mentions, setMentions] = useState<Set<string>>(new Set());
   const [hashtags, setHashtags] = useState<Set<string>>(new Set());
 
@@ -87,42 +84,7 @@ export default function PostComposer() {
     setHashtags(newHashtags);
   }, [content]);
 
-  const generateImageMutation = useMutation({
-    mutationFn: async (prompt: string) => {
-      return apiRequest("POST", "/api/generate-image", { prompt });
-    },
-    onSuccess: (data) => {
-      if (data.imageUrls && data.imageUrls.length > 0) {
-        setSelectedImages(prev => [...prev, ...data.imageUrls]);
-        toast({
-          title: "Image generated!",
-          description: "AI-generated image has been added to your post.",
-        });
-      }
-      setImagePrompt("");
-      setShowImageGeneration(false);
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Generation failed",
-        description: "Failed to generate image. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleGenerateImage = () => {
-    if (!imagePrompt.trim()) {
-      toast({
-        title: "Prompt required",
-        description: "Please enter a description for the image you want to generate.",
-        variant: "destructive",
-      });
-      return;
-    }
-    setIsGeneratingImage(true);
-    generateImageMutation.mutate(imagePrompt);
-  };
+  
 
   // Search for users to collaborate with
   const searchUsersQuery = useQuery({
@@ -152,9 +114,6 @@ export default function PostComposer() {
       setCollaborators([]);
       setShowCollaboratorSearch(false);
       setCollaboratorSearchQuery("");
-      setIsGeneratingImage(false);
-      setImagePrompt("");
-      setShowImageGeneration(false);
       setMentions(new Set());
       setHashtags(new Set());
 
@@ -614,49 +573,7 @@ export default function PostComposer() {
               </Card>
             )}
 
-            {/* Image Generation */}
-            {showImageGeneration && (
-              <Card className="mb-4">
-                <CardContent className="pt-4">
-                  <div className="space-y-3">
-                    <label htmlFor="image-prompt" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Describe the image you want to generate:</label>
-                    <Textarea
-                      id="image-prompt"
-                      placeholder="A mystical forest with glowing trees under a starry sky..."
-                      value={imagePrompt}
-                      onChange={(e) => setImagePrompt(e.target.value)}
-                      rows={3}
-                    />
-                    <div className="flex justify-end space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowImageGeneration(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={handleGenerateImage}
-                        disabled={generateImageMutation.isPending || !imagePrompt.trim()}
-                      >
-                        {generateImageMutation.isPending ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-2" />
-                            Generating...
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="w-4 h-4 mr-2" />
-                            Generate
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            
 
             <Separator className="my-4" />
 
@@ -739,25 +656,7 @@ export default function PostComposer() {
                   title="Add Collaborators"
                   data-testid="button-add-collaborators"
                 >
-                  <Star className="w-5 h-5" />
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowImageGeneration(!showImageGeneration)}
-                  disabled={generateImageMutation.isPending}
-                  className={`p-2 rounded-lg transition-colors ${
-                    showImageGeneration || generateImageMutation.isPending ? "text-yellow-500 bg-yellow-500/10" : "text-muted-foreground hover:text-yellow-500 hover:bg-yellow-500/10"
-                  }`}
-                  title={generateImageMutation.isPending ? "Generating..." : "Generate Image"}
-                  data-testid="button-generate-image"
-                >
-                  {generateImageMutation.isPending ? (
-                    <div className="w-5 h-5 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <Sparkles className="w-5 h-5" />
-                  )}
+                  <UserPlus className="w-5 h-5" />
                 </Button>
               </div>
 

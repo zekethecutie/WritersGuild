@@ -87,9 +87,6 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
   const [collaborators, setCollaborators] = useState<any[]>(post?.collaborators || []);
   const [showCollaboratorSearch, setShowCollaboratorSearch] = useState(false);
   const [collaboratorSearchQuery, setCollaboratorSearchQuery] = useState("");
-  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const [imagePrompt, setImagePrompt] = useState("");
-  const [showImageGeneration, setShowImageGeneration] = useState(false);
   const [mentions, setMentions] = useState<Set<string>>(new Set());
   const [hashtags, setHashtags] = useState<Set<string>>(new Set());
 
@@ -110,44 +107,7 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
     retry: 1,
   });
 
-  const generateImageMutation = useMutation({
-    mutationFn: async (prompt: string) => {
-      return apiRequest("POST", "/api/generate-image", { prompt });
-    },
-    onSuccess: (data) => {
-      if (data.imageUrls && data.imageUrls.length > 0) {
-        setSelectedImages(prev => [...prev, ...data.imageUrls]);
-        toast({
-          title: "Image generated!",
-          description: "AI-generated image has been added to your post.",
-        });
-      }
-      setImagePrompt("");
-      setShowImageGeneration(false);
-      setIsGeneratingImage(false);
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Generation failed",
-        description: "Failed to generate image. Please try again.",
-        variant: "destructive",
-      });
-      setIsGeneratingImage(false);
-    },
-  });
-
-  const handleGenerateImage = () => {
-    if (!imagePrompt.trim()) {
-      toast({
-        title: "Prompt required",
-        description: "Please enter a description for the image you want to generate.",
-        variant: "destructive",
-      });
-      return;
-    }
-    setIsGeneratingImage(true);
-    generateImageMutation.mutate(imagePrompt);
-  };
+  
 
   const handleAddCollaborator = (user: any) => {
     if (!collaborators.find(c => c.id === user.id)) {
@@ -649,46 +609,7 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
             </Card>
           )}
 
-          {/* Image Generation */}
-          {showImageGeneration && (
-            <Card>
-              <CardContent className="p-4">
-                <div className="space-y-3">
-                  <h4 className="font-medium">Generate Image</h4>
-                  <Textarea
-                    placeholder="A mystical forest with glowing trees under a starry sky..."
-                    value={imagePrompt}
-                    onChange={(e) => setImagePrompt(e.target.value)}
-                    rows={3}
-                  />
-                  <div className="flex justify-end space-x-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowImageGeneration(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleGenerateImage}
-                      disabled={isGeneratingImage || !imagePrompt.trim()}
-                    >
-                      {isGeneratingImage ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-2" />
-                          Generating...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="w-4 h-4 mr-2" />
-                          Generate
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          
 
           <Separator />
 
@@ -747,20 +668,7 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
                 <UserPlus className="w-5 h-5" />
               </Button>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowImageGeneration(!showImageGeneration)}
-                disabled={isGeneratingImage}
-                className={showImageGeneration || isGeneratingImage ? "text-yellow-500 bg-yellow-500/10" : ""}
-                title={isGeneratingImage ? "Generating..." : "Generate Image"}
-              >
-                {isGeneratingImage ? (
-                  <div className="w-5 h-5 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Sparkles className="w-5 h-5" />
-                )}
-              </Button>
+              
             </div>
 
             <div className="flex items-center space-x-3">

@@ -74,7 +74,7 @@ export default function Messages() {
 
   // NOW initialize WebSocket with all dependencies ready
   const { isConnected, lastMessage, sendMessage: sendWebSocketMessage } = useWebSocket(
-    selectedConversation, 
+    selectedConversation?.id || null, 
     setMessages, 
     setConversations
   );

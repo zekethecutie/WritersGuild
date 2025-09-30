@@ -60,12 +60,15 @@ export function SpotifySearch({ onTrackSelect, selectedTrack, placeholder, class
         credentials: 'include'
       });
       if (!response.ok) {
-        throw new Error("Failed to search tracks");
+        console.error('Spotify search failed:', response.status, response.statusText);
+        return { tracks: { items: [] } };
       }
       const data = await response.json();
+      console.log('Spotify search results:', data);
       return data;
     },
     enabled: !!debouncedQuery.trim(),
+    retry: 1,
   });
 
   const handleSearch = (query: string) => {
