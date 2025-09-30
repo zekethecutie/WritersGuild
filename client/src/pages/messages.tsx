@@ -294,7 +294,7 @@ export default function Messages() {
 
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !selectedConversation || !isConnected) return;
+    if (!newMessage.trim() || !selectedConversation) return;
 
     const messageContent = newMessage.trim();
     setNewMessage(""); // Clear input immediately for better UX
@@ -324,12 +324,14 @@ export default function Messages() {
           }
         };
 
+        // Add message to local state immediately
         setMessages(prev => {
           const exists = prev.some(msg => msg.id === newMessageData.id);
           if (exists) return prev;
           return [...prev, messageWithSender];
         });
 
+        // Send WebSocket message for real-time updates to other users
         if (isConnected) {
           sendWebSocketMessage({
             type: 'send_message',
@@ -337,7 +339,7 @@ export default function Messages() {
               conversationId: selectedConversation.id,
               content: messageContent,
               messageId: newMessageData.id,
-              sender: messageWithSender.sender // Include sender info for real-time update
+              sender: messageWithSender.sender
             }
           });
         }
@@ -347,13 +349,16 @@ export default function Messages() {
           clearTimeout(typingTimeoutRef.current);
           typingTimeoutRef.current = null;
         }
+        
         // Send typing stop immediately after sending
-        sendWebSocketMessage({
-          type: 'typing_stop',
-          data: {
-            conversationId: selectedConversation.id
-          }
-        });
+        if (isConnected) {
+          sendWebSocketMessage({
+            type: 'typing_stop',
+            data: {
+              conversationId: selectedConversation.id
+            }
+          });
+        }
 
         setTimeout(() => scrollToBottom(), 100);
         fetchConversations();

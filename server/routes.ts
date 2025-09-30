@@ -1726,12 +1726,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? conversation[0].participantTwoId 
         : conversation[0].participantOneId;
 
-      // Broadcast message to other participant
+      // Broadcast message to all connected users via WebSocket
       try {
-        if ((app as any).broadcastMessage) {
-          (app as any).broadcastMessage(otherParticipantId, messageWithSender);
-          console.log(`Message broadcasted to user ${otherParticipantId}`);
-        }
+        // Broadcast to all connections for real-time updates
+        userConnections.forEach((connections, targetUserId) => {
+          connections.forEach((ws) => {
+            if (ws.readyState === WebSocket.OPEN) {
+              try {
+                ws.send(JSON.stringify({
+                  type: 'new_message',
+                  data: messageWithSender
+                }));
+                console.log(`Message broadcasted to user ${targetUserId}`);
+              } catch (error) {
+                console.error('Failed to send WebSocket message:', error);
+              }
+            }
+          });
+        });
       } catch (error) {
         console.error('Failed to broadcast message:', error);
       }
@@ -2533,6 +2545,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Handle real-time message sending
             console.log('WebSocket send_message received:', data);
             if (data.data && data.data.conversationId) {
+              // Get the conversation to find the other participant
+              const conversationId = data.data.conversationId;
+              
               // Broadcast the complete message data including sender info
               const messagePayload = {
                 type: 'new_message',
@@ -2540,7 +2555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   id: data.data.messageId,
                   content: data.data.content,
                   senderId: userId,
-                  conversationId: data.data.conversationId,
+                  conversationId: conversationId,
                   createdAt: new Date().toISOString(),
                   sender: data.data.sender || {
                     id: userId,
@@ -2550,7 +2565,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 }
               };
               
-              // Broadcast to all connected clients
+              // Broadcast to all users (they will filter by conversation)
               userConnections.forEach((connections, targetUserId) => {
                 connections.forEach((client) => {
                   if (client.readyState === WebSocket.OPEN) {

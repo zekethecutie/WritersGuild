@@ -181,13 +181,26 @@ export const useWebSocket = (selectedConversation?: { id: string }, setMessages?
         // If this message is for the currently selected conversation, add it to messages
         if (selectedConversation?.id === messageData.conversationId && setMessages) {
           setMessages(prev => {
+            // Check if message already exists
             const messageExists = prev.some(msg => msg.id === messageData.id);
             if (messageExists) {
               console.log('Message already exists, skipping');
               return prev;
             }
-            console.log('Adding message to conversation:', messageData);
-            return [...prev, messageData];
+            
+            // Ensure the message has proper sender data
+            const messageWithSender = {
+              ...messageData,
+              sender: messageData.sender || {
+                id: messageData.senderId,
+                username: 'unknown',
+                displayName: 'Unknown User',
+                profileImageUrl: null
+              }
+            };
+            
+            console.log('Adding message to conversation:', messageWithSender);
+            return [...prev, messageWithSender];
           });
         }
 
