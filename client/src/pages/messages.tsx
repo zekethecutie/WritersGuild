@@ -57,9 +57,9 @@ interface Conversation {
 export default function Messages() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { isConnected, lastMessage, sendMessage: sendWebSocketMessage } = useWebSocket(selectedConversation, setMessages, setConversations);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const { isConnected, lastMessage, sendMessage: sendWebSocketMessage } = useWebSocket(selectedConversation, setMessages, setConversations);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
