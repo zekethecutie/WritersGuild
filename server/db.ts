@@ -22,8 +22,11 @@ if (!connectionString) {
 }
 
 // Create postgres client with proper Supabase configuration
+const sslConfig = { rejectUnauthorized: false };
+
+// Create postgres client with proper configuration
 const client = postgres(connectionString, {
-  ssl: { rejectUnauthorized: false },
+  ssl: sslConfig,
   max: 5,
   idle_timeout: 10,
   max_lifetime: 60 * 10,
