@@ -13,6 +13,10 @@ interface Message {
   senderId: string;
   createdAt: string;
   isRead?: boolean;
+  reactions?: Array<{
+    emoji: string;
+    userId: string;
+  }>;
   sender: {
     id: string;
     username: string;
@@ -166,6 +170,17 @@ export default function ChatBubble({
                 >
                   {emoji}
                 </Button>
+              ))}
+            </div>
+          )}
+
+          {/* Message reactions */}
+          {(message as any).reactions && (message as any).reactions.length > 0 && (
+            <div className="flex gap-1 mt-1 flex-wrap">
+              {(message as any).reactions.map((reaction: any, index: number) => (
+                <Badge key={index} variant="secondary" className="text-xs px-2 py-1">
+                  {reaction.emoji}
+                </Badge>
               ))}
             </div>
           )}

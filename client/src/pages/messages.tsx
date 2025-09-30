@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWebSocket } from "@/hooks/useWebSocket";
@@ -66,12 +65,16 @@ export default function Messages() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const [typingUsers, setTypingUsers] = useState<{ [key: string]: string }>({}); // { conversationId: username }
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
 
   // Check for conversation ID in URL parameters
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const conversationId = urlParams.get('conversation');
-    
+
     if (conversationId && conversations.length > 0) {
       const targetConversation = conversations.find(c => c.id === conversationId);
       if (targetConversation) {
@@ -90,12 +93,28 @@ export default function Messages() {
 
   // Refetch conversations when a new message is received
   useEffect(() => {
-    if (lastMessage && lastMessage.type === 'new_message') {
-      // Refetch conversations to update the list
-      fetchConversations();
-      // Also refresh messages if we're in the conversation
-      if (selectedConversation && lastMessage.data.conversationId === selectedConversation.id) {
-        fetchMessages(selectedConversation.id);
+    if (lastMessage) {
+      if (lastMessage.type === 'new_message') {
+        const messageData = lastMessage.data;
+        // Refetch conversations to update the list
+        fetchConversations();
+        // Also refresh messages if we're in the conversation
+        if (selectedConversation && messageData.conversationId === selectedConversation.id) {
+          fetchMessages(selectedConversation.id);
+        }
+      } else if (lastMessage.type === 'typing_indicator') {
+        const { conversationId, username, isTyping } = lastMessage.data;
+        if (selectedConversation?.id === conversationId) {
+          setTypingUsers(prev => {
+            const newState = { ...prev };
+            if (isTyping) {
+              newState[conversationId] = username;
+            } else {
+              delete newState[conversationId];
+            }
+            return newState;
+          });
+        }
       }
     }
   }, [lastMessage, selectedConversation]);
@@ -122,65 +141,81 @@ export default function Messages() {
     }
   };
 
-  // Handle WebSocket messages for real-time updates
-  useEffect(() => {
-    if (lastMessage) {
-      console.log('Received WebSocket message:', lastMessage);
-      
-      if (lastMessage.type === 'new_message') {
-        const messageData = lastMessage.data;
-        console.log('Processing new message:', messageData);
-        
-        // If this message is for the currently selected conversation, add it to messages
-        if (selectedConversation?.id === messageData.conversationId) {
-          setMessages(prev => {
-            const messageExists = prev.some(msg => msg.id === messageData.id);
-            if (messageExists) {
-              console.log('Message already exists, skipping');
-              return prev;
-            }
-            console.log('Adding message to conversation:', messageData);
-            return [...prev, messageData];
-          });
+  const handleTypingStatus = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(event.target.value);
+    if (!selectedConversation || !isConnected) return;
+
+    const isCurrentlyTyping = event.target.value.trim().length > 0;
+
+    if (isCurrentlyTyping && !isTyping) {
+      setIsTyping(true);
+      sendWebSocketMessage({
+        type: 'typing_start',
+        data: {
+          conversationId: selectedConversation.id,
+          username: user?.username || user?.displayName || 'Unknown User'
         }
-        
-        // Always update conversations list to show new message preview
-        setConversations(prev => {
-          const updated = prev.map(conv => {
-            if (conv.id === messageData.conversationId) {
-              return {
-                ...conv,
-                lastMessage: messageData,
-                lastMessageAt: messageData.createdAt
-              };
-            }
-            return conv;
-          });
-          console.log('Updated conversations:', updated);
-          return updated;
-        });
-      } else if (lastMessage.type === 'message_reaction' && selectedConversation?.id === lastMessage.data.conversationId) {
-        // Handle emoji reactions
-        console.log('Message reaction received:', lastMessage.data);
-      }
+      });
+    } else if (!isCurrentlyTyping && isTyping) {
+      setIsTyping(false);
+      sendWebSocketMessage({
+        type: 'typing_stop',
+        data: {
+          conversationId: selectedConversation.id
+        }
+      });
     }
-  }, [lastMessage, selectedConversation]);
+
+    // Clear previous timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    // Set new timeout to send typing_stop if user stops typing
+    if (isCurrentlyTyping) {
+      typingTimeoutRef.current = setTimeout(() => {
+        setIsTyping(false);
+        sendWebSocketMessage({
+          type: 'typing_stop',
+          data: {
+            conversationId: selectedConversation.id
+          }
+        });
+      }, 3000); // 3 seconds delay
+    }
+  };
+
+
+  // Cleanup on unmount and conversation change
+  useEffect(() => {
+    return () => {
+      // Clear typing timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      // Send stop typing if we were typing
+      if (isTyping && selectedConversation && isConnected) {
+        sendWebSocketMessage({
+          type: 'typing_stop',
+          data: {
+            conversationId: selectedConversation.id
+          }
+        });
+      }
+    };
+  }, [selectedConversation, isTyping, isConnected, sendWebSocketMessage]);
 
   const fetchConversations = async () => {
     if (!user) return;
-    
+
     try {
-      console.log('Fetching conversations for user:', user.id);
       const response = await fetch('/api/conversations', {
         credentials: 'include'
       });
       if (response.ok) {
         const data = await response.json();
-        console.log('Fetched conversations:', data);
         setConversations(Array.isArray(data) ? data : []);
       } else {
-        console.error('Failed to fetch conversations:', response.status, response.statusText);
-        setConversations([]);
         toast({
           title: "Error",
           description: "Failed to load conversations",
@@ -189,7 +224,6 @@ export default function Messages() {
       }
     } catch (error) {
       console.error('Failed to fetch conversations:', error);
-      setConversations([]);
       toast({
         title: "Error",
         description: "Failed to load conversations",
@@ -207,7 +241,6 @@ export default function Messages() {
       });
       if (response.ok) {
         const data = await response.json();
-        // Ensure messages have sender data
         const messagesWithSenders = data.map((msg: Message) => ({
           ...msg,
           sender: msg.sender || {
@@ -227,7 +260,7 @@ export default function Messages() {
   // Handle emoji reactions
   const handleEmojiReact = async (messageId: string, emoji: string) => {
     if (!selectedConversation) return;
-    
+
     try {
       // Send via WebSocket for real-time updates
       if (isConnected) {
@@ -261,13 +294,13 @@ export default function Messages() {
 
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !selectedConversation) return;
+    if (!newMessage.trim() || !selectedConversation || !isConnected) return;
 
     const messageContent = newMessage.trim();
     setNewMessage(""); // Clear input immediately for better UX
+    setIsTyping(false); // Stop typing indicator
 
     try {
-      // Always persist via REST API first
       const response = await fetch(`/api/conversations/${selectedConversation.id}/messages`, {
         method: 'POST',
         headers: {
@@ -281,9 +314,6 @@ export default function Messages() {
 
       if (response.ok) {
         const newMessageData = await response.json();
-        console.log('Sent message successfully:', newMessageData);
-        
-        // Add message to local state immediately with proper sender data
         const messageWithSender = {
           ...newMessageData,
           sender: newMessageData.sender || {
@@ -293,32 +323,41 @@ export default function Messages() {
             profileImageUrl: user.profileImageUrl
           }
         };
-        
+
         setMessages(prev => {
           const exists = prev.some(msg => msg.id === newMessageData.id);
           if (exists) return prev;
           return [...prev, messageWithSender];
         });
-        
-        // Send via WebSocket for real-time delivery to other user
+
         if (isConnected) {
           sendWebSocketMessage({
             type: 'send_message',
             data: {
               conversationId: selectedConversation.id,
               content: messageContent,
-              messageId: newMessageData.id
+              messageId: newMessageData.id,
+              sender: messageWithSender.sender // Include sender info for real-time update
             }
           });
         }
         
-        // Auto-scroll immediately
+        // Clear any pending typing stop
+        if (typingTimeoutRef.current) {
+          clearTimeout(typingTimeoutRef.current);
+          typingTimeoutRef.current = null;
+        }
+        // Send typing stop immediately after sending
+        sendWebSocketMessage({
+          type: 'typing_stop',
+          data: {
+            conversationId: selectedConversation.id
+          }
+        });
+
         setTimeout(() => scrollToBottom(), 100);
-        
-        // Refresh conversations asynchronously (don't wait for it)
         fetchConversations();
       } else {
-        // Restore message if sending failed
         setNewMessage(messageContent);
         toast({
           title: "Error",
@@ -328,7 +367,7 @@ export default function Messages() {
       }
     } catch (error) {
       console.error('Failed to send message:', error);
-      setNewMessage(messageContent); // Restore message on error
+      setNewMessage(messageContent); 
       toast({
         title: "Error",
         description: "Failed to send message",
@@ -356,7 +395,6 @@ export default function Messages() {
       });
 
       if (response.ok) {
-        // Refresh messages to show the deletion
         if (selectedConversation) {
           fetchMessages(selectedConversation.id);
         }
@@ -505,12 +543,19 @@ export default function Messages() {
                     </Avatar>
                     <div>
                       <h2 className="font-semibold">{getConversationName(selectedConversation)}</h2>
-                      <p className="text-sm text-muted-foreground">
-                        {(() => {
-                          const otherUser = getOtherParticipant(selectedConversation);
-                          return otherUser ? `@${otherUser.username}` : "Direct message";
-                        })()}
-                      </p>
+                      {typingUsers[selectedConversation.id] && (
+                        <p className="text-sm text-muted-foreground flex items-center">
+                          <span className="animate-pulse mr-1">●</span> {typingUsers[selectedConversation.id]} is typing...
+                        </p>
+                      )}
+                      {!typingUsers[selectedConversation.id] && (
+                        <p className="text-sm text-muted-foreground">
+                          {(() => {
+                            const otherUser = getOtherParticipant(selectedConversation);
+                            return otherUser ? `@${otherUser.username}` : "Direct message";
+                          })()}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -524,8 +569,7 @@ export default function Messages() {
                         const isOwn = message.senderId === user?.id;
                         const nextMessage = array[index + 1];
                         const isLastInGroup = !nextMessage || nextMessage.senderId !== message.senderId;
-                        
-                        // Create message object compatible with ChatBubble
+
                         const chatMessage = {
                           ...message,
                           sender: message.sender || {
@@ -535,7 +579,7 @@ export default function Messages() {
                             profileImageUrl: undefined
                           }
                         };
-                        
+
                         return (
                           <ChatBubble
                             key={message.id}
@@ -565,13 +609,13 @@ export default function Messages() {
                       <Input
                         placeholder="Message..."
                         value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
+                        onChange={handleTypingStatus}
                         onKeyPress={handleKeyPress}
                         className="flex-1 rounded-full border-gray-300 focus:border-blue-500"
                       />
                       <Button 
                         onClick={sendMessage} 
-                        disabled={!newMessage.trim()}
+                        disabled={!newMessage.trim() || !isConnected}
                         className="rounded-full w-10 h-10 p-0"
                       >
                         <Send className="w-4 h-4" />

@@ -4,9 +4,13 @@ import { useAuth } from './useAuth';
 interface WebSocketMessage {
   type: string;
   data?: any;
+  conversationId?: string; // Added for typing indicators
+  userId?: string; // Added for typing indicators and reactions
+  messageId?: string; // Added for reactions
+  emoji?: string; // Added for reactions
 }
 
-export const useWebSocket = () => {
+export const useWebSocket = (selectedConversation?: { id: string }, setMessages?: (messages: any[]) => void, setConversations?: (conversations: any[]) => void) => {
   const { user, isAuthenticated } = useAuth();
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -164,6 +168,73 @@ export const useWebSocket = () => {
       disconnect();
     };
   }, [user?.id, isAuthenticated, connect, disconnect]);
+
+  // Handle WebSocket messages for real-time updates
+  useEffect(() => {
+    if (lastMessage) {
+      console.log('Received WebSocket message:', lastMessage);
+
+      if (lastMessage.type === 'new_message') {
+        const messageData = lastMessage.data;
+        console.log('Processing new message:', messageData);
+
+        // If this message is for the currently selected conversation, add it to messages
+        if (selectedConversation?.id === messageData.conversationId) {
+          setMessages(prev => {
+            const messageExists = prev.some(msg => msg.id === messageData.id);
+            if (messageExists) {
+              console.log('Message already exists, skipping');
+              return prev;
+            }
+            console.log('Adding message to conversation:', messageData);
+            return [...prev, messageData];
+          });
+        }
+
+        // Always update conversations list to show new message preview
+        setConversations(prev => {
+          const updated = prev.map(conv => {
+            if (conv.id === messageData.conversationId) {
+              return {
+                ...conv,
+                lastMessage: messageData,
+                lastMessageAt: messageData.createdAt
+              };
+            }
+            return conv;
+          });
+          console.log('Updated conversations:', updated);
+          return updated;
+        });
+      } else if (lastMessage.type === 'message_reaction' && selectedConversation?.id === lastMessage.data.conversationId) {
+        // Handle emoji reactions
+        console.log('Message reaction received:', lastMessage.data);
+        // Update the specific message with reaction
+        setMessages(prev => prev.map(msg => {
+          if (msg.id === lastMessage.data.messageId) {
+            return {
+              ...msg,
+              reactions: [...(msg.reactions || []), {
+                emoji: lastMessage.data.emoji,
+                userId: lastMessage.data.userId
+              }]
+            };
+          }
+          return msg;
+        }));
+      } else if (lastMessage.type === 'user_typing' && selectedConversation?.id === lastMessage.conversationId) {
+        // Handle typing indicators
+        console.log('User typing:', lastMessage.userId);
+        // You would typically update a state here to show "User is typing..."
+        // For example: setTypingIndicator(lastMessage.userId);
+      } else if (lastMessage.type === 'user_stopped_typing' && selectedConversation?.id === lastMessage.conversationId) {
+        // Handle stop typing
+        console.log('User stopped typing:', lastMessage.userId);
+        // You would typically update a state here to hide "User is typing..."
+        // For example: setTypingIndicator(null);
+      }
+    }
+  }, [lastMessage, selectedConversation, setMessages, setConversations]); // Added setMessages and setConversations to dependencies
 
   // Cleanup on unmount
   useEffect(() => {

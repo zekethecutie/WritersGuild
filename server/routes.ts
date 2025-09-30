@@ -2520,6 +2520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         const data = JSON.parse(message.toString());
+        const userId = (ws as any).userId;
 
         // Handle different types of real-time events
         switch (data.type) {
@@ -2528,30 +2529,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ws.send(JSON.stringify({ type: 'pong' }));
             break;
 
+          case 'send_message':
+            // Handle real-time message sending
+            console.log('WebSocket send_message received:', data);
+            if (data.data && data.data.conversationId) {
+              // Broadcast to all participants in the conversation
+              const messagePayload = {
+                type: 'new_message',
+                data: {
+                  id: data.data.messageId,
+                  content: data.data.content,
+                  senderId: userId,
+                  conversationId: data.data.conversationId,
+                  createdAt: new Date().toISOString(),
+                  sender: {
+                    id: userId,
+                    username: 'current_user',
+                    displayName: 'Current User'
+                  }
+                }
+              };
+              
+              // Broadcast to all connected clients except sender
+              userConnections.forEach((connections, targetUserId) => {
+                if (targetUserId !== userId) {
+                  connections.forEach((client) => {
+                    if (client.readyState === WebSocket.OPEN) {
+                      client.send(JSON.stringify(messagePayload));
+                    }
+                  });
+                }
+              });
+            }
+            break;
+
+          case 'message_reaction':
+            // Handle emoji reactions
+            if (data.data && data.data.conversationId) {
+              const reactionPayload = {
+                type: 'message_reaction',
+                data: {
+                  messageId: data.data.messageId,
+                  emoji: data.data.emoji,
+                  userId: userId,
+                  conversationId: data.data.conversationId
+                }
+              };
+              
+              // Broadcast to conversation participants
+              userConnections.forEach((connections, targetUserId) => {
+                if (targetUserId !== userId) {
+                  connections.forEach((client) => {
+                    if (client.readyState === WebSocket.OPEN) {
+                      client.send(JSON.stringify(reactionPayload));
+                    }
+                  });
+                }
+              });
+            }
+            break;
+
           case 'typing_start':
-            // Broadcast typing indicator
-            wss.clients.forEach((client) => {
-              if (client !== ws && client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify({
-                  type: 'user_typing',
-                  userId: data.userId,
-                  postId: data.postId,
-                }));
-              }
-            });
+            // Broadcast typing indicator for specific conversation
+            if (data.conversationId) {
+              userConnections.forEach((connections, targetUserId) => {
+                if (targetUserId !== userId) {
+                  connections.forEach((client) => {
+                    if (client.readyState === WebSocket.OPEN) {
+                      client.send(JSON.stringify({
+                        type: 'user_typing',
+                        userId: userId,
+                        conversationId: data.conversationId,
+                      }));
+                    }
+                  });
+                }
+              });
+            }
             break;
 
           case 'typing_stop':
-            // Broadcast typing stop
-            wss.clients.forEach((client) => {
-              if (client !== ws && client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify({
-                  type: 'user_stopped_typing',
-                  userId: data.userId,
-                  postId: data.postId,
-                }));
-              }
-            });
+            // Broadcast typing stop for specific conversation
+            if (data.conversationId) {
+              userConnections.forEach((connections, targetUserId) => {
+                if (targetUserId !== userId) {
+                  connections.forEach((client) => {
+                    if (client.readyState === WebSocket.OPEN) {
+                      client.send(JSON.stringify({
+                        type: 'user_stopped_typing',
+                        userId: userId,
+                        conversationId: data.conversationId,
+                      }));
+                    }
+                  });
+                }
+              });
+            }
             break;
         }
       } catch (error) {
@@ -2620,9 +2693,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   };
 
+  // Broadcast typing indicators
+  const broadcastTyping = (conversationId: string, senderId: string, isTyping: boolean) => {
+    userConnections.forEach((connections, userId) => {
+      if (userId !== senderId) {
+        connections.forEach((ws) => {
+          if (ws.readyState === WebSocket.OPEN) {
+            try {
+              ws.send(JSON.stringify({
+                type: isTyping ? 'user_typing' : 'user_stopped_typing',
+                userId: senderId,
+                conversationId: conversationId
+              }));
+            } catch (error) {
+              console.error('Failed to send typing indicator:', error);
+            }
+          }
+        });
+      }
+    });
+  };
+
   // Expose broadcasters for use in API routes
   (app as any).broadcastNotification = broadcastNotification;
   (app as any).broadcastMessage = broadcastMessage;
+  (app as any).broadcastTyping = broadcastTyping;
 
   return httpServer;
 }
