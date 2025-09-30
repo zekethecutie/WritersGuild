@@ -21,7 +21,7 @@ router.get('/search', async (req, res) => {
     }
 
     try {
-      const results = await spotify.search(q, ['track'], 'US', { limit: parseInt(limit as string) });
+      const results = await spotify.search(q, ['track'], undefined, parseInt(limit as string));
       res.json(results);
     } catch (spotifyError: any) {
       console.error('Spotify API error:', spotifyError);
