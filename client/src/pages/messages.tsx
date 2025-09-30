@@ -223,8 +223,10 @@ export default function Messages() {
       });
       if (response.ok) {
         const data = await response.json();
+        console.log('Fetched conversations:', data);
         setConversations(Array.isArray(data) ? data : []);
       } else {
+        console.error('Failed to fetch conversations:', response.status);
         toast({
           title: "Error",
           description: "Failed to load conversations",
