@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWebSocket } from "@/hooks/useWebSocket";
@@ -57,18 +58,27 @@ interface Conversation {
 export default function Messages() {
   const { user } = useAuth();
   const { toast } = useToast();
+  
+  // Initialize all state variables first
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
-  const { isConnected, lastMessage, sendMessage: sendWebSocketMessage } = useWebSocket(selectedConversation, setMessages, setConversations);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isTyping, setIsTyping] = useState(false);
-  const [typingUsers, setTypingUsers] = useState<{ [key: string]: string }>({}); // { conversationId: username }
+  const [typingUsers, setTypingUsers] = useState<{ [key: string]: string }>({});
+  
+  // Initialize refs
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Now initialize WebSocket with proper dependencies
+  const { isConnected, lastMessage, sendMessage: sendWebSocketMessage } = useWebSocket(
+    selectedConversation, 
+    setMessages, 
+    setConversations
+  );
 
   // Check for conversation ID in URL parameters
   useEffect(() => {
@@ -185,7 +195,6 @@ export default function Messages() {
     }
   };
 
-
   // Cleanup on unmount and conversation change
   useEffect(() => {
     return () => {
@@ -292,9 +301,8 @@ export default function Messages() {
     // TODO: Implement reply functionality
   };
 
-
   const sendMessage = async () => {
-    if (!newMessage.trim() || !selectedConversation) return;
+    if (!newMessage.trim() || !selectedConversation || !user) return;
 
     const messageContent = newMessage.trim();
     setNewMessage(""); // Clear input immediately for better UX
