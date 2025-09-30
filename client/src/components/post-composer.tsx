@@ -84,7 +84,7 @@ export default function PostComposer() {
     setHashtags(newHashtags);
   }, [content]);
 
-  
+
 
   // Search for users to collaborate with
   const searchUsersQuery = useQuery({
@@ -612,7 +612,7 @@ export default function PostComposer() {
               </Card>
             )}
 
-            
+
 
             <Separator className="my-4" />
 

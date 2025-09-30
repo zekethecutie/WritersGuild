@@ -1080,21 +1080,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Search routes
-  app.get('/api/users/search', async (req, res) => {
+  app.get('/api/users/search', requireAuth, async (req, res) => {
     try {
-      const { q: query, limit = 10 } = req.query;
-      console.log('User search request:', { query, limit });
-      
-      if (!query || typeof query !== 'string' || query.trim().length === 0) {
+      const { q } = req.query;
+
+      if (!q || typeof q !== 'string') {
+        return res.status(400).json({ message: "Search query required" });
+      }
+
+      const searchQuery = q.trim();
+      if (searchQuery.length === 0) {
         return res.json([]);
       }
 
-      const users = await storage.searchUsers(query.trim(), req.session?.userId, parseInt(limit as string));
-      console.log('Search results:', users);
+      const users = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          displayName: users.displayName,
+          profileImageUrl: users.profileImageUrl,
+        })
+        .from(users)
+        .where(
+          or(
+            ilike(users.username, `%${searchQuery}%`),
+            ilike(users.displayName, `%${searchQuery}%`)
+          )
+        )
+        .limit(10);
+
+      console.log(`User search for "${searchQuery}" found ${users.length} results`);
       res.json(users);
     } catch (error) {
-      console.error("Error searching users:", error);
-      res.json([]);
+      console.error('Error searching users:', error);
+      res.status(500).json({ message: "Internal server error" });
     }
   });
 
@@ -2492,117 +2511,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // WebSocket connection registry for broadcasting
   const userConnections = new Map<string, Set<WebSocket>>();
+  const connections = userConnections; // Alias for clarity in WebSocket setup
 
   // WebSocket server for real-time features
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
-  wss.on('connection', (ws: WebSocket, req) => {
-    console.log('New WebSocket connection');
+  // WebSocket setup
+  wss.on('connection', (ws, req) => {
+    const userId = req.session?.userId;
+    if (!userId) {
+      console.log('WebSocket connection rejected: No user session');
+      ws.close(1008, 'Unauthorized');
+      return;
+    }
 
-    // Authenticate user using the same session middleware
-    sessionMiddleware(req as any, {} as any, () => {
-      const userId = (req as any).session?.userId;
+    console.log(`WebSocket connection established for user ${userId}`);
 
-      if (userId) {
-        (ws as any).userId = userId;
-        (ws as any).authenticated = true;
-        console.log(`WebSocket authenticated for user: ${userId}`);
+    // Store the connection
+    if (!connections.has(userId)) {
+      connections.set(userId, new Set());
+    }
+    connections.get(userId)!.add(ws);
 
-        // Add to user connections registry
-        if (!userConnections.has(userId)) {
-          userConnections.set(userId, new Set());
-        }
-        userConnections.get(userId)!.add(ws);
+    // Send connection confirmation
+    ws.send(JSON.stringify({
+      type: 'connection_established',
+      data: { userId, timestamp: new Date().toISOString() }
+    }));
 
-        // Send authentication success
-        ws.send(JSON.stringify({
-          type: 'auth_success',
-          userId: userId
-        }));
-      } else {
-        console.log('WebSocket connection rejected: not authenticated');
-        ws.close(4001, 'Authentication required');
-        return;
-      }
-    });
-
-    ws.on('message', (message) => {
+    ws.on('message', async (data) => {
       try {
-        // Only process messages from authenticated connections
-        if (!(ws as any).authenticated) {
-          ws.close(4001, 'Not authenticated');
-          return;
-        }
+        const message = JSON.parse(data.toString());
+        console.log('WebSocket message received:', message);
 
-        const data = JSON.parse(message.toString());
-        const userId = (ws as any).userId;
-
-        // Handle different types of real-time events
-        switch (data.type) {
-          case 'ping':
-            // Heartbeat to keep connection alive
-            ws.send(JSON.stringify({ type: 'pong' }));
+        switch (message.type) {
+          case 'join_conversation':
+            const { conversationId } = message.data;
+            console.log(`User ${userId} joined conversation ${conversationId}`);
+            // Store conversation context for this connection
+            (ws as any).conversationId = conversationId;
             break;
 
           case 'send_message':
-            // Handle real-time message sending
-            console.log('WebSocket send_message received:', data);
-            if (data.data && data.data.conversationId) {
-              // Get the conversation to find the other participant
-              const conversationId = data.data.conversationId;
-              
-              // Broadcast the complete message data including sender info
-              const messagePayload = {
-                type: 'new_message',
-                data: {
-                  id: data.data.messageId,
-                  content: data.data.content,
-                  senderId: userId,
-                  conversationId: conversationId,
-                  createdAt: new Date().toISOString(),
-                  sender: data.data.sender || {
-                    id: userId,
-                    username: 'current_user',
-                    displayName: 'Current User'
-                  }
-                }
-              };
-              
-              // Broadcast to all users (they will filter by conversation)
-              userConnections.forEach((connections, targetUserId) => {
-                connections.forEach((client) => {
-                  if (client.readyState === WebSocket.OPEN) {
-                    try {
-                      client.send(JSON.stringify(messagePayload));
-                      console.log(`Message broadcasted to user ${targetUserId}`);
-                    } catch (error) {
-                      console.error('Failed to send WebSocket message:', error);
-                    }
-                  }
-                });
-              });
-            }
-            break;
+            // Broadcast to all participants in the conversation
+            const { conversationId: msgConversationId, content, messageId, sender } = message.data;
 
-          case 'message_reaction':
-            // Handle emoji reactions
-            if (data.data && data.data.conversationId) {
-              const reactionPayload = {
-                type: 'message_reaction',
-                data: {
-                  messageId: data.data.messageId,
-                  emoji: data.data.emoji,
-                  userId: userId,
-                  conversationId: data.data.conversationId
-                }
-              };
-              
-              // Broadcast to conversation participants
-              userConnections.forEach((connections, targetUserId) => {
-                if (targetUserId !== userId) {
-                  connections.forEach((client) => {
-                    if (client.readyState === WebSocket.OPEN) {
-                      client.send(JSON.stringify(reactionPayload));
+            // Get conversation participants
+            const conversation = await db
+              .select({
+                participantOneId: conversations.participantOneId,
+                participantTwoId: conversations.participantTwoId,
+              })
+              .from(conversations)
+              .where(eq(conversations.id, msgConversationId))
+              .limit(1);
+
+            if (conversation.length > 0) {
+              const participants = [
+                conversation[0].participantOneId,
+                conversation[0].participantTwoId
+              ];
+
+              // Send to all participants except sender
+              participants.forEach(participantId => {
+                if (participantId !== userId && connections.has(participantId)) {
+                  connections.get(participantId)!.forEach(participantWs => {
+                    if (participantWs.readyState === WebSocket.OPEN) {
+                      participantWs.send(JSON.stringify({
+                        type: 'new_message',
+                        data: {
+                          id: messageId,
+                          content,
+                          senderId: userId,
+                          conversationId: msgConversationId,
+                          createdAt: new Date().toISOString(),
+                          sender
+                        }
+                      }));
                     }
                   });
                 }
@@ -2611,54 +2596,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
             break;
 
           case 'typing_start':
-            // Broadcast typing indicator for specific conversation
-            if (data.data && data.data.conversationId) {
-              const typingPayload = {
-                type: 'typing_indicator',
-                data: {
-                  conversationId: data.data.conversationId,
-                  username: data.data.username,
-                  isTyping: true
-                }
-              };
-              
-              userConnections.forEach((connections, targetUserId) => {
-                if (targetUserId !== userId) {
-                  connections.forEach((client) => {
-                    if (client.readyState === WebSocket.OPEN) {
-                      try {
-                        client.send(JSON.stringify(typingPayload));
-                      } catch (error) {
-                        console.error('Failed to send typing indicator:', error);
-                      }
-                    }
-                  });
-                }
-              });
-            }
-            break;
-
           case 'typing_stop':
-            // Broadcast typing stop for specific conversation
-            if (data.data && data.data.conversationId) {
-              const typingPayload = {
-                type: 'typing_indicator',
-                data: {
-                  conversationId: data.data.conversationId,
-                  username: data.data.username || '',
-                  isTyping: false
-                }
-              };
-              
-              userConnections.forEach((connections, targetUserId) => {
-                if (targetUserId !== userId) {
-                  connections.forEach((client) => {
-                    if (client.readyState === WebSocket.OPEN) {
-                      try {
-                        client.send(JSON.stringify(typingPayload));
-                      } catch (error) {
-                        console.error('Failed to send typing stop indicator:', error);
-                      }
+            // Handle typing indicators
+            const { conversationId: typingConversationId, username } = message.data;
+
+            // Get conversation participants and broadcast typing status
+            const typingConversation = await db
+              .select({
+                participantOneId: conversations.participantOneId,
+                participantTwoId: conversations.participantTwoId,
+              })
+              .from(conversations)
+              .where(eq(conversations.id, typingConversationId))
+              .limit(1);
+
+            if (typingConversation.length > 0) {
+              const participants = [
+                typingConversation[0].participantOneId,
+                typingConversation[0].participantTwoId
+              ];
+
+              participants.forEach(participantId => {
+                if (participantId !== userId && connections.has(participantId)) {
+                  connections.get(participantId)!.forEach(participantWs => {
+                    if (participantWs.readyState === WebSocket.OPEN) {
+                      participantWs.send(JSON.stringify({
+                        type: 'typing_indicator',
+                        data: {
+                          conversationId: typingConversationId,
+                          username,
+                          isTyping: message.type === 'typing_start'
+                        }
+                      }));
                     }
                   });
                 }
@@ -2667,23 +2636,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
             break;
         }
       } catch (error) {
-        console.error('WebSocket message error:', error);
+        console.error('Error processing WebSocket message:', error);
+        ws.send(JSON.stringify({
+          type: 'error',
+          data: { message: 'Failed to process message' }
+        }));
       }
     });
 
-    ws.on('close', () => {
-      const userId = (ws as any).userId;
-      console.log(`WebSocket connection closed for user: ${userId}`);
-
-      // Remove from user connections registry
-      if (userId && userConnections.has(userId)) {
-        userConnections.get(userId)!.delete(ws);
-        if (userConnections.get(userId)!.size === 0) {
-          userConnections.delete(userId);
+    ws.on('close', (code, reason) => {
+      console.log(`WebSocket connection closed for user ${userId}:`, code, reason.toString());
+      if (connections.has(userId)) {
+        connections.get(userId)!.delete(ws);
+        if (connections.get(userId)!.size === 0) {
+          connections.delete(userId);
         }
       }
     });
+
+    ws.on('error', (error) => {
+      console.error(`WebSocket error for user ${userId}:`, error);
+    });
+
+    // Handle connection timeouts
+    const pingInterval = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.ping();
+      } else {
+        clearInterval(pingInterval);
+      }
+    }, 30000);
+
+    ws.on('close', () => clearInterval(pingInterval));
   });
+
 
   // Decoupled notification broadcaster
   const broadcastNotification = (userId: string, notification: any) => {
