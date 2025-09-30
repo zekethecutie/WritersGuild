@@ -93,8 +93,12 @@ export default function Messages() {
     if (lastMessage && lastMessage.type === 'new_message') {
       // Refetch conversations to update the list
       fetchConversations();
+      // Also refresh messages if we're in the conversation
+      if (selectedConversation && lastMessage.data.conversationId === selectedConversation.id) {
+        fetchMessages(selectedConversation.id);
+      }
     }
-  }, [lastMessage]);
+  }, [lastMessage, selectedConversation]);
 
   useEffect(() => {
     if (selectedConversation) {
@@ -125,19 +129,24 @@ export default function Messages() {
       
       if (lastMessage.type === 'new_message') {
         const messageData = lastMessage.data;
+        console.log('Processing new message:', messageData);
         
         // If this message is for the currently selected conversation, add it to messages
         if (selectedConversation?.id === messageData.conversationId) {
           setMessages(prev => {
             const messageExists = prev.some(msg => msg.id === messageData.id);
-            if (messageExists) return prev;
+            if (messageExists) {
+              console.log('Message already exists, skipping');
+              return prev;
+            }
+            console.log('Adding message to conversation:', messageData);
             return [...prev, messageData];
           });
         }
         
         // Always update conversations list to show new message preview
         setConversations(prev => {
-          return prev.map(conv => {
+          const updated = prev.map(conv => {
             if (conv.id === messageData.conversationId) {
               return {
                 ...conv,
@@ -147,6 +156,8 @@ export default function Messages() {
             }
             return conv;
           });
+          console.log('Updated conversations:', updated);
+          return updated;
         });
       } else if (lastMessage.type === 'message_reaction' && selectedConversation?.id === lastMessage.data.conversationId) {
         // Handle emoji reactions
@@ -156,16 +167,20 @@ export default function Messages() {
   }, [lastMessage, selectedConversation]);
 
   const fetchConversations = async () => {
+    if (!user) return;
+    
     try {
+      console.log('Fetching conversations for user:', user.id);
       const response = await fetch('/api/conversations', {
         credentials: 'include'
       });
       if (response.ok) {
         const data = await response.json();
         console.log('Fetched conversations:', data);
-        setConversations(data);
+        setConversations(Array.isArray(data) ? data : []);
       } else {
         console.error('Failed to fetch conversations:', response.status, response.statusText);
+        setConversations([]);
         toast({
           title: "Error",
           description: "Failed to load conversations",
@@ -174,6 +189,7 @@ export default function Messages() {
       }
     } catch (error) {
       console.error('Failed to fetch conversations:', error);
+      setConversations([]);
       toast({
         title: "Error",
         description: "Failed to load conversations",
@@ -265,9 +281,24 @@ export default function Messages() {
 
       if (response.ok) {
         const newMessageData = await response.json();
+        console.log('Sent message successfully:', newMessageData);
         
-        // Add message to local state immediately
-        setMessages(prev => [...prev, newMessageData]);
+        // Add message to local state immediately with proper sender data
+        const messageWithSender = {
+          ...newMessageData,
+          sender: newMessageData.sender || {
+            id: user.id,
+            username: user.username,
+            displayName: user.displayName,
+            profileImageUrl: user.profileImageUrl
+          }
+        };
+        
+        setMessages(prev => {
+          const exists = prev.some(msg => msg.id === newMessageData.id);
+          if (exists) return prev;
+          return [...prev, messageWithSender];
+        });
         
         // Send via WebSocket for real-time delivery to other user
         if (isConnected) {
@@ -282,7 +313,7 @@ export default function Messages() {
         }
         
         // Auto-scroll immediately
-        scrollToBottom();
+        setTimeout(() => scrollToBottom(), 100);
         
         // Refresh conversations asynchronously (don't wait for it)
         fetchConversations();
@@ -403,9 +434,14 @@ export default function Messages() {
                 <div className="p-4">
                   <p className="text-muted-foreground">Loading conversations...</p>
                 </div>
+              ) : !conversations || conversations.length === 0 ? (
+                <div className="p-4">
+                  <p className="text-muted-foreground">No conversations yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">Start a conversation by visiting someone's profile and clicking Message</p>
+                </div>
               ) : filteredConversations.length === 0 ? (
                 <div className="p-4">
-                  <p className="text-muted-foreground">No conversations found</p>
+                  <p className="text-muted-foreground">No conversations match your search</p>
                 </div>
               ) : (
                 <div className="divide-y divide-border">

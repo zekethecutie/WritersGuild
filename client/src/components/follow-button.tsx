@@ -54,7 +54,8 @@ export default function FollowButton({
 
   const followMutation = useMutation({
     mutationFn: async () => {
-      const response = optimisticFollowing
+      const isCurrentlyFollowing = following || false;
+      const response = isCurrentlyFollowing
         ? await fetch(`/api/follows/${userId}`, {
             method: 'DELETE',
             credentials: 'include',
@@ -74,17 +75,16 @@ export default function FollowButton({
       return response.json();
     },
     onMutate: () => {
-      // Optimistic update
-      setOptimisticFollowing(!optimisticFollowing);
+      // Optimistic update based on current server state
+      const newFollowingState = !(following || false);
+      setOptimisticFollowing(newFollowingState);
+      return { previousFollowing: following || false };
     },
-    onSuccess: (data) => {
-      // Update the actual following state based on server response
-      if (data && typeof data.following === 'boolean') {
-        setOptimisticFollowing(data.following);
-      } else {
-        // If no explicit following field, assume the operation succeeded
-        // Keep the optimistic state as is
-      }
+    onSuccess: (data, variables, context) => {
+      // Update based on the action that was performed
+      const wasFollowing = context?.previousFollowing || false;
+      const newState = !wasFollowing;
+      setOptimisticFollowing(newState);
 
       // Invalidate and refetch queries
       queryClient.invalidateQueries({ queryKey: ["follow-status", userId] });
@@ -95,13 +95,13 @@ export default function FollowButton({
       queryClient.invalidateQueries({ queryKey: ["/api/follows"] });
 
       toast({
-        title: optimisticFollowing ? "Following!" : "Unfollowed",
-        description: optimisticFollowing ? "You are now following this user" : "You are no longer following this user",
+        title: newState ? "Following!" : "Unfollowed",
+        description: newState ? "You are now following this user" : "You are no longer following this user",
       });
     },
-    onError: (error: Error) => {
+    onError: (error: Error, variables, context) => {
       // Revert optimistic update to the previous server state
-      setOptimisticFollowing(following || isFollowing);
+      setOptimisticFollowing(context?.previousFollowing || following || false);
 
       console.error('Follow error:', error);
 
