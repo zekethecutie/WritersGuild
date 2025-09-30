@@ -45,6 +45,13 @@ export default function FollowButton({
     initialData: isFollowing,
   });
 
+  // Sync optimistic state with server data
+  React.useEffect(() => {
+    if (following !== undefined) {
+      setOptimisticFollowing(following);
+    }
+  }, [following]);
+
   const followMutation = useMutation({
     mutationFn: async () => {
       const response = optimisticFollowing
@@ -74,8 +81,12 @@ export default function FollowButton({
       // Update the actual following state based on server response
       if (data && typeof data.following === 'boolean') {
         setOptimisticFollowing(data.following);
+      } else {
+        // If no explicit following field, assume the operation succeeded
+        // Keep the optimistic state as is
       }
 
+      // Invalidate and refetch queries
       queryClient.invalidateQueries({ queryKey: ["follow-status", userId] });
       queryClient.invalidateQueries({ queryKey: ["/api/users", userId, "stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users/recommended"] });
@@ -84,13 +95,13 @@ export default function FollowButton({
       queryClient.invalidateQueries({ queryKey: ["/api/follows"] });
 
       toast({
-        title: data?.following ? "Following!" : "Unfollowed",
-        description: data?.following ? "You are now following this user" : "You are no longer following this user",
+        title: optimisticFollowing ? "Following!" : "Unfollowed",
+        description: optimisticFollowing ? "You are now following this user" : "You are no longer following this user",
       });
     },
     onError: (error: Error) => {
-      // Revert optimistic update
-      setOptimisticFollowing(isFollowing);
+      // Revert optimistic update to the previous server state
+      setOptimisticFollowing(following || isFollowing);
 
       console.error('Follow error:', error);
 

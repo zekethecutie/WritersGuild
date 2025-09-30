@@ -88,6 +88,14 @@ export default function Messages() {
     }
   }, [user]);
 
+  // Refetch conversations when a new message is received
+  useEffect(() => {
+    if (lastMessage && lastMessage.type === 'new_message') {
+      // Refetch conversations to update the list
+      fetchConversations();
+    }
+  }, [lastMessage]);
+
   useEffect(() => {
     if (selectedConversation) {
       fetchMessages(selectedConversation.id);
@@ -113,12 +121,32 @@ export default function Messages() {
   // Handle WebSocket messages for real-time updates
   useEffect(() => {
     if (lastMessage) {
-      if (lastMessage.type === 'new_message' && selectedConversation?.id === lastMessage.data.conversationId) {
-        // Only add message if it's not already in the list (avoid duplicates)
-        setMessages(prev => {
-          const messageExists = prev.some(msg => msg.id === lastMessage.data.id);
-          if (messageExists) return prev;
-          return [...prev, lastMessage.data];
+      console.log('Received WebSocket message:', lastMessage);
+      
+      if (lastMessage.type === 'new_message') {
+        const messageData = lastMessage.data;
+        
+        // If this message is for the currently selected conversation, add it to messages
+        if (selectedConversation?.id === messageData.conversationId) {
+          setMessages(prev => {
+            const messageExists = prev.some(msg => msg.id === messageData.id);
+            if (messageExists) return prev;
+            return [...prev, messageData];
+          });
+        }
+        
+        // Always update conversations list to show new message preview
+        setConversations(prev => {
+          return prev.map(conv => {
+            if (conv.id === messageData.conversationId) {
+              return {
+                ...conv,
+                lastMessage: messageData,
+                lastMessageAt: messageData.createdAt
+              };
+            }
+            return conv;
+          });
         });
       } else if (lastMessage.type === 'message_reaction' && selectedConversation?.id === lastMessage.data.conversationId) {
         // Handle emoji reactions
@@ -134,12 +162,23 @@ export default function Messages() {
       });
       if (response.ok) {
         const data = await response.json();
-        // Conversations already have the needed data structure
-        const conversationsWithUsers = data;
-        setConversations(conversationsWithUsers);
+        console.log('Fetched conversations:', data);
+        setConversations(data);
+      } else {
+        console.error('Failed to fetch conversations:', response.status, response.statusText);
+        toast({
+          title: "Error",
+          description: "Failed to load conversations",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error('Failed to fetch conversations:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load conversations",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
