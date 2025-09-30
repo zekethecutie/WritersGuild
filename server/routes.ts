@@ -2533,7 +2533,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Handle real-time message sending
             console.log('WebSocket send_message received:', data);
             if (data.data && data.data.conversationId) {
-              // Broadcast to all participants in the conversation
+              // Broadcast the complete message data including sender info
               const messagePayload = {
                 type: 'new_message',
                 data: {
@@ -2542,7 +2542,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   senderId: userId,
                   conversationId: data.data.conversationId,
                   createdAt: new Date().toISOString(),
-                  sender: {
+                  sender: data.data.sender || {
                     id: userId,
                     username: 'current_user',
                     displayName: 'Current User'
@@ -2550,15 +2550,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 }
               };
               
-              // Broadcast to all connected clients except sender
+              // Broadcast to all connected clients
               userConnections.forEach((connections, targetUserId) => {
-                if (targetUserId !== userId) {
-                  connections.forEach((client) => {
-                    if (client.readyState === WebSocket.OPEN) {
+                connections.forEach((client) => {
+                  if (client.readyState === WebSocket.OPEN) {
+                    try {
                       client.send(JSON.stringify(messagePayload));
+                      console.log(`Message broadcasted to user ${targetUserId}`);
+                    } catch (error) {
+                      console.error('Failed to send WebSocket message:', error);
                     }
-                  });
-                }
+                  }
+                });
               });
             }
             break;
@@ -2591,16 +2594,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           case 'typing_start':
             // Broadcast typing indicator for specific conversation
-            if (data.conversationId) {
+            if (data.data && data.data.conversationId) {
+              const typingPayload = {
+                type: 'typing_indicator',
+                data: {
+                  conversationId: data.data.conversationId,
+                  username: data.data.username,
+                  isTyping: true
+                }
+              };
+              
               userConnections.forEach((connections, targetUserId) => {
                 if (targetUserId !== userId) {
                   connections.forEach((client) => {
                     if (client.readyState === WebSocket.OPEN) {
-                      client.send(JSON.stringify({
-                        type: 'user_typing',
-                        userId: userId,
-                        conversationId: data.conversationId,
-                      }));
+                      try {
+                        client.send(JSON.stringify(typingPayload));
+                      } catch (error) {
+                        console.error('Failed to send typing indicator:', error);
+                      }
                     }
                   });
                 }
@@ -2610,16 +2622,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           case 'typing_stop':
             // Broadcast typing stop for specific conversation
-            if (data.conversationId) {
+            if (data.data && data.data.conversationId) {
+              const typingPayload = {
+                type: 'typing_indicator',
+                data: {
+                  conversationId: data.data.conversationId,
+                  username: data.data.username || '',
+                  isTyping: false
+                }
+              };
+              
               userConnections.forEach((connections, targetUserId) => {
                 if (targetUserId !== userId) {
                   connections.forEach((client) => {
                     if (client.readyState === WebSocket.OPEN) {
-                      client.send(JSON.stringify({
-                        type: 'user_stopped_typing',
-                        userId: userId,
-                        conversationId: data.conversationId,
-                      }));
+                      try {
+                        client.send(JSON.stringify(typingPayload));
+                      } catch (error) {
+                        console.error('Failed to send typing stop indicator:', error);
+                      }
                     }
                   });
                 }

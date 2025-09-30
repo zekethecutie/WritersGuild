@@ -179,7 +179,7 @@ export const useWebSocket = (selectedConversation?: { id: string }, setMessages?
         console.log('Processing new message:', messageData);
 
         // If this message is for the currently selected conversation, add it to messages
-        if (selectedConversation?.id === messageData.conversationId) {
+        if (selectedConversation?.id === messageData.conversationId && setMessages) {
           setMessages(prev => {
             const messageExists = prev.some(msg => msg.id === messageData.id);
             if (messageExists) {
@@ -192,24 +192,25 @@ export const useWebSocket = (selectedConversation?: { id: string }, setMessages?
         }
 
         // Always update conversations list to show new message preview
-        setConversations(prev => {
-          const updated = prev.map(conv => {
-            if (conv.id === messageData.conversationId) {
-              return {
-                ...conv,
-                lastMessage: messageData,
-                lastMessageAt: messageData.createdAt
-              };
-            }
-            return conv;
+        if (setConversations) {
+          setConversations(prev => {
+            const updated = prev.map(conv => {
+              if (conv.id === messageData.conversationId) {
+                return {
+                  ...conv,
+                  lastMessage: messageData,
+                  lastMessageAt: messageData.createdAt
+                };
+              }
+              return conv;
+            });
+            console.log('Updated conversations:', updated);
+            return updated;
           });
-          console.log('Updated conversations:', updated);
-          return updated;
-        });
-      } else if (lastMessage.type === 'message_reaction' && selectedConversation?.id === lastMessage.data.conversationId) {
+        }
+      } else if (lastMessage.type === 'message_reaction' && selectedConversation?.id === lastMessage.data.conversationId && setMessages) {
         // Handle emoji reactions
         console.log('Message reaction received:', lastMessage.data);
-        // Update the specific message with reaction
         setMessages(prev => prev.map(msg => {
           if (msg.id === lastMessage.data.messageId) {
             return {
@@ -222,19 +223,12 @@ export const useWebSocket = (selectedConversation?: { id: string }, setMessages?
           }
           return msg;
         }));
-      } else if (lastMessage.type === 'user_typing' && selectedConversation?.id === lastMessage.conversationId) {
-        // Handle typing indicators
-        console.log('User typing:', lastMessage.userId);
-        // You would typically update a state here to show "User is typing..."
-        // For example: setTypingIndicator(lastMessage.userId);
-      } else if (lastMessage.type === 'user_stopped_typing' && selectedConversation?.id === lastMessage.conversationId) {
-        // Handle stop typing
-        console.log('User stopped typing:', lastMessage.userId);
-        // You would typically update a state here to hide "User is typing..."
-        // For example: setTypingIndicator(null);
+      } else if (lastMessage.type === 'typing_indicator') {
+        console.log('Typing indicator received:', lastMessage.data);
+        // This will be handled by the Messages component
       }
     }
-  }, [lastMessage, selectedConversation, setMessages, setConversations]); // Added setMessages and setConversations to dependencies
+  }, [lastMessage, selectedConversation?.id, setMessages, setConversations])
 
   // Cleanup on unmount
   useEffect(() => {
