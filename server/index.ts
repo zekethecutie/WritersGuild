@@ -80,61 +80,7 @@ app.use((req, res, next) => {
   const port = parseInt(process.env.PORT || '5000', 10);
   const httpServer = createServer(app);
 
-  // Setup WebSocket server
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
-  const connectedUsers = new Map();
-
-  wss.on('connection', (ws, req) => {
-    console.log('WebSocket connection established');
-
-    ws.on('message', (data) => {
-      try {
-        const message = JSON.parse(data.toString());
-
-        if (message.type === 'authenticate') {
-          const userId = message.data.userId;
-          connectedUsers.set(ws, userId);
-          console.log(`User ${userId} authenticated via WebSocket`);
-        } else if (message.type === 'ping') {
-          ws.send(JSON.stringify({ type: 'pong' }));
-        } else if (message.type === 'send_message') {
-          // Broadcast message to other users in the conversation
-          wss.clients.forEach(client => {
-            if (client !== ws && client.readyState === 1) {
-              client.send(JSON.stringify({
-                type: 'new_message',
-                data: message.data
-              }));
-            }
-          });
-        } else if (message.type === 'typing_start' || message.type === 'typing_stop') {
-          // Broadcast typing indicators
-          wss.clients.forEach(client => {
-            if (client !== ws && client.readyState === 1) {
-              client.send(JSON.stringify({
-                type: 'typing_indicator',
-                data: {
-                  conversationId: message.data.conversationId,
-                  username: message.data.username,
-                  isTyping: message.type === 'typing_start'
-                }
-              }));
-            }
-          });
-        }
-      } catch (error) {
-        console.error('WebSocket message error:', error);
-      }
-    });
-
-    ws.on('close', () => {
-      const userId = connectedUsers.get(ws);
-      if (userId) {
-        console.log(`User ${userId} disconnected from WebSocket`);
-        connectedUsers.delete(ws);
-      }
-    });
-  });
+  // The WebSocket server is already set up in routes.ts, no need to duplicate it here
 
   httpServer.listen({
     port,

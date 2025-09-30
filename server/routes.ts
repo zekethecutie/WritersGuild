@@ -1083,15 +1083,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/users/search', async (req, res) => {
     try {
       const { q: query, limit = 10 } = req.query;
-      if (!query) {
-        return res.status(400).json({ message: "Query parameter required" });
+      console.log('User search request:', { query, limit });
+      
+      if (!query || typeof query !== 'string' || query.trim().length === 0) {
+        return res.json([]);
       }
 
-      const users = await storage.searchUsers(query as string, req.session?.userId, parseInt(limit as string));
+      const users = await storage.searchUsers(query.trim(), req.session?.userId, parseInt(limit as string));
+      console.log('Search results:', users);
       res.json(users);
     } catch (error) {
       console.error("Error searching users:", error);
-      res.status(500).json({ message: "Failed to search users" });
+      res.json([]);
     }
   });
 

@@ -31,7 +31,8 @@ export function useWebSocket(
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const host = window.location.host;
       const wsUrl = `${protocol}//${host}/ws`;
-
+      
+      console.log('Connecting to WebSocket:', wsUrl);
       wsRef.current = new WebSocket(wsUrl);
 
       wsRef.current.onopen = () => {
@@ -57,6 +58,29 @@ export function useWebSocket(
       wsRef.current.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
+          console.log('WebSocket message received:', message);
+          
+          if (message.type === 'new_message') {
+            // Update messages state directly
+            setMessages(prev => {
+              const messageExists = prev.some(msg => msg.id === message.data.id);
+              if (messageExists) return prev;
+              return [...prev, message.data];
+            });
+            
+            // Update conversations list
+            setConversations(prev => prev.map(conv => {
+              if (conv.id === message.data.conversationId) {
+                return {
+                  ...conv,
+                  lastMessage: message.data,
+                  lastMessageAt: message.data.createdAt
+                };
+              }
+              return conv;
+            }));
+          }
+          
           setLastMessage(message);
         } catch (error) {
           console.error('Failed to parse WebSocket message:', error);

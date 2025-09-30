@@ -91,9 +91,25 @@ export default function PostComposer() {
     queryKey: ["/api/users/search", collaboratorSearchQuery],
     queryFn: async () => {
       if (!collaboratorSearchQuery.trim()) return [];
-      return apiRequest("GET", `/api/users/search?q=${encodeURIComponent(collaboratorSearchQuery)}`);
+      console.log('Searching for users:', collaboratorSearchQuery);
+      try {
+        const response = await fetch(`/api/users/search?q=${encodeURIComponent(collaboratorSearchQuery)}`, {
+          credentials: 'include'
+        });
+        if (!response.ok) {
+          console.error('Search failed:', response.status, response.statusText);
+          return [];
+        }
+        const data = await response.json();
+        console.log('Search results:', data);
+        return data;
+      } catch (error) {
+        console.error('Search error:', error);
+        return [];
+      }
     },
-    enabled: !!collaboratorSearchQuery.trim(),
+    enabled: !!collaboratorSearchQuery.trim() && showCollaboratorSearch,
+    retry: 1,
   });
 
   const createPostMutation = useMutation({
@@ -527,28 +543,51 @@ export default function PostComposer() {
                       onChange={(e) => setCollaboratorSearchQuery(e.target.value)}
                     />
 
-                    {searchUsersQuery.data && searchUsersQuery.data.length > 0 && (
+                    {searchUsersQuery.isLoading && (
+                      <div className="flex items-center justify-center py-4">
+                        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2" />
+                        <span className="text-sm text-muted-foreground">Searching...</span>
+                      </div>
+                    )}
+
+                    {searchUsersQuery.data && Array.isArray(searchUsersQuery.data) && searchUsersQuery.data.length > 0 && (
                       <div className="space-y-2 max-h-40 overflow-y-auto">
-                        {(searchUsersQuery.data as any[]).map((user: any) => (
-                          <div
-                            key={user.id}
-                            className="flex items-center justify-between p-2 border rounded-lg cursor-pointer hover:bg-accent"
-                            onClick={() => handleAddCollaborator(user)}
-                            data-testid={`option-collaborator-${user.username}`}
-                          >
-                            <div className="flex items-center space-x-2">
-                              <img
-                                src={user.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`}
-                                alt={user.displayName}
-                                className="w-8 h-8 rounded-full"
-                              />
-                              <div>
-                                <p className="font-medium text-sm truncate">{user.displayName}</p>
-                                <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
+                        {searchUsersQuery.data.map((user: any) => {
+                          const isAlreadyCollaborator = collaborators.some(c => c.id === user.id);
+                          return (
+                            <div
+                              key={user.id}
+                              className={`flex items-center justify-between p-2 border rounded-lg transition-colors ${
+                                isAlreadyCollaborator 
+                                  ? 'bg-green-50 border-green-200 cursor-not-allowed'
+                                  : 'cursor-pointer hover:bg-accent'
+                              }`}
+                              onClick={() => !isAlreadyCollaborator && handleAddCollaborator(user)}
+                              data-testid={`option-collaborator-${user.username}`}
+                            >
+                              <div className="flex items-center space-x-2">
+                                <img
+                                  src={user.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`}
+                                  alt={user.displayName}
+                                  className="w-8 h-8 rounded-full"
+                                />
+                                <div>
+                                  <p className="font-medium text-sm truncate">{user.displayName}</p>
+                                  <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
+                                </div>
                               </div>
+                              {isAlreadyCollaborator && (
+                                <span className="text-xs text-green-600 font-medium">Added</span>
+                              )}
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {collaboratorSearchQuery && searchUsersQuery.data && Array.isArray(searchUsersQuery.data) && searchUsersQuery.data.length === 0 && !searchUsersQuery.isLoading && (
+                      <div className="text-center py-4">
+                        <p className="text-sm text-muted-foreground">No users found</p>
                       </div>
                     )}
 

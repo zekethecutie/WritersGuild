@@ -75,8 +75,8 @@ export default function Messages() {
   // NOW initialize WebSocket with all dependencies ready
   const { isConnected, lastMessage, sendMessage: sendWebSocketMessage } = useWebSocket(
     selectedConversation?.id || null, 
-    setMessages, 
-    setConversations
+    (updater) => setMessages(updater), 
+    (updater) => setConversations(updater)
   );
 
   // Check for conversation ID in URL parameters
@@ -247,11 +247,13 @@ export default function Messages() {
 
   const fetchMessages = async (conversationId: string) => {
     try {
+      console.log('Fetching messages for conversation:', conversationId);
       const response = await fetch(`/api/conversations/${conversationId}/messages`, {
         credentials: 'include'
       });
       if (response.ok) {
         const data = await response.json();
+        console.log('Fetched messages:', data);
         const messagesWithSenders = data.map((msg: Message) => ({
           ...msg,
           sender: msg.sender || {
@@ -262,6 +264,8 @@ export default function Messages() {
           }
         }));
         setMessages(messagesWithSenders);
+      } else {
+        console.error('Failed to fetch messages:', response.status, response.statusText);
       }
     } catch (error) {
       console.error('Failed to fetch messages:', error);
@@ -338,6 +342,7 @@ export default function Messages() {
         setMessages(prev => {
           const exists = prev.some(msg => msg.id === newMessageData.id);
           if (exists) return prev;
+          console.log('Adding message to local state:', messageWithSender);
           return [...prev, messageWithSender];
         });
 
