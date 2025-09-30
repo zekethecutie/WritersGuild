@@ -59,7 +59,7 @@ export default function Messages() {
   const { user } = useAuth();
   const { toast } = useToast();
   
-  // Initialize all state variables first
+  // Initialize ALL state variables FIRST before any hooks that depend on them
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -73,7 +73,7 @@ export default function Messages() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Now initialize WebSocket with proper dependencies
+  // NOW initialize WebSocket with all dependencies ready
   const { isConnected, lastMessage, sendMessage: sendWebSocketMessage } = useWebSocket(
     selectedConversation, 
     setMessages, 
@@ -218,6 +218,7 @@ export default function Messages() {
     if (!user) return;
 
     try {
+      console.log('Fetching conversations...');
       const response = await fetch('/api/conversations', {
         credentials: 'include'
       });
