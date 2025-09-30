@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWebSocket } from "@/hooks/useWebSocket";
@@ -58,7 +57,7 @@ interface Conversation {
 export default function Messages() {
   const { user } = useAuth();
   const { toast } = useToast();
-  
+
   // Initialize ALL state variables FIRST before any hooks that depend on them
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
@@ -68,7 +67,7 @@ export default function Messages() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [typingUsers, setTypingUsers] = useState<{ [key: string]: string }>({});
-  
+
   // Initialize refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -354,13 +353,13 @@ export default function Messages() {
             }
           });
         }
-        
+
         // Clear any pending typing stop
         if (typingTimeoutRef.current) {
           clearTimeout(typingTimeoutRef.current);
           typingTimeoutRef.current = null;
         }
-        
+
         // Send typing stop immediately after sending
         if (isConnected) {
           sendWebSocketMessage({
