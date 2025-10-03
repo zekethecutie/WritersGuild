@@ -527,12 +527,17 @@ export default function Messages() {
                       onClick={() => setSelectedConversation(conversation)}
                     >
                       <div className="flex items-start space-x-3">
-                        <Avatar className="w-10 h-10">
-                          <AvatarImage src={getConversationImage(conversation) || undefined} />
-                          <AvatarFallback>
-                            {getConversationName(conversation)[0] || 'U'}
-                          </AvatarFallback>
-                        </Avatar>
+                        <div className="relative">
+                          <Avatar className="w-10 h-10">
+                            <AvatarImage src={getConversationImage(conversation) || undefined} />
+                            <AvatarFallback>
+                              {getConversationName(conversation)[0] || 'U'}
+                            </AvatarFallback>
+                          </Avatar>
+                          {conversation.otherParticipant?.isOnline && conversation.otherParticipant?.showOnlineStatus && (
+                            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-background rounded-full" data-testid={`status-online-${conversation.otherParticipant.id}`} />
+                          )}
+                        </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
                             <h3 className="font-medium truncate">
