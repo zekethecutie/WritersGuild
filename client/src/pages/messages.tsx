@@ -310,6 +310,18 @@ export default function Messages() {
     });
   };
 
+  // Mark conversation as read when selected
+  useEffect(() => {
+    if (selectedConversation && isConnected) {
+      sendWebSocketMessage({
+        type: 'mark_as_read',
+        data: {
+          conversationId: selectedConversation.id
+        }
+      });
+    }
+  }, [selectedConversation?.id, isConnected]);
+
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation || !user) return;
 

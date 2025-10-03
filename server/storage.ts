@@ -108,6 +108,13 @@ export interface IStorage {
   getConversationMessages(conversationId: string, limit?: number, offset?: number): Promise<Message[]>;
   markMessageAsRead(messageId: string): Promise<void>;
   markConversationAsRead(conversationId: string, userId: string): Promise<void>;
+  
+  // User presence operations
+  setUserOnline(userId: string): Promise<void>;
+  setUserOffline(userId: string): Promise<void>;
+  getUserPresence(userId: string): Promise<{ isOnline: boolean; lastSeenAt: Date | null; showOnlineStatus: boolean }>;
+  updatePrivacySettings(userId: string, settings: { showReadReceipts?: boolean; showOnlineStatus?: boolean; showTypingIndicator?: boolean }): Promise<void>;
+  deleteMessage(messageId: string): Promise<void>;
 
   // Series management methods
   createSeries(seriesData: any): Promise<any>;
@@ -1469,6 +1476,45 @@ export class DatabaseStorage implements IStorage {
       console.error("Error marking conversation as read:", error);
       throw error;
     }
+  }
+
+  async setUserOnline(userId: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ isOnline: true, lastSeenAt: new Date() })
+      .where(eq(users.id, userId));
+  }
+
+  async setUserOffline(userId: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ isOnline: false, lastSeenAt: new Date() })
+      .where(eq(users.id, userId));
+  }
+
+  async getUserPresence(userId: string): Promise<{ isOnline: boolean; lastSeenAt: Date | null; showOnlineStatus: boolean }> {
+    const [user] = await db
+      .select({
+        isOnline: users.isOnline,
+        lastSeenAt: users.lastSeenAt,
+        showOnlineStatus: users.showOnlineStatus,
+      })
+      .from(users)
+      .where(eq(users.id, userId));
+    return user || { isOnline: false, lastSeenAt: null, showOnlineStatus: true };
+  }
+
+  async updatePrivacySettings(userId: string, settings: { showReadReceipts?: boolean; showOnlineStatus?: boolean; showTypingIndicator?: boolean }): Promise<void> {
+    await db
+      .update(users)
+      .set(settings)
+      .where(eq(users.id, userId));
+  }
+
+  async deleteMessage(messageId: string): Promise<void> {
+    await db
+      .delete(messages)
+      .where(eq(messages.id, messageId));
   }
 
   async getMessageById(messageId: string): Promise<Message | undefined> {

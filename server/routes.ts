@@ -317,6 +317,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User privacy settings route
+  app.patch('/api/users/privacy-settings', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { showReadReceipts, showOnlineStatus, showTypingIndicator } = req.body;
+      
+      await storage.updatePrivacySettings(userId, {
+        showReadReceipts,
+        showOnlineStatus,
+        showTypingIndicator
+      });
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error updating privacy settings:', error);
+      res.status(500).json({ message: 'Failed to update privacy settings' });
+    }
+  });
+
   // User profile routes
   app.patch('/api/users/profile', requireAuth, async (req: any, res) => {
     try {
@@ -2527,6 +2546,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     console.log(`WebSocket connection established for user ${userId}`);
 
+    // Set user online
+    storage.setUserOnline(userId).catch(err => console.error('Error setting user online:', err));
+
     // Store the connection
     if (!connections.has(userId)) {
       connections.set(userId, new Set());
@@ -2595,6 +2617,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             break;
 
+          case 'mark_as_read':
+            // Handle read receipts
+            const { conversationId: readConversationId } = message.data;
+            await storage.markConversationAsRead(readConversationId, userId);
+            
+            // Broadcast read receipt to other participant
+            const readConversation = await db
+              .select({
+                participantOneId: conversations.participantOneId,
+                participantTwoId: conversations.participantTwoId,
+              })
+              .from(conversations)
+              .where(eq(conversations.id, readConversationId))
+              .limit(1);
+
+            if (readConversation.length > 0) {
+              const otherParticipantId = readConversation[0].participantOneId === userId
+                ? readConversation[0].participantTwoId
+                : readConversation[0].participantOneId;
+
+              if (connections.has(otherParticipantId)) {
+                connections.get(otherParticipantId)!.forEach(participantWs => {
+                  if (participantWs.readyState === WebSocket.OPEN) {
+                    participantWs.send(JSON.stringify({
+                      type: 'messages_read',
+                      data: {
+                        conversationId: readConversationId,
+                        readBy: userId
+                      }
+                    }));
+                  }
+                });
+              }
+            }
+            break;
+
           case 'typing_start':
           case 'typing_stop':
             // Handle typing indicators
@@ -2650,6 +2708,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         connections.get(userId)!.delete(ws);
         if (connections.get(userId)!.size === 0) {
           connections.delete(userId);
+          // Set user offline when all connections are closed
+          storage.setUserOffline(userId).catch(err => console.error('Error setting user offline:', err));
         }
       }
     });
