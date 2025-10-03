@@ -304,7 +304,10 @@ export default function Messages() {
   // Handle message replies
   const handleReply = (messageId: string) => {
     console.log('Reply to message:', messageId);
-    // TODO: Implement reply functionality
+    toast({
+      title: "Reply feature",
+      description: "Reply functionality is coming soon!",
+    });
   };
 
   const sendMessage = async () => {
