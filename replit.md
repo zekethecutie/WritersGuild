@@ -50,7 +50,20 @@ The platform integrates with several external services to enhance the user exper
 - **Spotify Integration**: Direct integration with Spotify Web API for music discovery and playlist embedding
 - **Replit Authentication**: OAuth integration with Replit's identity system for seamless user management
 - **File Storage**: Local file storage with plans for cloud storage integration
-- **Real-time Features**: WebSocket support for future real-time collaboration features
+- **Real-time Features**: WebSocket support for real-time messaging, typing indicators, and presence tracking
+
+### Messaging System (In Development - Meta Messenger-like)
+The platform features a comprehensive messaging system with the following capabilities:
+
+- **Real-time Communication**: WebSocket-based messaging for instant message delivery
+- **Read Receipts**: Track when messages are delivered and read with visual indicators
+- **Presence Tracking**: Online/offline status and last seen timestamps
+- **Privacy Controls**: User-configurable settings for read receipts, online status, and typing indicators
+- **Typing Indicators**: Real-time display of when users are composing messages
+- **Message Reactions**: Emoji reactions on messages with real-time updates
+- **Rich Media Support**: Send and display images, files, and attachments in messages
+- **Message Editing**: Edit sent messages with edit history tracking
+- **Conversation Management**: One-on-one conversations with message history and search
 
 ### Mobile-Responsive Design
 The UI architecture ensures cross-platform compatibility:

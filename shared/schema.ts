@@ -51,6 +51,11 @@ export const users = pgTable("users", {
   isSuperAdmin: boolean("is_super_admin").default(false),
   postsCount: integer("posts_count").default(0),
   commentsCount: integer("comments_count").default(0),
+  isOnline: boolean("is_online").default(false),
+  lastSeenAt: timestamp("last_seen_at"),
+  showOnlineStatus: boolean("show_online_status").default(true),
+  showReadReceipts: boolean("show_read_receipts").default(true),
+  showTypingIndicator: boolean("show_typing_indicator").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
