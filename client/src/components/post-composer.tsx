@@ -28,7 +28,6 @@ import {
   Music,
   Type,
   Quote,
-  Sparkles,
   Globe,
   Lock,
   Users,

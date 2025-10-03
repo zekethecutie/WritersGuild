@@ -25,7 +25,6 @@ import {
   Music,
   Type,
   Quote,
-  Sparkles,
   Globe,
   Lock,
   Users,
@@ -473,15 +472,6 @@ export default function PostModal({ trigger, isOpen, onClose }: PostModalProps) 
                       <Quote className="w-5 h-5" />
                     </Button>
                   )}
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="p-2 rounded-lg text-muted-foreground hover:text-accent hover:bg-accent/10 transition-colors"
-                    title="Generate Image"
-                  >
-                    <Sparkles className="w-5 h-5" />
-                  </Button>
                 </div>
 
                 <div className="flex items-center space-x-2">
