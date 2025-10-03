@@ -5,9 +5,10 @@ const router = express.Router();
 
 // Search tracks
 router.get('/search', async (req, res) => {
-  try {
-    const { q, limit = 10 } = req.query;
+  const { q, limit = '10' } = req.query;
+  const limitNum = Math.min(50, Math.max(1, parseInt(limit as string) || 10)) as any;
 
+  try {
     if (!q || typeof q !== 'string') {
       return res.status(400).json({ error: 'Search query is required' });
     }
@@ -15,7 +16,7 @@ router.get('/search', async (req, res) => {
     const spotify = await getSpotifyClient();
     
     try {
-      const results = await spotify.search(q, ['track'], undefined, parseInt(limit as string));
+      const results = await spotify.search(q, ['track'], undefined, limitNum);
       console.log('Spotify search successful, found', results.tracks.items.length, 'tracks');
       res.json(results);
     } catch (spotifyError: any) {
@@ -26,7 +27,7 @@ router.get('/search', async (req, res) => {
         tracks: {
           items: [],
           total: 0,
-          limit: parseInt(limit as string),
+          limit: limitNum,
           offset: 0
         }
       });
@@ -39,7 +40,7 @@ router.get('/search', async (req, res) => {
       tracks: {
         items: [],
         total: 0,
-        limit: parseInt(limit as string),
+        limit: limitNum,
         offset: 0
       }
     });
