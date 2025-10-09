@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 
 interface Notification {
   id: string;
-  type: 'like' | 'comment' | 'follow' | 'repost';
+  type: 'like' | 'comment' | 'follow' | 'repost' | 'collaboration_invite';
   isRead: boolean;
   createdAt: string;
   actor: {
@@ -122,6 +122,8 @@ export default function NotificationsPage() {
         return <UserPlus className="h-4 w-4 text-green-500" />;
       case 'repost':
         return <Repeat className="h-4 w-4 text-purple-500" />;
+      case 'collaboration_invite':
+        return <UserPlus className="h-4 w-4 text-blue-500" />;
       default:
         return <Bell className="h-4 w-4" />;
     }
@@ -137,8 +139,60 @@ export default function NotificationsPage() {
         return 'started following you';
       case 'repost':
         return 'reposted your post';
+      case 'collaboration_invite':
+        return 'invited you to collaborate on a post';
       default:
         return 'interacted with your content';
+    }
+  };
+
+  const handleAcceptCollaboration = async (postId: string, notificationId: string) => {
+    try {
+      const response = await fetch(`/api/collaborations/${postId}/accept`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Collaboration accepted!"
+        });
+        markAsRead(notificationId);
+        fetchNotifications();
+      }
+    } catch (error) {
+      console.error('Error accepting collaboration:', error);
+      toast({
+        title: "Error",
+        description: "Failed to accept collaboration",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleRejectCollaboration = async (postId: string, notificationId: string) => {
+    try {
+      const response = await fetch(`/api/collaborations/${postId}/reject`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Collaboration declined"
+        });
+        markAsRead(notificationId);
+        fetchNotifications();
+      }
+    } catch (error) {
+      console.error('Error rejecting collaboration:', error);
+      toast({
+        title: "Error",
+        description: "Failed to decline collaboration",
+        variant: "destructive"
+      });
     }
   };
 
@@ -280,6 +334,30 @@ export default function NotificationsPage() {
                         <div className="h-2 w-2 bg-blue-500 rounded-full" />
                       )}
                     </div>
+
+                    {notification.type === 'collaboration_invite' && !notification.isRead && notification.post && (
+                      <div className="flex gap-2 mt-3">
+                        <Button
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAcceptCollaboration(notification.post!.id, notification.id);
+                          }}
+                        >
+                          Accept
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRejectCollaboration(notification.post!.id, notification.id);
+                          }}
+                        >
+                          Decline
+                        </Button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))

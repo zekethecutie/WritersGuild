@@ -403,7 +403,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         spotifyTrackData: spotifyTrackData || null,
         imageUrls: imageUrls || [],
         isPrivate: privacy === "private",
-        collaborators: collaboratorIds,
         mentions: mentions || [],
         hashtags: hashtags || [],
         likesCount: 0,
@@ -415,6 +414,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const newPost = await storage.createPost(postData);
+
+      // Send collaboration invitations
+      if (collaboratorIds && collaboratorIds.length > 0) {
+        for (const collaboratorId of collaboratorIds) {
+          // Create collaborator invitation
+          await db.insert(postCollaborators).values({
+            postId: newPost.id,
+            collaboratorId,
+            invitedById: userId,
+            status: 'pending'
+          });
+
+          // Send notification to collaborator
+          const notification = await storage.createNotification({
+            userId: collaboratorId,
+            type: 'collaboration_invite',
+            actorId: userId,
+            postId: newPost.id,
+            isRead: false,
+            data: { postTitle: title || 'Untitled Post' }
+          });
+
+          // Broadcast real-time notification
+          if ((app as any).broadcastNotification) {
+            (app as any).broadcastNotification(collaboratorId, notification);
+          }
+        }
+      }
 
       // Update word count for today
       if (wordCount > 0) {
@@ -1112,12 +1139,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json([]);
       }
 
-      const users = await db
+      const searchResults = await db
         .select({
           id: users.id,
           username: users.username,
           displayName: users.displayName,
           profileImageUrl: users.profileImageUrl,
+          bio: users.bio,
         })
         .from(users)
         .where(
@@ -1128,8 +1156,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         )
         .limit(10);
 
-      console.log(`User search for "${searchQuery}" found ${users.length} results`);
-      res.json(users);
+      console.log(`User search for "${searchQuery}" found ${searchResults.length} results`);
+      res.json(searchResults);
     } catch (error) {
       console.error('Error searching users:', error);
       res.status(500).json({ message: "Internal server error" });
@@ -1568,25 +1596,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You can only add collaborators to your own posts" });
       }
 
-      // Remove existing collaborators
-      await db.delete(postCollaborators).where(eq(postCollaborators.postId, postId));
+      // Remove existing pending collaborators
+      await db.delete(postCollaborators).where(
+        and(
+          eq(postCollaborators.postId, postId),
+          eq(postCollaborators.status, 'pending')
+        )
+      );
 
-      // Add new collaborators
+      // Add new collaborators with pending status
       if (collaboratorIds.length > 0) {
-        await db.insert(postCollaborators).values(
-          collaboratorIds.map((collaboratorId: string) => ({
+        for (const collaboratorId of collaboratorIds) {
+          await db.insert(postCollaborators).values({
             postId,
             collaboratorId,
             invitedById: userId,
-            status: 'accepted' // Auto-accept for now
-          }))
-        );
+            status: 'pending'
+          });
+
+          // Send notification
+          const notification = await storage.createNotification({
+            userId: collaboratorId,
+            type: 'collaboration_invite',
+            actorId: userId,
+            postId: postId,
+            isRead: false,
+            data: {}
+          });
+
+          if ((app as any).broadcastNotification) {
+            (app as any).broadcastNotification(collaboratorId, notification);
+          }
+        }
       }
 
-      res.json({ message: "Collaborators updated successfully" });
+      res.json({ message: "Collaboration invitations sent" });
     } catch (error) {
       console.error("Error updating collaborators:", error);
       res.status(500).json({ message: "Failed to update collaborators" });
+    }
+  });
+
+  // Accept collaboration invitation
+  app.post('/api/collaborations/:postId/accept', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { postId } = req.params;
+
+      await db
+        .update(postCollaborators)
+        .set({ status: 'accepted' })
+        .where(
+          and(
+            eq(postCollaborators.postId, postId),
+            eq(postCollaborators.collaboratorId, userId),
+            eq(postCollaborators.status, 'pending')
+          )
+        );
+
+      res.json({ message: "Collaboration accepted" });
+    } catch (error) {
+      console.error("Error accepting collaboration:", error);
+      res.status(500).json({ message: "Failed to accept collaboration" });
+    }
+  });
+
+  // Reject collaboration invitation
+  app.post('/api/collaborations/:postId/reject', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { postId } = req.params;
+
+      await db
+        .delete(postCollaborators)
+        .where(
+          and(
+            eq(postCollaborators.postId, postId),
+            eq(postCollaborators.collaboratorId, userId),
+            eq(postCollaborators.status, 'pending')
+          )
+        );
+
+      res.json({ message: "Collaboration rejected" });
+    } catch (error) {
+      console.error("Error rejecting collaboration:", error);
+      res.status(500).json({ message: "Failed to reject collaboration" });
     }
   });
 

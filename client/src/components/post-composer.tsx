@@ -531,7 +531,7 @@ export default function PostComposer() {
 
             {/* Collaborator Search */}
             {showCollaboratorSearch && (
-              <Card className="mb-4 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+              <Card className="mb-4 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/20">
                 <CardContent className="pt-4">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between mb-2">

@@ -72,8 +72,12 @@ export default function PostModal({ trigger, isOpen, onClose }: PostModalProps) 
         const response = await fetch(`/api/users/search?q=${encodeURIComponent(collaboratorSearchQuery)}`, {
           credentials: 'include'
         });
-        if (!response.ok) return [];
+        if (!response.ok) {
+          console.error('Search failed:', response.status);
+          return [];
+        }
         const data = await response.json();
+        console.log('Search results:', data);
         return data;
       } catch (error) {
         console.error('Search error:', error);
@@ -82,6 +86,7 @@ export default function PostModal({ trigger, isOpen, onClose }: PostModalProps) 
     },
     enabled: !!collaboratorSearchQuery.trim() && showCollaboratorSearch,
     retry: 1,
+    staleTime: 0,
   });
 
   const handleAddCollaborator = (searchUser: any) => {
