@@ -224,7 +224,7 @@ export default function ChapterPage() {
               </Badge>
             </div>
             
-            <h1 className="text-3xl md:text-4xl font-bold mb-4 leading-tight">
+            <h1 className="text-3xl md:text-4xl font-bold mb-4 leading-tight text-foreground">
               {chapter.title}
             </h1>
 
@@ -252,7 +252,7 @@ export default function ChapterPage() {
               <div className="prose prose-lg max-w-none dark:prose-invert">
                 {chapter.content && chapter.content.trim() ? (
                   <div 
-                    className="leading-relaxed text-base md:text-lg whitespace-pre-wrap"
+                    className="leading-relaxed text-base md:text-lg whitespace-pre-wrap text-foreground"
                     style={{ 
                       lineHeight: '1.8',
                       fontFamily: 'system-ui, -apple-system, sans-serif'
