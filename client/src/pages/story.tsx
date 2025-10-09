@@ -315,7 +315,7 @@ export default function StoryPage() {
             <Card>
               <CardContent className="p-8">
                 <div className="prose prose-lg max-w-none dark:prose-invert">
-                  <h1 className="text-3xl font-bold mb-8">
+                  <h1 className="text-3xl font-bold mb-8 text-foreground">
                     Chapter {currentChapter.chapterNumber}: {currentChapter.title}
                   </h1>
                   <div 
