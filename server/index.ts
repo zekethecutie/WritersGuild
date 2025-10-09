@@ -57,9 +57,9 @@ app.use((req, res, next) => {
 
   // Serve static files in production
   if (app.get("env") === "production") {
-    app.use(express.static(path.join(process.cwd(), 'dist')));
+    app.use(express.static(path.join(process.cwd(), 'dist', 'public')));
     app.get('*', (req, res) => {
-      res.sendFile(path.join(process.cwd(), 'dist', 'index.html'));
+      res.sendFile(path.join(process.cwd(), 'dist', 'public', 'index.html'));
     });
   }
 
