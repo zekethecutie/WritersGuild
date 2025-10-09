@@ -5,8 +5,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import RichTextEditor from "@/components/rich-text-editor";
-import { SpotifyTrackDisplay } from "@/components/spotify-track-display";
-import { SpotifySearch } from "@/components/spotify-search";
+// import { SpotifyTrackDisplay } from "@/components/spotify-track-display"; // UNFINISHED FEATURE
+// import { SpotifySearch } from "@/components/spotify-search"; // UNFINISHED FEATURE
 import ImageGallery from "@/components/image-gallery";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,10 +47,10 @@ export default function PostComposer() {
   const [postType, setPostType] = useState<"text" | "poetry" | "story" | "challenge">("text");
   const [genre, setGenre] = useState("");
   const [privacy, setPrivacy] = useState<"public" | "followers" | "private">("public");
-  const [selectedTrack, setSelectedTrack] = useState<any>(null);
+  // const [selectedTrack, setSelectedTrack] = useState<any>(null); // UNFINISHED SPOTIFY FEATURE
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [isRichEditor, setIsRichEditor] = useState(false);
-  const [showSpotify, setShowSpotify] = useState(false);
+  // const [showSpotify, setShowSpotify] = useState(false); // UNFINISHED SPOTIFY FEATURE
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [collaborators, setCollaborators] = useState<any[]>([]);
   const [showCollaboratorSearch, setShowCollaboratorSearch] = useState(false);
@@ -122,10 +122,10 @@ export default function PostComposer() {
       setPostType("text");
       setGenre("");
       setPrivacy("public");
-      setSelectedTrack(null);
+      // setSelectedTrack(null); // UNFINISHED SPOTIFY FEATURE
       setSelectedImages([]);
       setIsRichEditor(false);
-      setShowSpotify(false);
+      // setShowSpotify(false); // UNFINISHED SPOTIFY FEATURE
       setCollaborators([]);
       setShowCollaboratorSearch(false);
       setCollaboratorSearchQuery("");
@@ -280,15 +280,7 @@ export default function PostComposer() {
       mentions: Array.from(mentions),
       hashtags: Array.from(hashtags),
       collaborators: collaborators.length > 0 ? collaborators.map(c => c.id) : undefined,
-      spotifyTrackData: selectedTrack ? {
-        id: selectedTrack.id,
-        name: selectedTrack.name,
-        artist: selectedTrack.artists[0]?.name,
-        album: selectedTrack.album?.name,
-        image: selectedTrack.album?.images[0]?.url,
-        preview_url: selectedTrack.preview_url,
-        external_urls: selectedTrack.external_urls
-      } : undefined,
+      // spotifyTrackData: UNFINISHED FEATURE - removed for now
     };
 
     createPostMutation.mutate(postData);
@@ -462,6 +454,48 @@ export default function PostComposer() {
               </div>
             )}
 
+            {/* SPOTIFY FEATURE - UNFINISHED - Commented out for now */}
+            {/* {selectedTrack && (
+              <div className="mb-4">
+                <SpotifyTrackDisplay 
+                  track={selectedTrack} 
+                  size="md"
+                  showPreview={true}
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedTrack(null)}
+                  className="mt-2 text-muted-foreground hover:text-destructive"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Remove track
+                </Button>
+              </div>
+            )} */}
+
+            {/* SPOTIFY SEARCH - UNFINISHED - Commented out for now */}
+            {/* {showSpotify && (
+              <div className="mb-4">
+                <SpotifySearch
+                  onTrackSelect={(track) => {
+                    setSelectedTrack(track);
+                    setShowSpotify(false);
+                  }}
+                  selectedTrack={selectedTrack}
+                  placeholder="Search for a song to add..."
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowSpotify(false)}
+                  className="mt-2"
+                >
+                  Cancel
+                </Button>
+              </div>
+            )} */}
+
             {/* Collaborators */}
             {collaborators.length > 0 && (
               <div className="mb-4">
@@ -533,50 +567,98 @@ export default function PostComposer() {
 
             {/* Collaborator Search */}
             {showCollaboratorSearch && (
-              <Card className="mb-4">
+              <Card className="mb-4 border-blue-200 dark:border-blue-800">
                 <CardContent className="pt-4">
                   <div className="space-y-3">
-                    <Input
-                      placeholder="Search for collaborators..."
-                      value={collaboratorSearchQuery}
-                      onChange={(e) => setCollaboratorSearchQuery(e.target.value)}
-                    />
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-sm flex items-center gap-2">
+                        <UserPlus className="w-4 h-4 text-blue-500" />
+                        Add Collaborators
+                      </h4>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setShowCollaboratorSearch(false);
+                          setCollaboratorSearchQuery("");
+                        }}
+                        className="h-8 w-8 p-0"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                      <Input
+                        placeholder="Search users by name or username..."
+                        value={collaboratorSearchQuery}
+                        onChange={(e) => setCollaboratorSearchQuery(e.target.value)}
+                        className="pl-10"
+                        data-testid="input-collaborator-search"
+                      />
+                    </div>
 
                     {searchUsersQuery.isLoading && (
-                      <div className="flex items-center justify-center py-4">
-                        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2" />
+                      <div className="flex items-center justify-center py-6">
+                        <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2" />
                         <span className="text-sm text-muted-foreground">Searching...</span>
                       </div>
                     )}
 
                     {searchUsersQuery.data && Array.isArray(searchUsersQuery.data) && searchUsersQuery.data.length > 0 && (
-                      <div className="space-y-2 max-h-40 overflow-y-auto">
+                      <div className="space-y-2 max-h-64 overflow-y-auto border rounded-lg p-2">
                         {searchUsersQuery.data.map((user: any) => {
                           const isAlreadyCollaborator = collaborators.some(c => c.id === user.id);
+                          const isCurrentUser = user.id === user?.id;
+                          
                           return (
                             <div
                               key={user.id}
-                              className={`flex items-center justify-between p-2 border rounded-lg transition-colors ${
+                              className={`flex items-center justify-between p-3 border rounded-lg transition-all ${
                                 isAlreadyCollaborator 
-                                  ? 'bg-green-50 border-green-200 cursor-not-allowed'
-                                  : 'cursor-pointer hover:bg-accent'
+                                  ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 cursor-not-allowed'
+                                  : isCurrentUser
+                                  ? 'bg-muted border-muted-foreground/20 cursor-not-allowed'
+                                  : 'cursor-pointer hover:bg-accent hover:border-blue-300 dark:hover:border-blue-700'
                               }`}
-                              onClick={() => !isAlreadyCollaborator && handleAddCollaborator(user)}
+                              onClick={() => !isAlreadyCollaborator && !isCurrentUser && handleAddCollaborator(user)}
                               data-testid={`option-collaborator-${user.username}`}
                             >
-                              <div className="flex items-center space-x-2">
+                              <div className="flex items-center space-x-3 flex-1 min-w-0">
                                 <img
                                   src={user.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`}
                                   alt={user.displayName}
-                                  className="w-8 h-8 rounded-full"
+                                  className="w-10 h-10 rounded-full flex-shrink-0 border-2 border-border"
                                 />
-                                <div>
+                                <div className="flex-1 min-w-0">
                                   <p className="font-medium text-sm truncate">{user.displayName}</p>
                                   <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
+                                  {user.bio && (
+                                    <p className="text-xs text-muted-foreground truncate mt-0.5">{user.bio}</p>
+                                  )}
                                 </div>
                               </div>
-                              {isAlreadyCollaborator && (
-                                <span className="text-xs text-green-600 font-medium">Added</span>
+                              {isAlreadyCollaborator ? (
+                                <Badge variant="outline" className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-300 dark:border-green-700">
+                                  Added ✓
+                                </Badge>
+                              ) : isCurrentUser ? (
+                                <Badge variant="outline" className="text-xs">
+                                  You
+                                </Badge>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 text-xs"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAddCollaborator(user);
+                                  }}
+                                >
+                                  Add
+                                </Button>
                               )}
                             </div>
                           );
@@ -585,22 +667,56 @@ export default function PostComposer() {
                     )}
 
                     {collaboratorSearchQuery && searchUsersQuery.data && Array.isArray(searchUsersQuery.data) && searchUsersQuery.data.length === 0 && !searchUsersQuery.isLoading && (
-                      <div className="text-center py-4">
-                        <p className="text-sm text-muted-foreground">No users found</p>
+                      <div className="text-center py-8 border rounded-lg">
+                        <Users className="w-12 h-12 mx-auto text-muted-foreground/50 mb-2" />
+                        <p className="text-sm text-muted-foreground font-medium">No users found</p>
+                        <p className="text-xs text-muted-foreground mt-1">Try a different search term</p>
+                      </div>
+                    )}
+
+                    {!collaboratorSearchQuery && (
+                      <div className="text-center py-8 border rounded-lg bg-muted/30">
+                        <Search className="w-12 h-12 mx-auto text-muted-foreground/50 mb-2" />
+                        <p className="text-sm text-muted-foreground font-medium">Search for collaborators</p>
+                        <p className="text-xs text-muted-foreground mt-1">Start typing to find users</p>
                       </div>
                     )}
 
                     {collaborators.length > 0 && (
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-2">Selected collaborators:</p>
+                      <div className="pt-3 border-t">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-sm font-medium text-muted-foreground">
+                            Selected ({collaborators.length})
+                          </p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setCollaborators([])}
+                            className="h-8 text-xs text-destructive hover:text-destructive"
+                          >
+                            Clear all
+                          </Button>
+                        </div>
                         <div className="flex flex-wrap gap-2">
-                          {collaborators.map((collaborator) => (
-                            <Badge key={collaborator.id} variant="secondary" className="text-xs">
-                              {collaborator.displayName}
-                              <X
-                                className="w-3 h-3 ml-1 cursor-pointer"
-                                onClick={() => handleRemoveCollaborator(collaborator.id)}
+                          {collaborators.map((collaborator, index) => (
+                            <Badge 
+                              key={collaborator.id} 
+                              variant="secondary" 
+                              className="text-xs px-3 py-1.5 flex items-center gap-2"
+                            >
+                              <img
+                                src={collaborator.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${collaborator.username}`}
+                                alt={collaborator.displayName}
+                                className="w-4 h-4 rounded-full"
                               />
+                              <span>{collaborator.displayName}</span>
+                              <button
+                                onClick={() => handleRemoveCollaborator(collaborator.id)}
+                                className="ml-1 hover:text-destructive transition-colors"
+                                data-testid={`button-remove-collaborator-${index}`}
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
                             </Badge>
                           ))}
                         </div>
@@ -659,18 +775,20 @@ export default function PostComposer() {
                   )}
                 </Button>
 
-                <Button
+                {/* SPOTIFY FEATURE - UNFINISHED - Commented out */}
+                {/* <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowSpotify(!showSpotify)}
                   className={`p-2 rounded-lg transition-colors ${
                     showSpotify || selectedTrack ? "text-green-500 bg-green-500/10" : "text-muted-foreground hover:text-green-500 hover:bg-green-500/10"
                   }`}
-                  title="Add Music"
+                  title="Add Music (Coming Soon)"
                   data-testid="button-add-music"
+                  disabled
                 >
                   <Music className="w-5 h-5" />
-                </Button>
+                </Button> */}
 
                 {postType === "poetry" && (
                   <Button

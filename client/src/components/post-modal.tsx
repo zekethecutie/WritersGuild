@@ -450,17 +450,19 @@ export default function PostModal({ trigger, isOpen, onClose }: PostModalProps) 
                     )}
                   </Button>
 
-                  <Button
+                  {/* SPOTIFY FEATURE - UNFINISHED */}
+                  {/* <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowSpotify(!showSpotify)}
                     className={`p-2 rounded-lg transition-colors ${
                       showSpotify || selectedTrack ? "text-green-500 bg-green-500/10" : "text-muted-foreground hover:text-green-500 hover:bg-green-500/10"
                     }`}
-                    title="Add Music"
+                    title="Add Music (Coming Soon)"
+                    disabled
                   >
                     <Music className="w-5 h-5" />
-                  </Button>
+                  </Button> */}
 
                   {postType === "poetry" && (
                     <Button
