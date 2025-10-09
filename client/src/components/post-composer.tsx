@@ -496,18 +496,24 @@ export default function PostComposer() {
               </div>
             )} */}
 
-            {/* Collaborators */}
+            {/* Collaborators Display */}
             {collaborators.length > 0 && (
               <div className="mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <UserPlus className="w-4 h-4 text-blue-500" />
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Collaborators ({collaborators.length})
+                  </span>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {collaborators.map((collaborator, index) => (
-                    <div key={collaborator.id} className="flex items-center bg-secondary rounded-full px-3 py-1.5 text-sm">
+                    <div key={collaborator.id} className="flex items-center bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-full px-3 py-1.5 text-sm">
                       <img
                         src={collaborator.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${collaborator.username}`}
                         alt={collaborator.displayName}
-                        className="w-5 h-5 rounded-full mr-2"
+                        className="w-5 h-5 rounded-full mr-2 border border-blue-300 dark:border-blue-700"
                       />
-                      <span>@{collaborator.username}</span>
+                      <span className="font-medium">@{collaborator.username}</span>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -523,55 +529,13 @@ export default function PostComposer() {
               </div>
             )}
 
-            {/* Spotify Track Display */}
-            {selectedTrack && (
-              <div className="mb-4">
-                <SpotifyTrackDisplay 
-                  track={selectedTrack} 
-                  size="md"
-                  showPreview={true}
-                />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedTrack(null)}
-                  className="mt-2 text-muted-foreground hover:text-destructive"
-                >
-                  <X className="w-4 h-4 mr-2" />
-                  Remove track
-                </Button>
-              </div>
-            )}
-
-            {/* Spotify Search */}
-            {showSpotify && (
-              <div className="mb-4">
-                <SpotifySearch
-                  onTrackSelect={(track) => {
-                    setSelectedTrack(track);
-                    setShowSpotify(false);
-                  }}
-                  selectedTrack={selectedTrack}
-                  placeholder="Search for a song to add..."
-                />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowSpotify(false)}
-                  className="mt-2"
-                >
-                  Cancel
-                </Button>
-              </div>
-            )}
-
             {/* Collaborator Search */}
             {showCollaboratorSearch && (
-              <Card className="mb-4 border-blue-200 dark:border-blue-800">
+              <Card className="mb-4 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
                 <CardContent className="pt-4">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium text-sm flex items-center gap-2">
+                      <h4 className="font-semibold text-sm flex items-center gap-2">
                         <UserPlus className="w-4 h-4 text-blue-500" />
                         Add Collaborators
                       </h4>
@@ -582,7 +546,7 @@ export default function PostComposer() {
                           setShowCollaboratorSearch(false);
                           setCollaboratorSearchQuery("");
                         }}
-                        className="h-8 w-8 p-0"
+                        className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
                       >
                         <X className="w-4 h-4" />
                       </Button>
@@ -594,8 +558,9 @@ export default function PostComposer() {
                         placeholder="Search users by name or username..."
                         value={collaboratorSearchQuery}
                         onChange={(e) => setCollaboratorSearchQuery(e.target.value)}
-                        className="pl-10"
+                        className="pl-10 bg-background"
                         data-testid="input-collaborator-search"
+                        autoFocus
                       />
                     </div>
 
@@ -607,41 +572,42 @@ export default function PostComposer() {
                     )}
 
                     {searchUsersQuery.data && Array.isArray(searchUsersQuery.data) && searchUsersQuery.data.length > 0 && (
-                      <div className="space-y-2 max-h-64 overflow-y-auto border rounded-lg p-2">
-                        {searchUsersQuery.data.map((user: any) => {
-                          const isAlreadyCollaborator = collaborators.some(c => c.id === user.id);
-                          const isCurrentUser = user.id === user?.id;
+                      <div className="space-y-2 max-h-64 overflow-y-auto bg-background border rounded-lg p-2">
+                        {searchUsersQuery.data.map((searchUser: any) => {
+                          const isAlreadyCollaborator = collaborators.some(c => c.id === searchUser.id);
+                          const isCurrentUser = searchUser.id === user?.id;
                           
                           return (
                             <div
-                              key={user.id}
+                              key={searchUser.id}
                               className={`flex items-center justify-between p-3 border rounded-lg transition-all ${
                                 isAlreadyCollaborator 
                                   ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 cursor-not-allowed'
                                   : isCurrentUser
-                                  ? 'bg-muted border-muted-foreground/20 cursor-not-allowed'
-                                  : 'cursor-pointer hover:bg-accent hover:border-blue-300 dark:hover:border-blue-700'
+                                  ? 'bg-muted border-muted-foreground/20 cursor-not-allowed opacity-60'
+                                  : 'cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-300 dark:hover:border-blue-700'
                               }`}
-                              onClick={() => !isAlreadyCollaborator && !isCurrentUser && handleAddCollaborator(user)}
-                              data-testid={`option-collaborator-${user.username}`}
+                              onClick={() => !isAlreadyCollaborator && !isCurrentUser && handleAddCollaborator(searchUser)}
+                              data-testid={`option-collaborator-${searchUser.username}`}
                             >
                               <div className="flex items-center space-x-3 flex-1 min-w-0">
                                 <img
-                                  src={user.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`}
-                                  alt={user.displayName}
-                                  className="w-10 h-10 rounded-full flex-shrink-0 border-2 border-border"
+                                  src={searchUser.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${searchUser.username}`}
+                                  alt={searchUser.displayName}
+                                  className="w-10 h-10 rounded-full flex-shrink-0 border-2 border-border object-cover"
                                 />
                                 <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-sm truncate">{user.displayName}</p>
-                                  <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
-                                  {user.bio && (
-                                    <p className="text-xs text-muted-foreground truncate mt-0.5">{user.bio}</p>
+                                  <p className="font-medium text-sm truncate">{searchUser.displayName}</p>
+                                  <p className="text-xs text-muted-foreground truncate">@{searchUser.username}</p>
+                                  {searchUser.bio && (
+                                    <p className="text-xs text-muted-foreground truncate mt-0.5">{searchUser.bio}</p>
                                   )}
                                 </div>
                               </div>
                               {isAlreadyCollaborator ? (
-                                <Badge variant="outline" className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-300 dark:border-green-700">
-                                  Added ✓
+                                <Badge variant="outline" className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-300 dark:border-green-700 flex items-center gap-1">
+                                  <Star className="w-3 h-3 fill-current" />
+                                  Added
                                 </Badge>
                               ) : isCurrentUser ? (
                                 <Badge variant="outline" className="text-xs">
@@ -651,10 +617,10 @@ export default function PostComposer() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="h-8 text-xs"
+                                  className="h-8 text-xs bg-blue-500 text-white border-blue-500 hover:bg-blue-600 hover:border-blue-600"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleAddCollaborator(user);
+                                    handleAddCollaborator(searchUser);
                                   }}
                                 >
                                   Add
@@ -667,7 +633,7 @@ export default function PostComposer() {
                     )}
 
                     {collaboratorSearchQuery && searchUsersQuery.data && Array.isArray(searchUsersQuery.data) && searchUsersQuery.data.length === 0 && !searchUsersQuery.isLoading && (
-                      <div className="text-center py-8 border rounded-lg">
+                      <div className="text-center py-8 border rounded-lg bg-background">
                         <Users className="w-12 h-12 mx-auto text-muted-foreground/50 mb-2" />
                         <p className="text-sm text-muted-foreground font-medium">No users found</p>
                         <p className="text-xs text-muted-foreground mt-1">Try a different search term</p>
@@ -675,7 +641,7 @@ export default function PostComposer() {
                     )}
 
                     {!collaboratorSearchQuery && (
-                      <div className="text-center py-8 border rounded-lg bg-muted/30">
+                      <div className="text-center py-8 border rounded-lg bg-background">
                         <Search className="w-12 h-12 mx-auto text-muted-foreground/50 mb-2" />
                         <p className="text-sm text-muted-foreground font-medium">Search for collaborators</p>
                         <p className="text-xs text-muted-foreground mt-1">Start typing to find users</p>
@@ -683,37 +649,38 @@ export default function PostComposer() {
                     )}
 
                     {collaborators.length > 0 && (
-                      <div className="pt-3 border-t">
+                      <div className="pt-3 border-t border-blue-200 dark:border-blue-800">
                         <div className="flex items-center justify-between mb-2">
-                          <p className="text-sm font-medium text-muted-foreground">
+                          <p className="text-sm font-semibold text-foreground flex items-center gap-1">
+                            <Star className="w-4 h-4 text-blue-500" />
                             Selected ({collaborators.length})
                           </p>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => setCollaborators([])}
-                            className="h-8 text-xs text-destructive hover:text-destructive"
+                            className="h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
                           >
                             Clear all
                           </Button>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          {collaborators.map((collaborator, index) => (
+                          {collaborators.map((collaborator) => (
                             <Badge 
                               key={collaborator.id} 
                               variant="secondary" 
-                              className="text-xs px-3 py-1.5 flex items-center gap-2"
+                              className="text-xs px-3 py-1.5 flex items-center gap-2 bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700"
                             >
                               <img
                                 src={collaborator.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${collaborator.username}`}
                                 alt={collaborator.displayName}
-                                className="w-4 h-4 rounded-full"
+                                className="w-4 h-4 rounded-full border border-blue-400"
                               />
-                              <span>{collaborator.displayName}</span>
+                              <span className="font-medium">{collaborator.displayName}</span>
                               <button
                                 onClick={() => handleRemoveCollaborator(collaborator.id)}
                                 className="ml-1 hover:text-destructive transition-colors"
-                                data-testid={`button-remove-collaborator-${index}`}
+                                aria-label="Remove collaborator"
                               >
                                 <X className="w-3 h-3" />
                               </button>

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -29,7 +30,10 @@ import {
   Lock,
   Users,
   X,
-  Feather
+  Feather,
+  UserPlus,
+  Search,
+  Star
 } from "lucide-react";
 import { getProfileImageUrl } from "@/lib/defaultImages";
 
@@ -55,6 +59,41 @@ export default function PostModal({ trigger, isOpen, onClose }: PostModalProps) 
   const [isRichEditor, setIsRichEditor] = useState(false);
   const [showSpotify, setShowSpotify] = useState(false);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [collaborators, setCollaborators] = useState<any[]>([]);
+  const [showCollaboratorSearch, setShowCollaboratorSearch] = useState(false);
+  const [collaboratorSearchQuery, setCollaboratorSearchQuery] = useState("");
+
+  // Search for users to collaborate with
+  const searchUsersQuery = useQuery({
+    queryKey: ["/api/users/search", collaboratorSearchQuery],
+    queryFn: async () => {
+      if (!collaboratorSearchQuery.trim()) return [];
+      try {
+        const response = await fetch(`/api/users/search?q=${encodeURIComponent(collaboratorSearchQuery)}`, {
+          credentials: 'include'
+        });
+        if (!response.ok) return [];
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.error('Search error:', error);
+        return [];
+      }
+    },
+    enabled: !!collaboratorSearchQuery.trim() && showCollaboratorSearch,
+    retry: 1,
+  });
+
+  const handleAddCollaborator = (searchUser: any) => {
+    if (!collaborators.find(c => c.id === searchUser.id)) {
+      setCollaborators(prev => [...prev, searchUser]);
+    }
+    setCollaboratorSearchQuery("");
+  };
+
+  const handleRemoveCollaborator = (userId: string) => {
+    setCollaborators(prev => prev.filter(c => c.id !== userId));
+  };
 
   const createPostMutation = useMutation({
     mutationFn: async (postData: any) => {
@@ -71,6 +110,9 @@ export default function PostModal({ trigger, isOpen, onClose }: PostModalProps) 
       setSelectedImages([]);
       setIsRichEditor(false);
       setShowSpotify(false);
+      setCollaborators([]);
+      setShowCollaboratorSearch(false);
+      setCollaboratorSearchQuery("");
       setOpen(false);
       onClose?.();
 
@@ -212,7 +254,8 @@ export default function PostModal({ trigger, isOpen, onClose }: PostModalProps) 
         preview_url: selectedTrack.preview_url,
         external_urls: selectedTrack.external_urls
       } : undefined,
-      isPrivate: privacy === "private",
+      privacy,
+      collaborators: collaborators.length > 0 ? collaborators.map(c => c.id) : undefined,
     };
 
     createPostMutation.mutate(postData);
@@ -406,6 +449,204 @@ export default function PostModal({ trigger, isOpen, onClose }: PostModalProps) 
                 </div>
               )}
 
+              {/* Collaborators Display */}
+              {collaborators.length > 0 && (
+                <div className="mb-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <UserPlus className="w-4 h-4 text-blue-500" />
+                    <span className="text-sm font-medium text-muted-foreground">
+                      Collaborators ({collaborators.length})
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {collaborators.map((collaborator, index) => (
+                      <div key={collaborator.id} className="flex items-center bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-full px-3 py-1.5 text-sm">
+                        <img
+                          src={collaborator.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${collaborator.username}`}
+                          alt={collaborator.displayName}
+                          className="w-5 h-5 rounded-full mr-2 border border-blue-300 dark:border-blue-700"
+                        />
+                        <span className="font-medium">@{collaborator.username}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveCollaborator(collaborator.id)}
+                          className="ml-2 h-4 w-4 p-0 text-muted-foreground hover:text-destructive"
+                          data-testid={`button-remove-collaborator-${index}`}
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Collaborator Search */}
+              {showCollaboratorSearch && (
+                <Card className="mb-4 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+                  <CardContent className="pt-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-semibold text-sm flex items-center gap-2">
+                          <UserPlus className="w-4 h-4 text-blue-500" />
+                          Add Collaborators
+                        </h4>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setShowCollaboratorSearch(false);
+                            setCollaboratorSearchQuery("");
+                          }}
+                          className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                        <Input
+                          placeholder="Search users by name or username..."
+                          value={collaboratorSearchQuery}
+                          onChange={(e) => setCollaboratorSearchQuery(e.target.value)}
+                          className="pl-10 bg-background"
+                          data-testid="input-collaborator-search"
+                          autoFocus
+                        />
+                      </div>
+
+                      {searchUsersQuery.isLoading && (
+                        <div className="flex items-center justify-center py-6">
+                          <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2" />
+                          <span className="text-sm text-muted-foreground">Searching...</span>
+                        </div>
+                      )}
+
+                      {searchUsersQuery.data && Array.isArray(searchUsersQuery.data) && searchUsersQuery.data.length > 0 && (
+                        <div className="space-y-2 max-h-64 overflow-y-auto bg-background border rounded-lg p-2">
+                          {searchUsersQuery.data.map((searchUser: any) => {
+                            const isAlreadyCollaborator = collaborators.some(c => c.id === searchUser.id);
+                            const isCurrentUser = searchUser.id === user?.id;
+                            
+                            return (
+                              <div
+                                key={searchUser.id}
+                                className={`flex items-center justify-between p-3 border rounded-lg transition-all ${
+                                  isAlreadyCollaborator 
+                                    ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 cursor-not-allowed'
+                                    : isCurrentUser
+                                    ? 'bg-muted border-muted-foreground/20 cursor-not-allowed opacity-60'
+                                    : 'cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-300 dark:hover:border-blue-700'
+                                }`}
+                                onClick={() => !isAlreadyCollaborator && !isCurrentUser && handleAddCollaborator(searchUser)}
+                                data-testid={`option-collaborator-${searchUser.username}`}
+                              >
+                                <div className="flex items-center space-x-3 flex-1 min-w-0">
+                                  <img
+                                    src={searchUser.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${searchUser.username}`}
+                                    alt={searchUser.displayName}
+                                    className="w-10 h-10 rounded-full flex-shrink-0 border-2 border-border object-cover"
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-sm truncate">{searchUser.displayName}</p>
+                                    <p className="text-xs text-muted-foreground truncate">@{searchUser.username}</p>
+                                    {searchUser.bio && (
+                                      <p className="text-xs text-muted-foreground truncate mt-0.5">{searchUser.bio}</p>
+                                    )}
+                                  </div>
+                                </div>
+                                {isAlreadyCollaborator ? (
+                                  <Badge variant="outline" className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-300 dark:border-green-700 flex items-center gap-1">
+                                    <Star className="w-3 h-3 fill-current" />
+                                    Added
+                                  </Badge>
+                                ) : isCurrentUser ? (
+                                  <Badge variant="outline" className="text-xs">
+                                    You
+                                  </Badge>
+                                ) : (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 text-xs bg-blue-500 text-white border-blue-500 hover:bg-blue-600 hover:border-blue-600"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleAddCollaborator(searchUser);
+                                    }}
+                                  >
+                                    Add
+                                  </Button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {collaboratorSearchQuery && searchUsersQuery.data && Array.isArray(searchUsersQuery.data) && searchUsersQuery.data.length === 0 && !searchUsersQuery.isLoading && (
+                        <div className="text-center py-8 border rounded-lg bg-background">
+                          <Users className="w-12 h-12 mx-auto text-muted-foreground/50 mb-2" />
+                          <p className="text-sm text-muted-foreground font-medium">No users found</p>
+                          <p className="text-xs text-muted-foreground mt-1">Try a different search term</p>
+                        </div>
+                      )}
+
+                      {!collaboratorSearchQuery && (
+                        <div className="text-center py-8 border rounded-lg bg-background">
+                          <Search className="w-12 h-12 mx-auto text-muted-foreground/50 mb-2" />
+                          <p className="text-sm text-muted-foreground font-medium">Search for collaborators</p>
+                          <p className="text-xs text-muted-foreground mt-1">Start typing to find users</p>
+                        </div>
+                      )}
+
+                      {collaborators.length > 0 && (
+                        <div className="pt-3 border-t border-blue-200 dark:border-blue-800">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-sm font-semibold text-foreground flex items-center gap-1">
+                              <Star className="w-4 h-4 text-blue-500" />
+                              Selected ({collaborators.length})
+                            </p>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setCollaborators([])}
+                              className="h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              Clear all
+                            </Button>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {collaborators.map((collaborator) => (
+                              <Badge 
+                                key={collaborator.id} 
+                                variant="secondary" 
+                                className="text-xs px-3 py-1.5 flex items-center gap-2 bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700"
+                              >
+                                <img
+                                  src={collaborator.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${collaborator.username}`}
+                                  alt={collaborator.displayName}
+                                  className="w-4 h-4 rounded-full border border-blue-400"
+                                />
+                                <span className="font-medium">{collaborator.displayName}</span>
+                                <button
+                                  onClick={() => handleRemoveCollaborator(collaborator.id)}
+                                  className="ml-1 hover:text-destructive transition-colors"
+                                  aria-label="Remove collaborator"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               <Separator className="my-4" />
 
               {/* Toolbar */}
@@ -474,6 +715,19 @@ export default function PostModal({ trigger, isOpen, onClose }: PostModalProps) 
                       <Quote className="w-5 h-5" />
                     </Button>
                   )}
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowCollaboratorSearch(!showCollaboratorSearch)}
+                    className={`p-2 rounded-lg transition-colors ${
+                      showCollaboratorSearch || collaborators.length > 0 ? "text-blue-500 bg-blue-500/10" : "text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10"
+                    }`}
+                    title="Add Collaborators"
+                    data-testid="button-add-collaborators"
+                  >
+                    <UserPlus className="w-5 h-5" />
+                  </Button>
                 </div>
 
                 <div className="flex items-center space-x-2">
