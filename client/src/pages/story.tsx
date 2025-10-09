@@ -561,12 +561,15 @@ export default function StoryPage() {
 
               {/* Tabs for chapters and comments */}
               <Tabs defaultValue="chapters" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="chapters">
                     Chapters ({chapters.length})
                   </TabsTrigger>
                   <TabsTrigger value="comments">
                     Comments ({Array.isArray(comments) ? comments.length : 0})
+                  </TabsTrigger>
+                  <TabsTrigger value="conversations">
+                    Conversations
                   </TabsTrigger>
                 </TabsList>
 
@@ -626,6 +629,16 @@ export default function StoryPage() {
                       )}
                     </div>
                   )}
+                </TabsContent>
+
+                <TabsContent value="conversations" className="space-y-4">
+                  <div className="text-center py-12">
+                    <MessageSquare className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Will be available soon</h3>
+                    <p className="text-muted-foreground">
+                      Community conversations feature is currently under development
+                    </p>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="comments" className="space-y-4">
