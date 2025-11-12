@@ -51,27 +51,25 @@ export const users = pgTable("users", {
   isSuperAdmin: boolean("is_super_admin").default(false),
   postsCount: integer("posts_count").default(0),
   commentsCount: integer("comments_count").default(0),
-  isOnline: boolean("is_online").default(false),
-  lastSeenAt: timestamp("last_seen_at"),
-  showOnlineStatus: boolean("show_online_status").default(true),
-  showReadReceipts: boolean("show_read_receipts").default(true),
-  showTypingIndicator: boolean("show_typing_indicator").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Posts table
+// Posts table - Article/Column format
 export const posts = pgTable("posts", {
   id: uuid("id").defaultRandom().primaryKey(),
   authorId: uuid("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: varchar("title", { length: 255 }),
   content: text("content").notNull(),
   formattedContent: jsonb("formatted_content"), // Rich text formatting data
-  postType: varchar("post_type").notNull().default("text"), // text, poetry, story, challenge
-  genre: varchar("genre"),
-  spotifyTrackId: varchar("spotify_track_id"),
+  excerpt: text("excerpt"), // Article summary/preview
+  coverImageUrl: text("cover_image_url"), // Article cover image
+  category: varchar("category").default("general"), // Literary, News, Opinion, etc.
+  readTimeMinutes: integer("read_time_minutes"), // Calculated read time
+  publishedAt: timestamp("published_at"), // When article was published
+  spotifyTrackId: varchar("spotify_track_id"), // Optional mood music
   spotifyTrackData: jsonb("spotify_track_data"),
-  imageUrls: text("image_urls").array(),
+  imageUrls: text("image_urls").array(), // Additional images in content
   isPrivate: boolean("is_private").default(false),
   likesCount: integer("likes_count").default(0),
   commentsCount: integer("comments_count").default(0),
@@ -470,10 +468,12 @@ export const upsertUserSchema = insertUserSchema.extend({
 });
 
 export const insertPostSchema = createInsertSchema(posts, {
-  title: z.string().optional().refine(val => !val || val.length <= 255, "Title must be less than 255 characters"),
-  content: z.string().min(1, "Content is required").max(1000, "Content must be less than 1000 characters"),
+  title: z.string().min(1, "Title is required").max(255, "Title must be less than 255 characters"),
+  content: z.string().min(1, "Content is required"),
+  excerpt: z.string().max(500, "Excerpt must be less than 500 characters").optional(),
+  coverImageUrl: z.string().min(1, "Cover image is required").optional(),
+  category: z.string().optional(),
   imageUrls: z.array(z.string()).optional(),
-  genre: z.string().optional(),
 }).omit({
   id: true,
   createdAt: true,
@@ -482,6 +482,8 @@ export const insertPostSchema = createInsertSchema(posts, {
   commentsCount: true,
   repostsCount: true,
   viewsCount: true,
+  readTimeMinutes: true,
+  publishedAt: true,
 }).extend({
   spotifyTrackData: z.object({
     id: z.string(),
@@ -569,69 +571,3 @@ export type Leaderboard = typeof leaderboards.$inferSelect;
 export type PostCollaborator = typeof postCollaborators.$inferSelect;
 export type InsertPostCollaborator = z.infer<typeof insertPostCollaboratorSchema>;
 
-// Conversations table for direct messaging
-export const conversations = pgTable("conversations", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  participantOneId: uuid("participant_one_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  participantTwoId: uuid("participant_two_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  lastMessageId: uuid("last_message_id"),
-  lastMessageAt: timestamp("last_message_at").defaultNow(),
-  isArchived: boolean("is_archived").default(false),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-}, (table) => [
-  unique().on(table.participantOneId, table.participantTwoId),
-]);
-
-// Messages table for direct messaging
-export const messages = pgTable("messages", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  conversationId: uuid("conversation_id").notNull().references(() => conversations.id, { onDelete: "cascade" }),
-  senderId: uuid("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  content: text("content").notNull(),
-  messageType: varchar("message_type").notNull().default("text"), // text, image, file
-  attachmentUrls: text("attachment_urls").array(),
-  isRead: boolean("is_read").default(false),
-  readAt: timestamp("read_at"),
-  isEdited: boolean("is_edited").default(false),
-  editedAt: timestamp("edited_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// Conversation relations
-export const conversationsRelations = relations(conversations, ({ many, one }) => ({
-  messages: many(messages),
-  participantOne: one(users, {
-    fields: [conversations.participantOneId],
-    references: [users.id],
-    relationName: "participantOne",
-  }),
-  participantTwo: one(users, {
-    fields: [conversations.participantTwoId],
-    references: [users.id],
-    relationName: "participantTwo",
-  }),
-  lastMessage: one(messages, {
-    fields: [conversations.lastMessageId],
-    references: [messages.id],
-  }),
-}));
-
-// Message relations
-export const messagesRelations = relations(messages, ({ one }) => ({
-  conversation: one(conversations, {
-    fields: [messages.conversationId],
-    references: [conversations.id],
-  }),
-  sender: one(users, {
-    fields: [messages.senderId],
-    references: [users.id],
-  }),
-}));
-
-// Add message types
-export type Conversation = typeof conversations.$inferSelect;
-export type InsertConversation = typeof conversations.$inferInsert;
-export type Message = typeof messages.$inferSelect;
-export type InsertMessage = typeof messages.$inferInsert;
