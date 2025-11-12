@@ -352,251 +352,258 @@ function PostCard({
     }
   };
 
-  // Truncate content if it's too long
-  const shouldTruncate = post.content.length > 300;
-  const displayContent: string = shouldTruncate && !showFullContent
-    ? post.content.slice(0, 300) + "..."
-    : post.content;
-
-  const getPostTypeLabel = (type: string) => {
-    switch(type) {
-      case 'poetry': return 'Poetry';
-      case 'story': return 'Story';
-      case 'challenge': return 'Challenge';
-      default: return null;
-    }
+  // Calculate read time from content if not available
+  const calculateReadTime = (content: string): number => {
+    const wordsPerMinute = 200;
+    const wordCount = content.trim().split(/\s+/).length;
+    return Math.max(1, Math.ceil(wordCount / wordsPerMinute));
   };
 
-  const getPostTypeColor = (type: string) => {
-    switch(type) {
-      case 'poetry': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
-      case 'story': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-      case 'challenge': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+  const readTime = post.readTimeMinutes || calculateReadTime(post.content);
+
+  // Get cover image (use coverImageUrl or fallback to first imageUrl)
+  const coverImage = post.coverImageUrl || (post.imageUrls && post.imageUrls.length > 0 ? post.imageUrls[0] : null);
+
+  // Get category badge color
+  const getCategoryColor = (category?: string) => {
+    switch(category?.toLowerCase()) {
+      case 'literary': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
+      case 'news': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+      case 'opinion': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
+      case 'culture': return 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-300';
+      case 'technology': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
     }
   };
 
+  // Format publication date
+  const formatPublishDate = (date: Date) => {
+    const now = new Date();
+    const diffInDays = Math.floor((now.getTime() - new Date(date).getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffInDays === 0) return 'Today';
+    if (diffInDays === 1) return 'Yesterday';
+    if (diffInDays < 7) return `${diffInDays} days ago`;
+    
+    return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
   return (
-    <article className="border-b border-border bg-background group">
+    <article className="border-b border-border bg-background group hover-elevate cursor-pointer" onClick={() => navigate(`/post/${post.id}`)}>
+      {/* Cover Image */}
+      {coverImage && (
+        <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
+          <img
+            src={coverImage}
+            alt={post.title || 'Article cover'}
+            className="w-full h-full object-cover"
+            data-testid={`img-cover-${post.id}`}
+          />
+          
+          {/* Category Badge overlaying cover */}
+          {post.category && (
+            <div className="absolute bottom-4 left-4">
+              <Badge variant="secondary" className={`text-xs ${getCategoryColor(post.category)}`}>
+                {post.category}
+              </Badge>
+            </div>
+          )}
+
+          {/* Edit/Delete buttons for own posts */}
+          {(isOwnPost || canModerate) && (
+            <div className="absolute top-4 right-4 flex items-center space-x-2">
+              {isOwnPost && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="h-8 px-3 text-xs"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowEditModal(true);
+                  }}
+                >
+                  Edit
+                </Button>
+              )}
+              <Button
+                variant="secondary"
+                size="sm"
+                className="h-8 px-3 text-xs text-red-500 hover:text-red-700"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete();
+                }}
+              >
+                Delete
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="p-6">
-        {/* Header */}
-        <div className="flex items-start space-x-3 mb-4">
-          <Link href={`/profile/${author.username}`}>
+        {/* Category Badge (if no cover image) */}
+        {!coverImage && post.category && (
+          <div className="mb-3">
+            <Badge variant="secondary" className={`text-xs ${getCategoryColor(post.category)}`}>
+              {post.category}
+            </Badge>
+          </div>
+        )}
+
+        {/* Edit/Delete buttons (if no cover image) */}
+        {!coverImage && (isOwnPost || canModerate) && (
+          <div className="flex items-center justify-end space-x-2 mb-3">
+            {isOwnPost && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-3 text-xs"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowEditModal(true);
+                }}
+              >
+                Edit
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-3 text-xs text-red-500 hover:text-red-700"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDelete();
+              }}
+            >
+              Delete
+            </Button>
+          </div>
+        )}
+
+        {/* Title */}
+        <Link href={`/post/${post.id}`} onClick={(e) => e.stopPropagation()}>
+          <h2 className="text-2xl font-bold mb-3 leading-tight hover:text-blue-600 transition-colors" data-testid={`text-title-${post.id}`}>
+            {post.title || 'Untitled'}
+          </h2>
+        </Link>
+
+        {/* Excerpt - fallback to truncated content if no excerpt */}
+        <p className="text-sm text-muted-foreground mb-4 line-clamp-3" data-testid={`text-excerpt-${post.id}`}>
+          {post.excerpt || post.content}
+        </p>
+
+        {/* Author Info + Metadata */}
+        <div className="flex items-center space-x-3 mb-4">
+          <Link 
+            href={`/profile/${author.username}`} 
+            onClick={(e) => e.stopPropagation()}
+          >
             <img
               src={getProfileImageUrl(author.profileImageUrl)}
               alt={`${author.displayName} profile`}
-              className="w-12 h-12 rounded-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+              className="w-8 h-8 rounded-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
               data-testid={`img-avatar-${author.id}`}
             />
           </Link>
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center flex-wrap gap-2 mb-1">
-              <Link href={`/profile/${author.username}`}>
-                <div className="flex items-center space-x-2 hover:underline">
-                  <h3 className="font-semibold text-base" data-testid={`text-username-${author.id}`}>
-                    {author.displayName}
-                  </h3>
-                  {author.isVerified && (
-                    <CheckCircle className="w-4 h-4 text-blue-500" />
-                  )}
-                  {author.isAdmin && (
-                    <Crown className="w-4 h-4 text-yellow-500" />
-                  )}
-                </div>
-              </Link>
-              
-              {(author as any)?.userRole && (
-                <Badge variant="outline" className="text-xs">
-                  {(author as any).userRole === 'writer' ? 'Writer' : 'Reader'}
-                </Badge>
-              )}
-
-              <span className="text-muted-foreground text-sm">
-                @{author.username}
+          <div className="flex-1 flex items-center flex-wrap gap-2 text-xs text-muted-foreground">
+            <Link 
+              href={`/profile/${author.username}`}
+              onClick={(e) => e.stopPropagation()}
+              className="hover:text-foreground transition-colors"
+            >
+              <span className="font-medium" data-testid={`text-username-${author.id}`}>
+                {author.displayName}
               </span>
+            </Link>
+            
+            {author.isVerified && (
+              <CheckCircle className="w-3 h-3 text-blue-500" />
+            )}
+            
+            <span>•</span>
+            
+            <time data-testid={`text-timestamp-${post.id}`}>
+              {formatPublishDate(post.publishedAt || post.createdAt || new Date())}
+            </time>
+            
+            <span>•</span>
+            
+            <span data-testid={`text-readtime-${post.id}`}>
+              {readTime} min read
+            </span>
 
-              {/* Instagram-style collaborators display */}
-              {(post as any).collaborators && (post as any).collaborators.length > 0 && (
-                <>
-                  <span className="text-muted-foreground text-sm">•</span>
-                  <span className="text-muted-foreground text-sm">with</span>
-                  {(post as any).collaborators.map((collaborator: any, index: number) => (
-                    <span key={collaborator.id || index} className="text-sm">
-                      <Link href={`/profile/${collaborator.username}`} className="text-blue-500 hover:underline">
-                        @{collaborator.username}
-                      </Link>
-                      {index < (post as any).collaborators.length - 1 && <span className="text-muted-foreground">, </span>}
-                    </span>
-                  ))}
-                </>
-              )}
-
-              <span className="text-muted-foreground text-sm">•</span>
-
-              <time className="text-muted-foreground text-sm" data-testid={`text-timestamp-${post.id}`}>
-                {formatDistanceToNow(post.createdAt ? new Date(post.createdAt) : new Date(), { addSuffix: true })}
-              </time>
-            </div>
-
-            {/* Post type and genre badges */}
-            <div className="flex items-center gap-2 mb-2">
-              {getPostTypeLabel(post.postType) && (
-                <Badge variant="secondary" className={`text-xs ${getPostTypeColor(post.postType)}`}>
-                  {getPostTypeLabel(post.postType)}
-                </Badge>
-              )}
-              {post.genre && (
-                <Badge variant="outline" className="text-xs">
-                  {post.genre}
-                </Badge>
-              )}
-              {post.isPrivate && (
-                <Badge variant="secondary" className="text-xs">
-                  Private
-                </Badge>
-              )}
-            </div>
-          </div>
-
-          {(isOwnPost || canModerate) && (
-            <div className="flex items-center space-x-2">
-              {isOwnPost && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 px-3 text-xs"
-                    onClick={() => setShowEditModal(true)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 px-3 text-xs text-red-500 hover:text-red-700"
-                    onClick={handleDelete}
-                  >
-                    Delete
-                  </Button>
-                </>
-              )}
-              {canModerate && !isOwnPost && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 px-3 text-xs text-red-500 hover:text-red-700"
-                  onClick={handleDelete}
-                >
-                  Delete
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Title */}
-        {post.title && (
-          <h2 className="text-xl font-bold mb-3 leading-tight" data-testid={`text-title-${post.id}`}>
-            {post.title}
-          </h2>
-        )}
-
-        {/* Content */}
-        <div className="mb-4">
-          <div
-            className="text-foreground text-base leading-relaxed whitespace-pre-wrap break-words max-w-none"
-            data-testid={`text-content-${post.id}`}
-            style={{
-              fontSize: '16px',
-              lineHeight: '1.6',
-              color: 'var(--foreground)'
-            }}
-          >
-            {post.content.includes('<') ? (
-              <div dangerouslySetInnerHTML={{ __html: displayContent as string }} />
-            ) : (
-              <span>{displayContent as string}</span>
+            {(post.viewsCount || 0) > 0 && (
+              <>
+                <span>•</span>
+                <div className="flex items-center space-x-1">
+                  <Eye className="w-3 h-3" />
+                  <span data-testid={`text-views-${post.id}`}>{(post.viewsCount || 0).toLocaleString()} views</span>
+                </div>
+              </>
             )}
           </div>
-          {shouldTruncate && (
-            <Button
-              variant="link"
-              size="sm"
-              className="h-auto p-0 text-blue-500 hover:text-blue-600 mt-2"
-              onClick={() => setShowFullContent(!showFullContent)}
-              data-testid={`button-toggle-content-${post.id}`}
-            >
-              {showFullContent ? "Show less" : "Show more"}
-            </Button>
-          )}
         </div>
 
-        {/* Images */}
-        {post.imageUrls && post.imageUrls.length > 0 && (
-          <div className="mb-4">
-            <ImageGallery
-              images={post.imageUrls}
-            />
-          </div>
-        )}
-
-        {/* Spotify Integration */}
+        {/* Spotify Integration (if present) */}
         {post.spotifyTrackData && typeof post.spotifyTrackData === 'object' && post.spotifyTrackData !== null && (
-          <div className="mb-4">
-            <SpotifyTrackDisplay track={post.spotifyTrackData as any} size="md" showPreview={true} />
+          <div className="mb-4" onClick={(e) => e.stopPropagation()}>
+            <SpotifyTrackDisplay track={post.spotifyTrackData as any} size="sm" showPreview={false} />
           </div>
         )}
 
-        {/* Engagement Stats */}
-        <div className="flex items-center space-x-6 text-muted-foreground text-sm mb-4">
-          {(post.viewsCount || 0) > 0 && (
-            <div className="flex items-center space-x-1">
-              <Eye className="w-4 h-4" />
-              <span data-testid={`text-views-${post.id}`}>{(post.viewsCount || 0).toLocaleString()}</span>
-            </div>
-          )}
-        </div>
+        {/* Additional Images (if not used as cover) */}
+        {!post.coverImageUrl && post.imageUrls && post.imageUrls.length > 1 && (
+          <div className="mb-4" onClick={(e) => e.stopPropagation()}>
+            <ImageGallery images={post.imageUrls.slice(1)} />
+          </div>
+        )}
+        {post.coverImageUrl && post.imageUrls && post.imageUrls.length > 0 && (
+          <div className="mb-4" onClick={(e) => e.stopPropagation()}>
+            <ImageGallery images={post.imageUrls} />
+          </div>
+        )}
 
-        {/* Action Buttons */}
+        {/* Engagement Actions - Smaller, less prominent */}
         {showActions && (
           <div className="flex items-center justify-between pt-3 border-t border-border">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1">
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-8 space-x-2 transition-colors ${optimisticLiked ? 'text-red-500 hover:text-red-600' : 'text-muted-foreground hover:text-red-500'}`}
+                className={`h-8 space-x-1 text-xs transition-colors ${optimisticLiked ? 'text-red-500 hover:text-red-600' : 'text-muted-foreground hover:text-red-500'}`}
                 onClick={handleLike}
                 data-testid={`button-like-${post.id}`}
               >
-                <Heart className={`w-4 h-4 ${optimisticLiked ? 'fill-current' : ''}`} />
-                <span>{optimisticLikesCount.toLocaleString()}</span>
+                <Heart className={`w-3.5 h-3.5 ${optimisticLiked ? 'fill-current' : ''}`} />
+                <span>{optimisticLikesCount > 0 ? optimisticLikesCount.toLocaleString() : ''}</span>
               </Button>
 
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 space-x-2 text-muted-foreground hover:text-blue-500 transition-colors"
+                className="h-8 space-x-1 text-xs text-muted-foreground hover:text-blue-500 transition-colors"
                 onClick={handleComment}
                 data-testid={`button-comment-${post.id}`}
               >
-                <MessageCircle className="w-4 h-4" />
-                <span>{(post.commentsCount || 0).toLocaleString()}</span>
+                <MessageCircle className="w-3.5 h-3.5" />
+                <span>{(post.commentsCount || 0) > 0 ? (post.commentsCount || 0).toLocaleString() : ''}</span>
               </Button>
 
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-8 space-x-2 transition-colors ${optimisticReposted ? 'text-green-500 hover:text-green-600' : 'text-muted-foreground hover:text-green-500'}`}
+                className={`h-8 space-x-1 text-xs transition-colors ${optimisticReposted ? 'text-green-500 hover:text-green-600' : 'text-muted-foreground hover:text-green-500'}`}
                 onClick={handleRepost}
                 data-testid={`button-repost-${post.id}`}
               >
-                <Repeat2 className="w-4 h-4" />
-                <span>{optimisticRepostsCount.toLocaleString()}</span>
+                <Repeat2 className="w-3.5 h-3.5" />
+                <span>{optimisticRepostsCount > 0 ? optimisticRepostsCount.toLocaleString() : ''}</span>
               </Button>
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1">
               <Button
                 variant="ghost"
                 size="sm"
@@ -604,7 +611,7 @@ function PostCard({
                 onClick={handleBookmark}
                 data-testid={`button-bookmark-${post.id}`}
               >
-                <Bookmark className={`w-4 h-4 ${optimisticBookmarked ? 'fill-current' : ''}`} />
+                <Bookmark className={`w-3.5 h-3.5 ${optimisticBookmarked ? 'fill-current' : ''}`} />
               </Button>
 
               <Button
@@ -614,7 +621,7 @@ function PostCard({
                 onClick={handleShare}
                 data-testid={`button-share-${post.id}`}
               >
-                <Share className="w-4 h-4" />
+                <Share className="w-3.5 h-3.5" />
               </Button>
             </div>
           </div>
