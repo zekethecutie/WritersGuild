@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
+import { authService } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -6,7 +7,6 @@ import {
   Home,
   Compass,
   Search,
-  MessageSquare,
   Bell,
   Bookmark,
   BarChart3,
@@ -35,7 +35,7 @@ import { cn } from "@/lib/utils";
 
 
 export default function Sidebar() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [location] = useLocation();
   const [unreadNotifications, setUnreadNotifications] = useState(0);
@@ -57,7 +57,6 @@ export default function Sidebar() {
     { icon: Compass, label: "Explore", path: "/explore", active: location === "/explore" },
     { icon: BookOpen, label: "Stories", path: "/series", active: location === "/series" },
     { icon: Trophy, label: "Leaderboard", path: "/leaderboard", active: location === "/leaderboard" },
-    { icon: MessageSquare, label: "Messages", path: "/messages", active: location === "/messages" },
     { icon: Bell, label: "Notifications", path: "/notifications", active: location === "/notifications", badge: unreadCount > 0 ? unreadCount : undefined },
     { icon: Bookmark, label: "Bookmarks", path: "/bookmarks", active: location === "/bookmarks" },
     { icon: User, label: "Profile", path: `/profile/${user?.username || user?.id}`, active: location.startsWith("/profile") },
@@ -166,7 +165,7 @@ export default function Sidebar() {
               toast({
                 title: "Continue as Guest",
                 description: "You are now continuing as a guest.",
-                variant: "success"
+                variant: "default"
               });
               // In a real app, you might redirect to a guest-specific page or set a guest state
               // window.location.href = "/guest";
@@ -214,16 +213,7 @@ export default function Sidebar() {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
-                  onClick={async () => {
-                    try {
-                      await fetch("/api/logout", { method: "GET", credentials: "include" });
-                      logout(); // Call logout from useAuth
-                      window.location.href = "/"; // Redirect to the landing page
-                    } catch (error) {
-                      console.error("Logout error:", error);
-                      window.location.href = "/"; // Fallback redirect
-                    }
-                  }}
+                  onClick={() => authService.logout()}
                   className="text-red-600 focus:text-red-600"
                 >
                   <ExternalLink className="w-4 h-4 mr-2" />

@@ -12,7 +12,6 @@ import Explore from "./pages/explore";
 import SeriesPage from "./pages/series";
 import StoryPage from "./pages/story";
 import SeriesEditPage from "./pages/series-edit";
-import Messages from "./pages/messages";
 import Notifications from "./pages/notifications";
 import Bookmarks from "./pages/bookmarks";
 import SearchPage from "./pages/search";
@@ -138,7 +137,6 @@ function AppRouter() {
       {/* Protected routes with proper fallbacks */}
       <Route path="/search" component={isAuthenticated ? SearchPage : Explore} />
       <Route path="/notifications" component={isAuthenticated ? Notifications : Explore} />
-      <Route path="/messages" component={isAuthenticated ? Messages : Explore} />
       <Route path="/bookmarks" component={isAuthenticated ? Bookmarks : Explore} />
       <Route path="/profile/:username" component={Profile} />
       <Route path="/settings" component={isAuthenticated ? SettingsPage : Landing} />

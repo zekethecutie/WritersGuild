@@ -17,7 +17,6 @@ import {
   Link as LinkIcon, 
   Calendar, 
   Settings, 
-  MessageCircle,
   Heart,
   Repeat2,
   Bookmark,
@@ -33,7 +32,6 @@ import { formatDistanceToNow } from "date-fns";
 import type { Post, User } from "@shared/schema";
 import LoadingScreen from "@/components/loading-screen";
 import FollowButton from "@/components/follow-button";
-import MessageButton from "@/components/message-button";
 
 // User Stories Section Component
 function UserStoriesSection({ userId, isOwnProfile }: { userId: string; isOwnProfile: boolean }) {
@@ -470,11 +468,6 @@ export default function Profile() {
                 </p>
                 {!isOwnProfile && (
                   <div className="flex gap-2">
-                    <MessageButton 
-                      userId={profileUser.id}
-                      variant="outline"
-                      size="sm"
-                    />
                     <FollowButton 
                       userId={profileUser.id}
                       variant="default"
