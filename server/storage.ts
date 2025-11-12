@@ -9,8 +9,6 @@ import {
   bookmarks,
   notifications,
   writingGoals,
-  conversations,
-  messages,
   series,
   chapters,
   seriesFollowers,
@@ -30,10 +28,6 @@ import {
   type Bookmark,
   type Notification,
   type WritingGoal,
-  type Conversation,
-  type InsertConversation,
-  type Message,
-  type InsertMessage,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, sql, count, exists, notExists, asc, ne, isNotNull, gte, ilike } from "drizzle-orm";
@@ -99,22 +93,6 @@ export interface IStorage {
   getTrendingPosts(limit?: number): Promise<Post[]>;
   getSuggestedUsers(userId: string, limit?: number): Promise<User[]>;
   getSuggestedUsers(currentUserId: string, limit?: number): Promise<User[]>;
-
-  // Messaging operations
-  createConversation(participantOneId: string, participantTwoId: string): Promise<Conversation>;
-  getConversation(participantOneId: string, participantTwoId: string): Promise<Conversation | undefined>;
-  getUserConversations(userId: string): Promise<(Conversation & { otherParticipant: User; lastMessage?: Message })[]>;
-  sendMessage(conversationId: string, senderId: string, content: string, messageType?: string, attachmentUrls?: string[]): Promise<Message>;
-  getConversationMessages(conversationId: string, limit?: number, offset?: number): Promise<Message[]>;
-  markMessageAsRead(messageId: string): Promise<void>;
-  markConversationAsRead(conversationId: string, userId: string): Promise<void>;
-  
-  // User presence operations
-  setUserOnline(userId: string): Promise<void>;
-  setUserOffline(userId: string): Promise<void>;
-  getUserPresence(userId: string): Promise<{ isOnline: boolean; lastSeenAt: Date | null; showOnlineStatus: boolean }>;
-  updatePrivacySettings(userId: string, settings: { showReadReceipts?: boolean; showOnlineStatus?: boolean; showTypingIndicator?: boolean }): Promise<void>;
-  deleteMessage(messageId: string): Promise<void>;
 
   // Series management methods
   createSeries(seriesData: any): Promise<any>;
@@ -297,8 +275,11 @@ export class DatabaseStorage implements IStorage {
         title: posts.title,
         content: posts.content,
         formattedContent: posts.formattedContent,
-        postType: posts.postType,
-        genre: posts.genre,
+        excerpt: posts.excerpt,
+        coverImageUrl: posts.coverImageUrl,
+        category: posts.category,
+        readTimeMinutes: posts.readTimeMinutes,
+        publishedAt: posts.publishedAt,
         spotifyTrackId: posts.spotifyTrackId,
         spotifyTrackData: posts.spotifyTrackData,
         imageUrls: posts.imageUrls,
@@ -331,11 +312,6 @@ export class DatabaseStorage implements IStorage {
           isSuperAdmin: users.isSuperAdmin,
           postsCount: users.postsCount,
           commentsCount: users.commentsCount,
-          isOnline: users.isOnline,
-          lastSeenAt: users.lastSeenAt,
-          showOnlineStatus: users.showOnlineStatus,
-          showReadReceipts: users.showReadReceipts,
-          showTypingIndicator: users.showTypingIndicator,
           createdAt: users.createdAt,
           updatedAt: users.updatedAt
         },
@@ -369,8 +345,11 @@ export class DatabaseStorage implements IStorage {
       title: row.title,
       content: row.content,
       formattedContent: row.formattedContent,
-      postType: row.postType,
-      genre: row.genre,
+      excerpt: row.excerpt,
+      coverImageUrl: row.coverImageUrl,
+      category: row.category,
+      readTimeMinutes: row.readTimeMinutes,
+      publishedAt: row.publishedAt,
       spotifyTrackId: row.spotifyTrackId,
       spotifyTrackData: row.spotifyTrackData,
       imageUrls: row.imageUrls,
@@ -396,8 +375,11 @@ export class DatabaseStorage implements IStorage {
         title: posts.title,
         content: posts.content,
         formattedContent: posts.formattedContent,
-        postType: posts.postType,
-        genre: posts.genre,
+        excerpt: posts.excerpt,
+        coverImageUrl: posts.coverImageUrl,
+        category: posts.category,
+        readTimeMinutes: posts.readTimeMinutes,
+        publishedAt: posts.publishedAt,
         spotifyTrackId: posts.spotifyTrackId,
         spotifyTrackData: posts.spotifyTrackData,
         imageUrls: posts.imageUrls,
@@ -430,11 +412,6 @@ export class DatabaseStorage implements IStorage {
           isSuperAdmin: users.isSuperAdmin,
           postsCount: users.postsCount,
           commentsCount: users.commentsCount,
-          isOnline: users.isOnline,
-          lastSeenAt: users.lastSeenAt,
-          showOnlineStatus: users.showOnlineStatus,
-          showReadReceipts: users.showReadReceipts,
-          showTypingIndicator: users.showTypingIndicator,
           createdAt: users.createdAt,
           updatedAt: users.updatedAt
         }
@@ -453,8 +430,11 @@ export class DatabaseStorage implements IStorage {
       title: row.title,
       content: row.content,
       formattedContent: row.formattedContent,
-      postType: row.postType,
-      genre: row.genre,
+      excerpt: row.excerpt,
+      coverImageUrl: row.coverImageUrl,
+      category: row.category,
+      readTimeMinutes: row.readTimeMinutes,
+      publishedAt: row.publishedAt,
       spotifyTrackId: row.spotifyTrackId,
       spotifyTrackData: row.spotifyTrackData,
       imageUrls: row.imageUrls,
@@ -665,6 +645,8 @@ export class DatabaseStorage implements IStorage {
       profileImageUrl: users.profileImageUrl,
       coverImageUrl: users.coverImageUrl,
       genres: users.genres,
+      userRole: users.userRole,
+      preferredGenres: users.preferredGenres,
       writingStreak: users.writingStreak,
       wordCountGoal: users.wordCountGoal,
       weeklyPostsGoal: users.weeklyPostsGoal,
@@ -695,6 +677,8 @@ export class DatabaseStorage implements IStorage {
       profileImageUrl: users.profileImageUrl,
       coverImageUrl: users.coverImageUrl,
       genres: users.genres,
+      userRole: users.userRole,
+      preferredGenres: users.preferredGenres,
       writingStreak: users.writingStreak,
       wordCountGoal: users.wordCountGoal,
       weeklyPostsGoal: users.weeklyPostsGoal,
@@ -775,8 +759,11 @@ export class DatabaseStorage implements IStorage {
       title: posts.title,
       content: posts.content,
       formattedContent: posts.formattedContent,
-      postType: posts.postType,
-      genre: posts.genre,
+      excerpt: posts.excerpt,
+      coverImageUrl: posts.coverImageUrl,
+      category: posts.category,
+      readTimeMinutes: posts.readTimeMinutes,
+      publishedAt: posts.publishedAt,
       spotifyTrackId: posts.spotifyTrackId,
       spotifyTrackData: posts.spotifyTrackData,
       imageUrls: posts.imageUrls,
@@ -882,20 +869,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Search and discovery
-  async searchUsers(query: string, limit: number = 10): Promise<User[]> {
-    return db.select()
-      .from(users)
-      .where(
-        or(
-          sql`${users.username} ILIKE ${`%${query}%`}`,
-          sql`${users.displayName} ILIKE ${`%${query}%`}`,
-          sql`${users.bio} ILIKE ${`%${query}%`}`
-        )
-      )
-      .limit(limit);
-  }
-
-  async searchUsers(query: string, currentUserId: string, limit: number = 10): Promise<User[]> {
+  async searchUsers(query: string, currentUserId?: string, limit: number = 10): Promise<User[]> {
     const searchTerm = `%${query.toLowerCase()}%`;
 
     const result = await db
@@ -948,8 +922,11 @@ export class DatabaseStorage implements IStorage {
         title: posts.title,
         content: posts.content,
         formattedContent: posts.formattedContent,
-        postType: posts.postType,
-        genre: posts.genre,
+        excerpt: posts.excerpt,
+        coverImageUrl: posts.coverImageUrl,
+        category: posts.category,
+        readTimeMinutes: posts.readTimeMinutes,
+        publishedAt: posts.publishedAt,
         spotifyTrackId: posts.spotifyTrackId,
         spotifyTrackData: posts.spotifyTrackData,
         imageUrls: posts.imageUrls,
@@ -982,11 +959,6 @@ export class DatabaseStorage implements IStorage {
           isSuperAdmin: users.isSuperAdmin,
           postsCount: users.postsCount,
           commentsCount: users.commentsCount,
-          isOnline: users.isOnline,
-          lastSeenAt: users.lastSeenAt,
-          showOnlineStatus: users.showOnlineStatus,
-          showReadReceipts: users.showReadReceipts,
-          showTypingIndicator: users.showTypingIndicator,
           createdAt: users.createdAt,
           updatedAt: users.updatedAt
         },
@@ -1020,8 +992,11 @@ export class DatabaseStorage implements IStorage {
       title: row.title,
       content: row.content,
       formattedContent: row.formattedContent,
-      postType: row.postType,
-      genre: row.genre,
+      excerpt: row.excerpt,
+      coverImageUrl: row.coverImageUrl,
+      category: row.category,
+      readTimeMinutes: row.readTimeMinutes,
+      publishedAt: row.publishedAt,
       spotifyTrackId: row.spotifyTrackId,
       spotifyTrackData: row.spotifyTrackData,
       imageUrls: row.imageUrls,
@@ -1037,20 +1012,6 @@ export class DatabaseStorage implements IStorage {
       isBookmarked: row.isBookmarked,
       isReposted: row.isReposted,
     }));
-  }
-
-  async getSuggestedUsers(userId: string, limit = 5): Promise<User[]> {
-    return db.select()
-      .from(users)
-      .where(
-        and(
-          ne(users.id, userId),
-          sql`${users.id} NOT IN (
-            SELECT following_id FROM follows WHERE follower_id = ${userId}
-          )`
-        )
-      )
-      .limit(limit);
   }
 
   async getSuggestedUsers(currentUserId: string, limit: number = 5): Promise<User[]> {
@@ -1090,7 +1051,7 @@ export class DatabaseStorage implements IStorage {
 
   async getTrendingTopics(): Promise<{ rank: number; category: string; hashtag: string; posts: string }[]> {
     const topicData = await db.select({
-      genre: posts.genre,
+      category: posts.category,
       count: sql<number>`count(*)::int`,
     })
       .from(posts)
@@ -1100,14 +1061,14 @@ export class DatabaseStorage implements IStorage {
           sql`${posts.createdAt} >= NOW() - INTERVAL '7 days'`
         )
       )
-      .groupBy(posts.genre)
+      .groupBy(posts.category)
       .orderBy(sql`count(*) DESC`)
       .limit(10);
 
     return topicData.map((item, index) => ({
       rank: index + 1,
-      category: item.genre || "General",
-      hashtag: `#${(item.genre || "WritersCommunity").replace(/\s+/g, '')}`,
+      category: item.category || "General",
+      hashtag: `#${(item.category || "WritersCommunity").replace(/\s+/g, '')}`,
       posts: item.count.toLocaleString(),
     }));
   }
@@ -1273,273 +1234,6 @@ export class DatabaseStorage implements IStorage {
       .where(or(eq(users.isAdmin, true), eq(users.isSuperAdmin, true)));
   }
 
-  // Messaging implementation
-  async createConversation(participantOneId: string, participantTwoId: string): Promise<Conversation> {
-    const [firstId, secondId] = [participantOneId, participantTwoId].sort();
-
-    const [conversation] = await db
-      .insert(conversations)
-      .values({
-        participantOneId: firstId,
-        participantTwoId: secondId,
-      })
-      .returning();
-    return conversation;
-  }
-
-  async getConversation(participantOneId: string, participantTwoId: string): Promise<Conversation | undefined> {
-    const [firstId, secondId] = [participantOneId, participantTwoId].sort();
-
-    const [conversation] = await db
-      .select()
-      .from(conversations)
-      .where(
-        and(
-          eq(conversations.participantOneId, firstId),
-          eq(conversations.participantTwoId, secondId)
-        )
-      );
-    return conversation;
-  }
-
-  async getUserConversations(userId: string): Promise<(Conversation & { otherParticipant: User; lastMessage?: Message; unreadCount: number })[]> {
-    const userConversations = await db
-      .select()
-      .from(conversations)
-      .where(or(
-        eq(conversations.participantOneId, userId),
-        eq(conversations.participantTwoId, userId)
-      ))
-      .orderBy(desc(conversations.lastMessageAt));
-
-    const conversationsWithData = await Promise.all(
-      userConversations.map(async (conv) => {
-        const otherParticipantId = conv.participantOneId === userId
-          ? conv.participantTwoId
-          : conv.participantOneId;
-
-        const [otherParticipant] = await db
-          .select({
-            id: users.id,
-            username: users.username,
-            displayName: users.displayName,
-            profileImageUrl: users.profileImageUrl,
-            email: users.email,
-            password: users.password,
-            bio: users.bio,
-            location: users.location,
-            website: users.website,
-            coverImageUrl: users.coverImageUrl,
-            genres: users.genres,
-            writingStreak: users.writingStreak,
-            wordCountGoal: users.wordCountGoal,
-            weeklyPostsGoal: users.weeklyPostsGoal,
-            isVerified: users.isVerified,
-            isAdmin: users.isAdmin,
-            isSuperAdmin: users.isSuperAdmin,
-            postsCount: users.postsCount,
-            commentsCount: users.commentsCount,
-            createdAt: users.createdAt,
-            updatedAt: users.updatedAt,
-          })
-          .from(users)
-          .where(eq(users.id, otherParticipantId))
-          .limit(1);
-
-        let lastMessage: Message | undefined;
-        if (conv.lastMessageId) {
-          const [message] = await db
-            .select()
-            .from(messages)
-            .where(eq(messages.id, conv.lastMessageId))
-            .limit(1);
-          lastMessage = message;
-        }
-
-        // Calculate unread count - count messages in this conversation that:
-        // 1. Are not from the current user (senderId !== userId)
-        // 2. Are not read by the current user (isRead = false)
-        const [unreadCountResult] = await db
-          .select({ count: count() })
-          .from(messages)
-          .where(
-            and(
-              eq(messages.conversationId, conv.id),
-              ne(messages.senderId, userId),
-              eq(messages.isRead, false)
-            )
-          );
-
-        const unreadCount = unreadCountResult?.count || 0;
-
-        return {
-          ...conv,
-          otherParticipant: otherParticipant || {
-            id: otherParticipantId,
-            username: 'unknown',
-            displayName: 'Unknown User',
-            profileImageUrl: null,
-          } as User,
-          lastMessage,
-          unreadCount: Number(unreadCount),
-        };
-      })
-    );
-
-    return conversationsWithData;
-  }
-
-  async sendMessage(conversationId: string, senderId: string, content: string, messageType = "text", attachmentUrls: string[] = []): Promise<Message> {
-    const [message] = await db
-      .insert(messages)
-      .values({
-        conversationId,
-        senderId,
-        content,
-        messageType,
-        attachmentUrls: attachmentUrls.length > 0 ? attachmentUrls : null,
-      })
-      .returning();
-
-    await db
-      .update(conversations)
-      .set({
-        lastMessageId: message.id,
-        lastMessageAt: message.createdAt,
-        updatedAt: new Date(),
-      })
-      .where(eq(conversations.id, conversationId));
-
-    return message;
-  }
-
-  async getConversationMessages(conversationId: string, limit = 50, offset = 0): Promise<any[]> {
-    const result = await db
-      .select({
-        id: messages.id,
-        conversationId: messages.conversationId,
-        senderId: messages.senderId,
-        content: messages.content,
-        messageType: messages.messageType,
-        attachmentUrls: messages.attachmentUrls,
-        isRead: messages.isRead,
-        readAt: messages.readAt,
-        createdAt: messages.createdAt,
-        updatedAt: messages.updatedAt,
-        sender: {
-          id: users.id,
-          username: users.username,
-          displayName: users.displayName,
-          profileImageUrl: users.profileImageUrl,
-          isVerified: users.isVerified,
-          isOnline: users.isOnline,
-          lastSeenAt: users.lastSeenAt,
-          showOnlineStatus: users.showOnlineStatus,
-          showReadReceipts: users.showReadReceipts,
-          showTypingIndicator: users.showTypingIndicator,
-        }
-      })
-      .from(messages)
-      .leftJoin(users, eq(messages.senderId, users.id))
-      .where(eq(messages.conversationId, conversationId))
-      .orderBy(asc(messages.createdAt))
-      .limit(limit)
-      .offset(offset);
-
-    return result;
-  }
-
-  async markMessageAsRead(messageId: string): Promise<void> {
-    await db
-      .update(messages)
-      .set({
-        isRead: true,
-        readAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(messages.id, messageId));
-  }
-
-  async markConversationAsRead(conversationId: string, userId: string): Promise<void> {
-    try {
-      await db
-        .update(messages)
-        .set({ isRead: true, readAt: new Date() })
-        .where(
-          and(
-            eq(messages.conversationId, conversationId),
-            ne(messages.senderId, userId),
-            eq(messages.isRead, false)
-          )
-        );
-    } catch (error) {
-      console.error("Error marking conversation as read:", error);
-      throw error;
-    }
-  }
-
-  async setUserOnline(userId: string): Promise<void> {
-    await db
-      .update(users)
-      .set({ isOnline: true, lastSeenAt: new Date() })
-      .where(eq(users.id, userId));
-  }
-
-  async setUserOffline(userId: string): Promise<void> {
-    await db
-      .update(users)
-      .set({ isOnline: false, lastSeenAt: new Date() })
-      .where(eq(users.id, userId));
-  }
-
-  async getUserPresence(userId: string): Promise<{ isOnline: boolean; lastSeenAt: Date | null; showOnlineStatus: boolean }> {
-    const [user] = await db
-      .select({
-        isOnline: users.isOnline,
-        lastSeenAt: users.lastSeenAt,
-        showOnlineStatus: users.showOnlineStatus,
-      })
-      .from(users)
-      .where(eq(users.id, userId));
-    return user || { isOnline: false, lastSeenAt: null, showOnlineStatus: true };
-  }
-
-  async updatePrivacySettings(userId: string, settings: { showReadReceipts?: boolean; showOnlineStatus?: boolean; showTypingIndicator?: boolean }): Promise<void> {
-    await db
-      .update(users)
-      .set(settings)
-      .where(eq(users.id, userId));
-  }
-
-  async deleteMessage(messageId: string): Promise<void> {
-    await db
-      .delete(messages)
-      .where(eq(messages.id, messageId));
-  }
-
-  async getMessageById(messageId: string): Promise<Message | undefined> {
-    const [message] = await db
-      .select()
-      .from(messages)
-      .where(eq(messages.id, messageId))
-      .limit(1);
-    return message;
-  }
-
-  async deleteMessage(messageId: string): Promise<void> {
-    await db
-      .delete(messages)
-      .where(eq(messages.id, messageId));
-  }
-
-  async getConversationById(conversationId: string): Promise<Conversation | undefined> {
-    const [conversation] = await db
-      .select()
-      .from(conversations)
-      .where(eq(conversations.id, conversationId));
-    return conversation;
-  }
-
   // User discovery and search methods
   async getRecommendedUsers(userId: string): Promise<any[]> {
     const result = await db
@@ -1620,8 +1314,11 @@ export class DatabaseStorage implements IStorage {
       .select({
         id: posts.id,
         content: posts.content,
-        postType: posts.postType,
-        genre: posts.genre,
+        excerpt: posts.excerpt,
+        coverImageUrl: posts.coverImageUrl,
+        category: posts.category,
+        readTimeMinutes: posts.readTimeMinutes,
+        publishedAt: posts.publishedAt,
         likesCount: posts.likesCount,
         commentsCount: posts.commentsCount,
         repostsCount: posts.repostsCount,
@@ -1658,8 +1355,11 @@ export class DatabaseStorage implements IStorage {
         title: posts.title,
         content: posts.content,
         formattedContent: posts.formattedContent,
-        postType: posts.postType,
-        genre: posts.genre,
+        excerpt: posts.excerpt,
+        coverImageUrl: posts.coverImageUrl,
+        category: posts.category,
+        readTimeMinutes: posts.readTimeMinutes,
+        publishedAt: posts.publishedAt,
         spotifyTrackId: posts.spotifyTrackId,
         spotifyTrackData: posts.spotifyTrackData,
         imageUrls: posts.imageUrls,
@@ -1713,8 +1413,11 @@ export class DatabaseStorage implements IStorage {
       title: row.title,
       content: row.content,
       formattedContent: row.formattedContent,
-      postType: row.postType as any,
-      genre: row.genre,
+      excerpt: row.excerpt,
+      coverImageUrl: row.coverImageUrl,
+      category: row.category,
+      readTimeMinutes: row.readTimeMinutes,
+      publishedAt: row.publishedAt,
       spotifyTrackId: row.spotifyTrackId,
       spotifyTrackData: row.spotifyTrackData,
       imageUrls: row.imageUrls,
@@ -1766,8 +1469,11 @@ export class DatabaseStorage implements IStorage {
       .select({
         id: posts.id,
         content: posts.content,
-        postType: posts.postType,
-        genre: posts.genre,
+        excerpt: posts.excerpt,
+        coverImageUrl: posts.coverImageUrl,
+        category: posts.category,
+        readTimeMinutes: posts.readTimeMinutes,
+        publishedAt: posts.publishedAt,
         likesCount: posts.likesCount,
         commentsCount: posts.commentsCount,
         repostsCount: posts.repostsCount,
@@ -1787,7 +1493,7 @@ export class DatabaseStorage implements IStorage {
           eq(posts.isPrivate, false),
           or(
             ilike(posts.content, searchTerm),
-            ilike(posts.genre, searchTerm),
+            ilike(posts.category, searchTerm),
           )
         )
       )

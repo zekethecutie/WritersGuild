@@ -2,7 +2,6 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { createServer } from 'http';
-import { WebSocketServer } from 'ws';
 import session from 'express-session';
 import fs from 'fs';
 import path from 'path';
@@ -79,8 +78,6 @@ app.use((req, res, next) => {
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '5000', 10);
   const httpServer = createServer(app);
-
-  // The WebSocket server is already set up in routes.ts, no need to duplicate it here
 
   httpServer.listen({
     port,
