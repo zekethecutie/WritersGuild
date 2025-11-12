@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -41,17 +41,18 @@ export default function PostComposer() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const coverInputRef = useRef<HTMLInputElement>(null);
 
   const [content, setContent] = useState("");
   const [title, setTitle] = useState("");
-  const [postType, setPostType] = useState<"text" | "poetry" | "story" | "challenge">("text");
-  const [genre, setGenre] = useState("");
+  const [category, setCategory] = useState<string>("general");
+  const [excerpt, setExcerpt] = useState("");
+  const [coverImageUrl, setCoverImageUrl] = useState<string>("");
   const [privacy, setPrivacy] = useState<"public" | "followers" | "private">("public");
-  // const [selectedTrack, setSelectedTrack] = useState<any>(null); // UNFINISHED SPOTIFY FEATURE
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [isRichEditor, setIsRichEditor] = useState(false);
-  // const [showSpotify, setShowSpotify] = useState(false); // UNFINISHED SPOTIFY FEATURE
   const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [collaborators, setCollaborators] = useState<any[]>([]);
   const [showCollaboratorSearch, setShowCollaboratorSearch] = useState(false);
   const [collaboratorSearchQuery, setCollaboratorSearchQuery] = useState("");
@@ -119,13 +120,12 @@ export default function PostComposer() {
       // Clear form
       setContent("");
       setTitle("");
-      setPostType("text");
-      setGenre("");
+      setCategory("general");
+      setExcerpt("");
+      setCoverImageUrl("");
       setPrivacy("public");
-      // setSelectedTrack(null); // UNFINISHED SPOTIFY FEATURE
       setSelectedImages([]);
       setIsRichEditor(false);
-      // setShowSpotify(false); // UNFINISHED SPOTIFY FEATURE
       setCollaborators([]);
       setShowCollaboratorSearch(false);
       setCollaboratorSearchQuery("");
@@ -136,8 +136,8 @@ export default function PostComposer() {
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
 
       toast({
-        title: "Post published!",
-        description: "Your post has been shared with the community.",
+        title: "Article published!",
+        description: "Your article has been shared with the community.",
       });
     },
     onError: (error: Error) => {
@@ -159,6 +159,71 @@ export default function PostComposer() {
       });
     },
   });
+
+  const handleCoverImageUpload = async (files: FileList) => {
+    const file = files[0];
+    if (!file) return;
+
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+
+    if (!validTypes.includes(file.type)) {
+      toast({
+        title: "Invalid file type",
+        description: `${file.name} is not a supported image format.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > maxSize) {
+      toast({
+        title: "File too large",
+        description: `${file.name} is larger than 10MB.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('images', file);
+
+    setIsUploadingCover(true);
+    try {
+      const response = await fetch("/api/upload/images", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Upload failed: ${errorText}`);
+      }
+
+      const data = await response.json();
+      setCoverImageUrl(data.imageUrls[0]);
+      
+      // Clear the input so the same file can be re-selected
+      if (coverInputRef.current) {
+        coverInputRef.current.value = "";
+      }
+
+      toast({
+        title: "Cover image uploaded!",
+        description: "Your article cover image has been set.",
+      });
+    } catch (error) {
+      console.error("Cover image upload error:", error);
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload cover image. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingCover(false);
+    }
+  };
 
   const handleImageUpload = async (files: FileList) => {
     // Validate files
@@ -213,7 +278,7 @@ export default function PostComposer() {
 
       toast({
         title: "Images uploaded!",
-        description: `${validFiles.length} image(s) added to your post.`,
+        description: `${validFiles.length} image(s) added to your article body.`,
       });
     } catch (error) {
       console.error("Image upload error:", error);
@@ -240,10 +305,21 @@ export default function PostComposer() {
   };
 
   const handleSubmit = () => {
+    // Validate title (required for articles)
+    if (!title.trim()) {
+      toast({
+        title: "Title required",
+        description: "Please add a title for your article.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate content
     if (!content.trim()) {
       toast({
-        title: "Empty post",
-        description: "Please write something before publishing.",
+        title: "Empty article",
+        description: "Please write some content before publishing.",
         variant: "destructive",
       });
       return;
@@ -252,15 +328,25 @@ export default function PostComposer() {
     // Validate content length
     if (content.length > 10000) {
       toast({
-        title: "Post too long",
-        description: "Posts must be under 10,000 characters.",
+        title: "Article too long",
+        description: "Articles must be under 10,000 characters.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate excerpt length
+    if (excerpt.length > 500) {
+      toast({
+        title: "Excerpt too long",
+        description: "Excerpt must be under 500 characters.",
         variant: "destructive",
       });
       return;
     }
 
     // Don't allow posting while images are uploading
-    if (isUploadingImages) {
+    if (isUploadingImages || isUploadingCover) {
       toast({
         title: "Images uploading",
         description: "Please wait for image uploads to complete.",
@@ -269,30 +355,20 @@ export default function PostComposer() {
       return;
     }
 
-    const uploadedImages = selectedImages;
-
     const postData = {
-      title: title.trim() || undefined,
+      title: title.trim(),
       content: content.trim(),
-      postType,
+      category: category,
+      excerpt: excerpt.trim() || undefined,
+      coverImageUrl: coverImageUrl || undefined,
       privacy,
-      imageUrls: uploadedImages,
+      imageUrls: selectedImages,
       mentions: Array.from(mentions),
       hashtags: Array.from(hashtags),
       collaborators: collaborators.length > 0 ? collaborators.map(c => c.id) : undefined,
-      // spotifyTrackData: UNFINISHED FEATURE - removed for now
     };
 
     createPostMutation.mutate(postData);
-  };
-
-  const getPostTypeColor = () => {
-    switch (postType) {
-      case "poetry": return "text-purple-400 border-purple-400/30 bg-purple-400/10";
-      case "story": return "text-blue-400 border-blue-400/30 bg-blue-400/10";
-      case "challenge": return "text-green-400 border-green-400/30 bg-green-400/10";
-      default: return "text-muted-foreground border-border bg-muted/50";
-    }
   };
 
   const getPrivacyIcon = () => {
@@ -325,212 +401,240 @@ export default function PostComposer() {
 
   return (
     <Card className="bg-card border-border">
-      <CardContent className="p-6">
-        <div className="flex space-x-3">
-          <img
-            src={user?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.username}`}
-            alt="Your profile"
-            className="w-12 h-12 rounded-full object-cover flex-shrink-0"
-            data-testid="img-composer-avatar"
-          />
-          <div className="flex-1">
-            {/* Post Type and Privacy */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <Select value={postType} onValueChange={(value: any) => setPostType(value)}>
-                  <SelectTrigger className="w-32 h-8 text-xs border-border">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="text">Text</SelectItem>
-                    <SelectItem value="poetry">Poetry</SelectItem>
-                    <SelectItem value="story">Story</SelectItem>
-                    <SelectItem value="challenge">Challenge</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                {postType !== "text" && (
-                  <Badge variant="outline" className={`text-xs ${getPostTypeColor()}`}>
-                    {postType.charAt(0).toUpperCase() + postType.slice(1)}
-                  </Badge>
-                )}
-              </div>
-
-              <Select value={privacy} onValueChange={(value: any) => setPrivacy(value)}>
-                <SelectTrigger className="w-28 h-8 text-xs border-border">
-                  <div className="flex items-center space-x-1">
-                    <PrivacyIcon className="w-3 h-3" />
-                    <SelectValue />
-                  </div>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="public">Public</SelectItem>
-                  <SelectItem value="followers">Followers</SelectItem>
-                  <SelectItem value="private">Private</SelectItem>
-                </SelectContent>
-              </Select>
+      <CardContent className="p-6 space-y-6">
+        {/* Header: Author Info and Privacy */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center space-x-3">
+            <img
+              src={user?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.username}`}
+              alt="Your profile"
+              className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+              data-testid="img-composer-avatar"
+            />
+            <div>
+              <p className="font-semibold text-sm">Write an Article</p>
+              <p className="text-xs text-muted-foreground">Share your thoughts with the community</p>
             </div>
+          </div>
 
-            {/* Title Input */}
-            {(postType === "story" || postType === "poetry") && (
-              <div className="mb-4">
-                <Input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder={`${postType === "story" ? "Story" : "Poem"} title (optional)`}
-                  className="text-lg font-medium bg-transparent border-none outline-none placeholder-muted-foreground"
-                  data-testid="input-post-title"
-                  maxLength={255}
-                />
+          <Select value={privacy} onValueChange={(value: any) => setPrivacy(value)}>
+            <SelectTrigger className="w-32 h-9 border-border">
+              <div className="flex items-center space-x-2">
+                <PrivacyIcon className="w-4 h-4" />
+                <SelectValue />
               </div>
-            )}
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="public">Public</SelectItem>
+              <SelectItem value="followers">Followers</SelectItem>
+              <SelectItem value="private">Private</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-            {/* Editor */}
-            {isRichEditor ? (
-              <div className="mb-4">
-                <RichTextEditor
-                  content={content}
-                  onChange={setContent}
-                  placeholder="Share your thoughts, poetry, or stories..."
-                  className="min-h-[120px]"
-                  postType={postType}
-                />
-              </div>
-            ) : (
-              <Textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="Share your thoughts, poetry, or stories..."
-                className="resize-none border-none outline-none bg-transparent text-lg placeholder-muted-foreground min-h-[120px] p-0"
-                data-testid="textarea-post-content"
+        <Separator />
+
+        {/* Article Title (REQUIRED) */}
+        <div className="space-y-2">
+          <label className="text-sm font-semibold flex items-center gap-1">
+            Article Title <span className="text-destructive">*</span>
+          </label>
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Enter your article title..."
+            className="text-xl font-bold border-border"
+            data-testid="input-post-title"
+            maxLength={255}
+          />
+        </div>
+
+        {/* Category Selector */}
+        <div className="space-y-2">
+          <label className="text-sm font-semibold">Category</label>
+          <Select value={category} onValueChange={setCategory}>
+            <SelectTrigger className="w-full border-border">
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="general">General</SelectItem>
+              <SelectItem value="literary">Literary</SelectItem>
+              <SelectItem value="news">News</SelectItem>
+              <SelectItem value="opinion">Opinion</SelectItem>
+              <SelectItem value="technology">Technology</SelectItem>
+              <SelectItem value="culture">Culture</SelectItem>
+              <SelectItem value="personal">Personal</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Cover Image Upload */}
+        <div className="space-y-2">
+          <label className="text-sm font-semibold">Cover Image</label>
+          {coverImageUrl ? (
+            <div className="relative">
+              <img
+                src={coverImageUrl}
+                alt="Cover"
+                className="w-full h-64 object-cover rounded-md"
               />
-            )}
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  setCoverImageUrl("");
+                  if (coverInputRef.current) {
+                    coverInputRef.current.value = "";
+                  }
+                }}
+                className="absolute top-2 right-2"
+                data-testid="button-remove-cover"
+              >
+                <X className="w-4 h-4 mr-1" />
+                Remove
+              </Button>
+            </div>
+          ) : (
+            <>
+              <input
+                ref={coverInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={(e) => e.target.files && handleCoverImageUpload(e.target.files)}
+                className="hidden"
+                id="cover-upload"
+              />
+              <Button
+                variant="outline"
+                onClick={() => document.getElementById('cover-upload')?.click()}
+                disabled={isUploadingCover}
+                className="w-full h-32 border-dashed border-2"
+                data-testid="button-upload-cover"
+              >
+                {isUploadingCover ? (
+                  <div className="flex items-center">
+                    <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2" />
+                    Uploading...
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center">
+                    <ImageIcon className="w-8 h-8 mb-2 text-muted-foreground" />
+                    <span className="text-sm">Click to upload cover image</span>
+                    <span className="text-xs text-muted-foreground mt-1">Recommended: 1200x630px</span>
+                  </div>
+                )}
+              </Button>
+            </>
+          )}
+        </div>
 
-            {/* Genre Selection */}
-            {(postType === "poetry" || postType === "story") && (
-              <div className="mb-4">
-                <Select value={genre} onValueChange={setGenre}>
-                  <SelectTrigger className="w-48 border-border">
-                    <SelectValue placeholder={`Select ${postType} genre`} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {postType === "poetry" && (
-                      <>
-                        <SelectItem value="free-verse">Free Verse</SelectItem>
-                        <SelectItem value="sonnet">Sonnet</SelectItem>
-                        <SelectItem value="haiku">Haiku</SelectItem>
-                        <SelectItem value="spoken-word">Spoken Word</SelectItem>
-                        <SelectItem value="limerick">Limerick</SelectItem>
-                        <SelectItem value="ballad">Ballad</SelectItem>
-                      </>
-                    )}
-                    {postType === "story" && (
-                      <>
-                        <SelectItem value="flash-fiction">Flash Fiction</SelectItem>
-                        <SelectItem value="short-story">Short Story</SelectItem>
-                        <SelectItem value="fantasy">Fantasy</SelectItem>
-                        <SelectItem value="sci-fi">Science Fiction</SelectItem>
-                        <SelectItem value="romance">Romance</SelectItem>
-                        <SelectItem value="mystery">Mystery</SelectItem>
-                        <SelectItem value="horror">Horror</SelectItem>
-                        <SelectItem value="literary">Literary</SelectItem>
-                      </>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+        {/* Excerpt Field */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-semibold">Excerpt (Optional)</label>
+            <span className="text-xs text-muted-foreground">{excerpt.length}/500</span>
+          </div>
+          <Textarea
+            value={excerpt}
+            onChange={(e) => setExcerpt(e.target.value)}
+            placeholder="Write a brief summary of your article..."
+            className="resize-none min-h-[80px] border-border"
+            data-testid="textarea-excerpt"
+            maxLength={500}
+          />
+          <p className="text-xs text-muted-foreground">
+            This will be displayed as a preview for your article
+          </p>
+        </div>
 
-            {/* Media Attachments */}
-            {selectedImages.length > 0 && (
-              <div className="mb-4">
-                <ImageGallery
-                  images={selectedImages}
-                  onRemove={(index) => {
-                    setSelectedImages(prev => prev.filter((_, i) => i !== index));
-                  }}
-                  className="rounded-xl overflow-hidden"
-                />
-              </div>
-            )}
+        {/* Article Body Editor */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-semibold flex items-center gap-1">
+              Article Body <span className="text-destructive">*</span>
+            </label>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsRichEditor(!isRichEditor)}
+              className={`h-8 px-3 ${isRichEditor ? "bg-primary/10 text-primary" : ""}`}
+              title="Toggle Rich Text Editor"
+              data-testid="button-rich-text"
+            >
+              <Type className="w-4 h-4 mr-2" />
+              {isRichEditor ? "Plain Text" : "Rich Text"}
+            </Button>
+          </div>
+          
+          {isRichEditor ? (
+            <div className="border rounded-md">
+              <RichTextEditor
+                content={content}
+                onChange={setContent}
+                placeholder="Write your article content..."
+                className="min-h-[300px]"
+              />
+            </div>
+          ) : (
+            <Textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Write your article content..."
+              className="resize-none min-h-[300px] border-border"
+              data-testid="textarea-post-content"
+            />
+          )}
+        </div>
 
-            {/* SPOTIFY FEATURE - UNFINISHED - Commented out for now */}
-            {/* {selectedTrack && (
-              <div className="mb-4">
-                <SpotifyTrackDisplay 
-                  track={selectedTrack} 
-                  size="md"
-                  showPreview={true}
-                />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedTrack(null)}
-                  className="mt-2 text-muted-foreground hover:text-destructive"
-                >
-                  <X className="w-4 h-4 mr-2" />
-                  Remove track
-                </Button>
-              </div>
-            )} */}
+        {/* Body Images Gallery */}
+        {selectedImages.length > 0 && (
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">Body Images</label>
+            <ImageGallery
+              images={selectedImages}
+              onRemove={(index) => {
+                setSelectedImages(prev => prev.filter((_, i) => i !== index));
+              }}
+              className="rounded-md"
+            />
+          </div>
+        )}
 
-            {/* SPOTIFY SEARCH - UNFINISHED - Commented out for now */}
-            {/* {showSpotify && (
-              <div className="mb-4">
-                <SpotifySearch
-                  onTrackSelect={(track) => {
-                    setSelectedTrack(track);
-                    setShowSpotify(false);
-                  }}
-                  selectedTrack={selectedTrack}
-                  placeholder="Search for a song to add..."
-                />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowSpotify(false)}
-                  className="mt-2"
-                >
-                  Cancel
-                </Button>
-              </div>
-            )} */}
-
-            {/* Collaborators Display */}
-            {collaborators.length > 0 && (
-              <div className="mb-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <UserPlus className="w-4 h-4 text-blue-500" />
-                  <span className="text-sm font-medium text-muted-foreground">
-                    Collaborators ({collaborators.length})
-                  </span>
+        {/* Collaborators Display */}
+        {collaborators.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <UserPlus className="w-4 h-4 text-blue-500" />
+              <span className="text-sm font-semibold">
+                Collaborators ({collaborators.length})
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {collaborators.map((collaborator, index) => (
+                <div key={collaborator.id} className="flex items-center bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-full px-3 py-1.5 text-sm">
+                  <img
+                    src={collaborator.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${collaborator.username}`}
+                    alt={collaborator.displayName}
+                    className="w-5 h-5 rounded-full mr-2 border border-blue-300 dark:border-blue-700"
+                  />
+                  <span className="font-medium">@{collaborator.username}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveCollaborator(collaborator.id)}
+                    className="ml-2 h-4 w-4 p-0 text-muted-foreground hover:text-destructive"
+                    data-testid={`button-remove-collaborator-${index}`}
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {collaborators.map((collaborator, index) => (
-                    <div key={collaborator.id} className="flex items-center bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-full px-3 py-1.5 text-sm">
-                      <img
-                        src={collaborator.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${collaborator.username}`}
-                        alt={collaborator.displayName}
-                        className="w-5 h-5 rounded-full mr-2 border border-blue-300 dark:border-blue-700"
-                      />
-                      <span className="font-medium">@{collaborator.username}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveCollaborator(collaborator.id)}
-                        className="ml-2 h-4 w-4 p-0 text-muted-foreground hover:text-destructive"
-                        data-testid={`button-remove-collaborator-${index}`}
-                      >
-                        <X className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+              ))}
+            </div>
+          </div>
+        )}
 
-            {/* Collaborator Search */}
-            {showCollaboratorSearch && (
+        {/* Collaborator Search */}
+        {showCollaboratorSearch && (
               <Card className="mb-4 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/20">
                 <CardContent className="pt-4">
                   <div className="space-y-3">
@@ -693,116 +797,70 @@ export default function PostComposer() {
                 </CardContent>
               </Card>
             )}
+        <Separator />
 
+        {/* Toolbar and Actions */}
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <input
+              type="file"
+              multiple
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              onChange={(e) => e.target.files && handleImageUpload(e.target.files)}
+              className="hidden"
+              id="body-images-upload"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => document.getElementById('body-images-upload')?.click()}
+              disabled={isUploadingImages || selectedImages.length >= 4}
+              title={isUploadingImages ? "Uploading..." : selectedImages.length >= 4 ? "Maximum 4 images" : "Add body images"}
+              data-testid="button-add-images"
+            >
+              {isUploadingImages ? (
+                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2" />
+              ) : (
+                <ImageIcon className="w-4 h-4 mr-2" />
+              )}
+              Add Images {selectedImages.length > 0 && `(${selectedImages.length}/4)`}
+            </Button>
 
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowCollaboratorSearch(!showCollaboratorSearch)}
+              className={showCollaboratorSearch || collaborators.length > 0 ? "bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700" : ""}
+              title="Add Collaborators"
+              data-testid="button-add-collaborators"
+            >
+              <UserPlus className="w-4 h-4 mr-2" />
+              Collaborators {collaborators.length > 0 && `(${collaborators.length})`}
+            </Button>
+          </div>
 
-            <Separator className="my-4" />
+          <div className="flex items-center gap-3">
+            {content.length > 0 && (
+              <span className="text-xs text-muted-foreground">
+                {content.length}/10,000 characters
+              </span>
+            )}
 
-            {/* Toolbar */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsRichEditor(!isRichEditor)}
-                  className={`p-2 rounded-lg transition-colors ${
-                    isRichEditor ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-primary hover:bg-primary/10"
-                  }`}
-                  title="Rich Text Formatting"
-                  data-testid="button-rich-text"
-                >
-                  <Type className="w-5 h-5" />
-                </Button>
-
-                <input
-                  type="file"
-                  multiple
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  onChange={(e) => e.target.files && handleImageUpload(e.target.files)}
-                  className="hidden"
-                  id="image-upload"
-                />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => document.getElementById('image-upload')?.click()}
-                  disabled={isUploadingImages || selectedImages.length >= 4}
-                  className={`p-2 rounded-lg transition-colors ${
-                    isUploadingImages ? "text-blue-400 bg-blue-400/10" : 
-                    selectedImages.length >= 4 ? "text-muted-foreground/50 cursor-not-allowed" :
-                    "text-muted-foreground hover:text-primary hover:bg-primary/10"
-                  }`}
-                  title={isUploadingImages ? "Uploading..." : selectedImages.length >= 4 ? "Maximum 4 images" : "Add Images"}
-                  data-testid="button-add-images"
-                >
-                  {isUploadingImages ? (
-                    <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <ImageIcon className="w-5 h-5" />
-                  )}
-                </Button>
-
-                {/* SPOTIFY FEATURE - UNFINISHED - Commented out */}
-                {/* <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowSpotify(!showSpotify)}
-                  className={`p-2 rounded-lg transition-colors ${
-                    showSpotify || selectedTrack ? "text-green-500 bg-green-500/10" : "text-muted-foreground hover:text-green-500 hover:bg-green-500/10"
-                  }`}
-                  title="Add Music (Coming Soon)"
-                  data-testid="button-add-music"
-                  disabled
-                >
-                  <Music className="w-5 h-5" />
-                </Button> */}
-
-                {postType === "poetry" && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="p-2 rounded-lg text-muted-foreground hover:text-purple-400 hover:bg-purple-400/10 transition-colors"
-                    title="Poetry Formatting"
-                    data-testid="button-poetry-mode"
-                  >
-                    <Quote className="w-5 h-5" />
-                  </Button>
-                )}
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowCollaboratorSearch(!showCollaboratorSearch)}
-                  className={`p-2 rounded-lg transition-colors ${
-                    showCollaboratorSearch || collaborators.length > 0 ? "text-blue-500 bg-blue-500/10" : "text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10"
-                  }`}
-                  title="Add Collaborators"
-                  data-testid="button-add-collaborators"
-                >
-                  <UserPlus className="w-5 h-5" />
-                </Button>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                {content.length > 0 && (
-                  <span className="text-xs text-muted-foreground">
-                    {content.length} characters
-                  </span>
-                )}
-
-                <Button
-                  onClick={handleSubmit}
-                  disabled={createPostMutation.isPending || !content.trim() || isUploadingImages}
-                  className="bg-primary text-primary-foreground px-6 py-2 rounded-full font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-                  data-testid="button-publish"
-                >
-                  {createPostMutation.isPending ? (
-                    <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-2" />
-                  ) : null}
-                  Publish
-                </Button>
-              </div>
-            </div>
+            <Button
+              onClick={handleSubmit}
+              disabled={createPostMutation.isPending || !title.trim() || !content.trim() || isUploadingImages || isUploadingCover}
+              className="px-6 font-medium"
+              data-testid="button-publish"
+            >
+              {createPostMutation.isPending ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-2" />
+                  Publishing...
+                </>
+              ) : (
+                "Publish Article"
+              )}
+            </Button>
           </div>
         </div>
       </CardContent>
