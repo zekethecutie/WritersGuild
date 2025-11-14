@@ -69,7 +69,7 @@ function PostCard({
   const { toast } = useToast();
   const [showFullContent, setShowFullContent] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  
+
   // Optimistic state for instant UI updates
   const [optimisticLiked, setOptimisticLiked] = useState(post.isLiked);
   const [optimisticLikesCount, setOptimisticLikesCount] = useState(post.likesCount || 0);
@@ -114,7 +114,7 @@ function PostCard({
   const handleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (!user) {
       toast({
         title: "Sign in required",
@@ -136,7 +136,7 @@ function PostCard({
     try {
       const method = wasLiked ? 'DELETE' : 'POST';
       const endpoint = `/api/posts/${post.id}/like`;
-      
+
       const response = await fetch(endpoint, {
         method,
         credentials: 'include',
@@ -154,7 +154,7 @@ function PostCard({
       // Revert on error
       setOptimisticLiked(wasLiked);
       setOptimisticLikesCount(prev => wasLiked ? prev + 1 : prev - 1);
-      
+
       toast({
         title: "Error",
         description: "Failed to like post",
@@ -171,7 +171,7 @@ function PostCard({
   const handleComment = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (!user) {
       toast({
         title: "Sign in required",
@@ -186,7 +186,7 @@ function PostCard({
   const handleRepost = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (!user) {
       toast({
         title: "Sign in required",
@@ -215,7 +215,7 @@ function PostCard({
       }
 
       const result = await response.json();
-      
+
       // Update based on server response
       if (result.reposted !== undefined) {
         setOptimisticReposted(result.reposted);
@@ -265,7 +265,7 @@ function PostCard({
       }
 
       const result = await response.json();
-      
+
       // Update based on server response
       if (result.bookmarked !== undefined) {
         setOptimisticBookmarked(result.bookmarked);
@@ -353,14 +353,15 @@ function PostCard({
     }
   };
 
-  // Calculate read time from content if not available
-  const calculateReadTime = (content: string): number => {
+  // Calculate read time
+  const calculateReadTime = (content: string | undefined | null) => {
+    if (!content) return 1;
     const wordsPerMinute = 200;
     const wordCount = content.trim().split(/\s+/).length;
-    return Math.max(1, Math.ceil(wordCount / wordsPerMinute));
+    return Math.ceil(wordCount / wordsPerMinute) || 1;
   };
 
-  const readTime = post.readTimeMinutes || calculateReadTime(post.content);
+  const readTime = calculateReadTime(post.content);
 
   // Get cover image (use coverImageUrl or fallback to first imageUrl)
   const coverImage = post.coverImageUrl || (post.imageUrls && post.imageUrls.length > 0 ? post.imageUrls[0] : null);
@@ -381,11 +382,11 @@ function PostCard({
   const formatPublishDate = (date: Date) => {
     const now = new Date();
     const diffInDays = Math.floor((now.getTime() - new Date(date).getTime()) / (1000 * 60 * 60 * 24));
-    
+
     if (diffInDays === 0) return 'Today';
     if (diffInDays === 1) return 'Yesterday';
     if (diffInDays < 7) return `${diffInDays} days ago`;
-    
+
     return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
@@ -400,7 +401,7 @@ function PostCard({
             className="w-full h-full object-cover"
             data-testid={`img-cover-${post.id}`}
           />
-          
+
           {/* Category Badge overlaying cover */}
           {post.category && (
             <div className="absolute bottom-4 left-4">
@@ -496,8 +497,8 @@ function PostCard({
 
         {/* Author Info + Metadata */}
         <div className="flex items-center space-x-3 mb-4">
-          <Link 
-            href={`/profile/${author.username}`} 
+          <Link
+            href={`/profile/${author.username}`}
             onClick={(e) => e.stopPropagation()}
           >
             <img
@@ -509,7 +510,7 @@ function PostCard({
           </Link>
 
           <div className="flex-1 flex items-center flex-wrap gap-2 text-xs text-muted-foreground">
-            <Link 
+            <Link
               href={`/profile/${author.username}`}
               onClick={(e) => e.stopPropagation()}
               className="hover:text-foreground transition-colors"
@@ -518,19 +519,19 @@ function PostCard({
                 {author.displayName}
               </span>
             </Link>
-            
+
             {author.isVerified && (
               <CheckCircle className="w-3 h-3 text-blue-500" />
             )}
-            
+
             <span>•</span>
-            
+
             <time data-testid={`text-timestamp-${post.id}`}>
               {formatPublishDate(post.publishedAt || post.createdAt || new Date())}
             </time>
-            
+
             <span>•</span>
-            
+
             <span data-testid={`text-readtime-${post.id}`}>
               {readTime} min read
             </span>
