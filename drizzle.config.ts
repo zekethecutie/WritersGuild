@@ -7,17 +7,10 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is required, ensure the database is provisioned");
 }
 
-// Parse and fix the connection string for Supabase/Neon
+// Parse and fix the connection string for Supabase
 let connectionString = process.env.DATABASE_URL;
 if (connectionString && connectionString.includes('[') && connectionString.includes(']')) {
   connectionString = connectionString.replace(/\[([^\]]+)\]/, '$1');
-}
-
-// Use Neon's connection pooler for better connection management
-if (connectionString && connectionString.includes('.neon.tech')) {
-  connectionString = connectionString.replace(/\.neon\.tech/, '-pooler.neon.tech');
-} else if (connectionString && connectionString.includes('.us-east-2.aws.neon.tech')) {
-  connectionString = connectionString.replace(/\.us-east-2\.aws\.neon\.tech/, '-pooler.us-east-2.aws.neon.tech');
 }
 
 export default defineConfig({
