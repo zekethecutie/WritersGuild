@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -47,7 +46,7 @@ export default function Home() {
     error: postsError,
   } = useInfiniteQuery({
     queryKey: ["/api/posts", activeTab === "following" ? user?.id : undefined],
-    queryFn: ({ pageParam = 0 }) => 
+    queryFn: ({ pageParam = 0 }) =>
       fetch(`/api/posts?limit=20&offset=${pageParam}&userId=${activeTab === "following" ? user?.id || "" : ""}`).then(res => res.json()),
     initialPageParam: 0,
     getNextPageParam: (lastPage: any, pages) => {
@@ -152,15 +151,15 @@ export default function Home() {
                 {/* Feed Tabs */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                   <TabsList className="w-full bg-transparent border-b border-border rounded-none">
-                    <TabsTrigger 
-                      value="for-you" 
+                    <TabsTrigger
+                      value="for-you"
                       className="flex-1 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent"
                       data-testid="tab-for-you"
                     >
                       For You
                     </TabsTrigger>
-                    <TabsTrigger 
-                      value="following" 
+                    <TabsTrigger
+                      value="following"
                       className="flex-1 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent"
                       data-testid="tab-following"
                     >
@@ -173,7 +172,7 @@ export default function Home() {
               {/* Post Modal or Auth Prompt */}
               <div className="border-b border-border p-4">
                 {isAuthenticated ? (
-                  <Button 
+                  <Button
                     onClick={() => setShowPostModal(true)}
                     className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
                     size="lg"
@@ -193,9 +192,9 @@ export default function Home() {
                           Sign In
                         </Button>
                       </div>
-                      <Button 
-                        variant="ghost" 
-                        onClick={() => window.location.href = '/explore'} 
+                      <Button
+                        variant="ghost"
+                        onClick={() => window.location.href = '/explore'}
                         className="w-full text-muted-foreground hover:text-foreground"
                       >
                         Continue as Guest
@@ -228,12 +227,12 @@ export default function Home() {
                     </div>
                     <h3 className="text-lg font-semibold mb-2">No posts yet</h3>
                     <p className="text-muted-foreground mb-4">
-                      {activeTab === "following" 
-                        ? "Follow some writers to see their posts here" 
+                      {activeTab === "following"
+                        ? "Follow some writers to see their posts here"
                         : "Be the first to share something with the community"
                       }
                     </p>
-                    <Button 
+                    <Button
                       onClick={() => setActiveTab("for-you")}
                       data-testid="button-explore-feed"
                     >
@@ -263,8 +262,8 @@ export default function Home() {
                   <CardContent className="p-4">
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                      <Input 
-                        placeholder="Search writers, posts, genres..." 
+                      <Input
+                        placeholder="Search writers, posts, genres..."
                         className="pl-10 bg-input border-border focus:border-primary"
                         data-testid="input-search"
                         onClick={() => window.location.href = "/search"}
@@ -283,12 +282,12 @@ export default function Home() {
                   </h3>
                   <div className="space-y-3">
                     {(Array.isArray(trendingTopics) ? trendingTopics : [
-                      { rank: 1, category: "Poetry", hashtag: "#MidnightMusings", posts: "2,847" },
-                      { rank: 2, category: "Fiction", hashtag: "#FlashFiction", posts: "1,923" },
-                      { rank: 3, category: "Writing Challenge", hashtag: "#30DayChallenge", posts: "856" },
-                      { rank: 4, category: "General", hashtag: "#WritersCommunity", posts: "634" },
+                      { topic: "Poetry", count: 1234 },
+                      { topic: "Fiction", count: 987 },
+                      { topic: "Essays", count: 756 },
+                      { topic: "Short Stories", count: 654 }
                     ]).slice(0, 4).map((trend: any) => (
-                      <div 
+                      <div
                         key={trend.rank}
                         className="hover:bg-secondary/50 p-2 rounded-lg cursor-pointer transition-colors"
                         data-testid={`trend-${trend.rank}`}
@@ -310,7 +309,7 @@ export default function Home() {
                     {suggestedUsers && suggestedUsers.length > 0 ? suggestedUsers.map((suggestedUser: User) => (
                       <div key={suggestedUser.id} className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
-                          <img 
+                          <img
                             src={getProfileImageUrl(suggestedUser.profileImageUrl)}
                             alt={suggestedUser.displayName}
                             className="w-10 h-10 rounded-full"
@@ -324,8 +323,8 @@ export default function Home() {
                             </p>
                           </div>
                         </div>
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           className="bg-primary text-primary-foreground hover:bg-primary/90"
                           data-testid={`button-follow-${suggestedUser.username}`}
                         >
@@ -348,15 +347,15 @@ export default function Home() {
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-medium">Daily Word Count</span>
                         <span className="text-sm text-muted-foreground">
-                          {writingGoals?.dailyWordCount ? 
-                            `${writingGoals.dailyWordCount.current} / ${writingGoals.dailyWordCount.goal}` : 
+                          {writingGoals?.dailyWordCount ?
+                            `${writingGoals.dailyWordCount.current} / ${writingGoals.dailyWordCount.goal}` :
                             "0 / 500"}
                         </span>
                       </div>
                       <div className="w-full bg-secondary rounded-full h-2">
-                        <div 
-                          className="bg-primary h-2 rounded-full transition-all duration-300" 
-                          style={{ width: `${writingGoals?.dailyWordCount?.percentage || 0}%` }} 
+                        <div
+                          className="bg-primary h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${writingGoals?.dailyWordCount?.percentage || 0}%` }}
                         />
                       </div>
                     </div>
@@ -364,15 +363,15 @@ export default function Home() {
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-medium">Weekly Posts</span>
                         <span className="text-sm text-muted-foreground">
-                          {writingGoals?.weeklyPosts ? 
-                            `${writingGoals.weeklyPosts.current} / ${writingGoals.weeklyPosts.goal}` : 
+                          {writingGoals?.weeklyPosts ?
+                            `${writingGoals.weeklyPosts.current} / ${writingGoals.weeklyPosts.goal}` :
                             "0 / 5"}
                         </span>
                       </div>
                       <div className="w-full bg-secondary rounded-full h-2">
-                        <div 
-                          className="bg-accent h-2 rounded-full transition-all duration-300" 
-                          style={{ width: `${writingGoals?.weeklyPosts?.percentage || 0}%` }} 
+                        <div
+                          className="bg-accent h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${writingGoals?.weeklyPosts?.percentage || 0}%` }}
                         />
                       </div>
                     </div>
@@ -399,7 +398,7 @@ export default function Home() {
                   <div className="space-y-3">
                     {popularTracks && popularTracks.length > 0 ? (
                       popularTracks.map((track: any, index: number) => (
-                        <div 
+                        <div
                           key={index}
                           className="flex items-center space-x-3 p-2 rounded-lg hover:bg-secondary/50 cursor-pointer transition-colors"
                           data-testid={`music-${index}`}
@@ -423,7 +422,7 @@ export default function Home() {
                         { artist: "Ólafur Arnalds", track: "Near Light" },
                         { artist: "Max Richter", track: "On The Nature of Daylight" },
                       ].map((music, index) => (
-                        <div 
+                        <div
                           key={index}
                           className="flex items-center space-x-3 p-2 rounded-lg hover:bg-secondary/50 cursor-pointer transition-colors"
                           data-testid={`music-${index}`}
@@ -450,17 +449,17 @@ export default function Home() {
 
       {/* Post Modal */}
       {showPostModal && (
-        <PostModal 
-          isOpen={showPostModal} 
-          onClose={() => setShowPostModal(false)} 
+        <PostModal
+          isOpen={showPostModal}
+          onClose={() => setShowPostModal(false)}
         />
       )}
 
       {/* Auth Dialog */}
       {showAuthDialog && (
-        <AuthDialog 
-          open={showAuthDialog} 
-          onOpenChange={setShowAuthDialog} 
+        <AuthDialog
+          open={showAuthDialog}
+          onOpenChange={setShowAuthDialog}
         />
       )}
     </div>
