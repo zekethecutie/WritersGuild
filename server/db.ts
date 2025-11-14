@@ -12,9 +12,10 @@ if (!process.env.DATABASE_URL) {
 // Parse and fix the connection string for Supabase
 let connectionString = process.env.DATABASE_URL;
 
-// Handle the password in brackets for Supabase URLs
-if (connectionString && connectionString.includes('[') && connectionString.includes(']')) {
-  connectionString = connectionString.replace(/\[([^\]]+)\]/, '$1');
+// Supabase connection strings may have passwords in brackets or other special formats
+// Remove brackets if present
+if (connectionString) {
+  connectionString = connectionString.replace(/\[([^\]]+)\]/g, '$1');
 }
 
 if (!connectionString) {

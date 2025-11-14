@@ -9,8 +9,9 @@ if (!process.env.DATABASE_URL) {
 
 // Parse and fix the connection string for Supabase
 let connectionString = process.env.DATABASE_URL;
-if (connectionString && connectionString.includes('[') && connectionString.includes(']')) {
-  connectionString = connectionString.replace(/\[([^\]]+)\]/, '$1');
+// Remove brackets if present in password or other parts
+if (connectionString) {
+  connectionString = connectionString.replace(/\[([^\]]+)\]/g, '$1');
 }
 
 export default defineConfig({
