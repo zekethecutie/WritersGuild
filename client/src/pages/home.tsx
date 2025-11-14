@@ -282,7 +282,7 @@ export default function Home() {
                     Trending in Writing
                   </h3>
                   <div className="space-y-3">
-                    {(trendingTopics || [
+                    {(Array.isArray(trendingTopics) ? trendingTopics : [
                       { rank: 1, category: "Poetry", hashtag: "#MidnightMusings", posts: "2,847" },
                       { rank: 2, category: "Fiction", hashtag: "#FlashFiction", posts: "1,923" },
                       { rank: 3, category: "Writing Challenge", hashtag: "#30DayChallenge", posts: "856" },

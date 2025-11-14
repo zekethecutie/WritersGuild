@@ -78,12 +78,13 @@ function PostCard({
   const [optimisticRepostsCount, setOptimisticRepostsCount] = useState(post.repostsCount || 0);
 
   // Create fallback author if none provided
+  const authorId = post.authorId || 'unknown';
   const author = post.author || {
-    id: post.authorId,
+    id: authorId,
     email: null,
     password: null,
-    displayName: `User ${post.authorId.slice(-4)}`,
-    username: `user${post.authorId.slice(-4)}`,
+    displayName: `User ${authorId.slice(-4)}`,
+    username: `user${authorId.slice(-4)}`,
     bio: null,
     location: null,
     website: null,

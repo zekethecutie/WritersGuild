@@ -63,8 +63,8 @@ export const posts = pgTable("posts", {
   content: text("content").notNull(),
   formattedContent: jsonb("formatted_content"), // Rich text formatting data
   excerpt: text("excerpt"), // Article summary/preview
-  coverImageUrl: text("cover_image_url"), // Article cover image
   category: varchar("category").default("general"), // Literary, News, Opinion, etc.
+  coverImageUrl: text("cover_image_url"), // Article cover image
   readTimeMinutes: integer("read_time_minutes"), // Calculated read time
   publishedAt: timestamp("published_at"), // When article was published
   spotifyTrackId: varchar("spotify_track_id"), // Optional mood music
@@ -544,7 +544,20 @@ export type UpsertUser = z.infer<typeof upsertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertPost = z.infer<typeof insertPostSchema>;
-export type Post = typeof posts.$inferSelect;
+export type Post = typeof posts.$inferSelect & {
+  excerpt?: string | null;
+  category?: string | null;
+  author?: User;
+  likesCount?: number;
+  commentsCount?: number;
+  repostsCount?: number;
+  viewsCount?: number;
+  isLiked?: boolean;
+  isBookmarked?: boolean;
+  isReposted?: boolean;
+  collaborators?: User[];
+  mentions?: User[];
+};
 export type InsertComment = z.infer<typeof insertCommentSchema>;
 export type Comment = typeof comments.$inferSelect;
 export type CommentLike = typeof commentLikes.$inferSelect;
@@ -570,4 +583,3 @@ export type ReadingProgress = typeof readingProgress.$inferSelect;
 export type Leaderboard = typeof leaderboards.$inferSelect;
 export type PostCollaborator = typeof postCollaborators.$inferSelect;
 export type InsertPostCollaborator = z.infer<typeof insertPostCollaboratorSchema>;
-
