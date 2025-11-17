@@ -287,9 +287,9 @@ export default function PostPage() {
       <Sidebar />
 
       <div className="lg:ml-64 min-h-screen">
-        {/* Header */}
-        <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b">
-          <div className="flex items-center justify-between gap-4 p-4 max-w-4xl mx-auto">
+        {/* Header - Simple Back Button */}
+        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b">
+          <div className="flex items-center justify-between p-4 max-w-4xl mx-auto">
             <Button 
               variant="ghost" 
               size="sm" 
@@ -298,195 +298,146 @@ export default function PostPage() {
               data-testid="button-back"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back
+              <span className="hidden sm:inline">Back</span>
             </Button>
-
-            {/* Engagement Actions in Header */}
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                className={`h-9 space-x-1.5 ${optimisticLiked ? 'text-red-500 hover:text-red-600' : 'text-muted-foreground hover:text-red-500'}`}
-                onClick={handleLike}
-                disabled={likeMutation.isPending}
-                data-testid="button-like"
-              >
-                <Heart className={`w-4 h-4 ${optimisticLiked ? 'fill-current' : ''}`} />
-                <span className="text-sm">{optimisticLikesCount > 0 ? optimisticLikesCount.toLocaleString() : ''}</span>
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                className={`h-9 ${optimisticBookmarked ? 'text-blue-500 hover:text-blue-600' : 'text-muted-foreground hover:text-blue-500'}`}
-                onClick={handleBookmark}
-                disabled={bookmarkMutation.isPending}
-                data-testid="button-bookmark"
-              >
-                <Bookmark className={`w-4 h-4 ${optimisticBookmarked ? 'fill-current' : ''}`} />
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-9 text-muted-foreground hover:text-primary"
-                onClick={handleShare}
-                data-testid="button-share"
-              >
-                <Share className="w-4 h-4" />
-              </Button>
-            </div>
           </div>
         </div>
 
-        {/* Hero Cover Image */}
-        {coverImage && (
-          <div className="relative w-full" style={{ aspectRatio: '21/9', maxHeight: '500px' }}>
-            <img
-              src={coverImage}
-              alt={post.title || 'Article cover'}
-              className="w-full h-full object-cover"
-              data-testid="img-article-cover"
-            />
-          </div>
-        )}
-
-        {/* Article Content */}
-        <article className="max-w-3xl mx-auto px-6 py-8">
-          {/* Category */}
-          {post.category && (
-            <div className="mb-4">
-              <Badge variant="secondary" className={`text-xs ${getCategoryColor(post.category)}`}>
-                {post.category}
+        {/* Article Content Container */}
+        <div className="max-w-4xl mx-auto p-6">
+          <article className="mb-12">
+            {/* Category & Metadata Badges */}
+            <div className="flex items-center gap-2 mb-6 flex-wrap">
+              {post.category && (
+                <Badge variant="secondary" className="text-xs">
+                  {post.category}
+                </Badge>
+              )}
+              <Badge variant="outline" className="text-xs">
+                {readTime} min read
               </Badge>
+              {(post.viewsCount || 0) > 0 && (
+                <Badge variant="outline" className="text-xs">
+                  <Eye className="w-3 h-3 mr-1" />
+                  {(post.viewsCount || 0).toLocaleString()} views
+                </Badge>
+              )}
             </div>
-          )}
 
-          {/* Title */}
-          <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight" data-testid="text-article-title">
-            {post.title || 'Untitled'}
-          </h1>
+            {/* Title */}
+            <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight" data-testid="text-article-title">
+              {post.title || 'Untitled'}
+            </h1>
 
-          {/* Author & Metadata */}
-          <div className="flex items-center gap-4 mb-8 pb-6 border-b border-border">
-            <Link href={`/profile/${author.username}`}>
-              <Avatar className="w-12 h-12 cursor-pointer hover:opacity-80 transition-opacity">
-                <AvatarImage src={getProfileImageUrl(author.profileImageUrl)} alt={author.displayName} />
-                <AvatarFallback>{author.displayName?.[0] || 'U'}</AvatarFallback>
-              </Avatar>
-            </Link>
-
-            <div className="flex-1">
-              <Link
-                href={`/profile/${author.username}`}
-                className="hover:text-foreground transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-base" data-testid="text-author-name">
-                    {author.displayName || 'Unknown Author'}
-                  </span>
-                  {author.isVerified && (
-                    <CheckCircle className="w-4 h-4 text-blue-500" />
-                  )}
-                </div>
+            {/* Author & Publish Date */}
+            <div className="flex items-center gap-4 mb-8 pb-6 border-b border-border">
+              <Link href={`/profile/${author.username}`}>
+                <Avatar className="w-12 h-12 cursor-pointer hover:opacity-80 transition-opacity">
+                  <AvatarImage src={getProfileImageUrl(author.profileImageUrl)} alt={author.displayName} />
+                  <AvatarFallback>{author.displayName?.[0] || 'U'}</AvatarFallback>
+                </Avatar>
               </Link>
 
-              <div className="flex items-center flex-wrap gap-2 text-sm text-muted-foreground mt-1">
-                <time data-testid="text-publish-date">
-                  {post.publishedAt ? formatDistanceToNow(new Date(post.publishedAt), { addSuffix: true }) : 'Draft'}
-                </time>
-                <span>•</span>
-                <span data-testid="text-read-time">{readTime} min read</span>
-                {(post.viewsCount || 0) > 0 && (
-                  <>
-                    <span>•</span>
-                    <div className="flex items-center gap-1">
-                      <Eye className="w-3.5 h-3.5" />
-                      <span data-testid="text-views">{(post.viewsCount || 0).toLocaleString()} views</span>
-                    </div>
-                  </>
-                )}
+              <div className="flex-1">
+                <Link
+                  href={`/profile/${author.username}`}
+                  className="hover:text-foreground transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-base" data-testid="text-author-name">
+                      {author.displayName || 'Unknown Author'}
+                    </span>
+                    {author.isVerified && (
+                      <CheckCircle className="w-4 h-4 text-blue-500" />
+                    )}
+                  </div>
+                </Link>
+
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                  <time data-testid="text-publish-date">
+                    {post.publishedAt ? formatDistanceToNow(new Date(post.publishedAt), { addSuffix: true }) : 'Draft'}
+                  </time>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Article Content */}
-          <div 
-            className="prose prose-lg dark:prose-invert max-w-none mb-12"
-            data-testid="article-content"
-          >
-            <div className="whitespace-pre-wrap leading-relaxed text-lg">
-              {post.content}
-            </div>
-          </div>
+            {/* Cover Image (if present) */}
+            {coverImage && (
+              <div className="mb-8 rounded-lg overflow-hidden">
+                <img
+                  src={coverImage}
+                  alt={post.title || 'Article cover'}
+                  className="w-full h-auto object-cover"
+                  data-testid="img-article-cover"
+                />
+              </div>
+            )}
 
-          {/* Engagement Footer */}
-          <Separator className="my-8" />
-          
-          <div className="flex items-center justify-between py-4 flex-wrap gap-4">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Button
-                variant="outline"
-                size="sm"
-                className={`h-9 space-x-2 ${optimisticLiked ? 'text-red-500 border-red-500 hover:bg-red-50 dark:hover:bg-red-950' : ''}`}
-                onClick={handleLike}
-                disabled={likeMutation.isPending}
-                data-testid="button-like-footer"
-              >
-                <Heart className={`w-4 h-4 ${optimisticLiked ? 'fill-current' : ''}`} />
-                <span>{optimisticLikesCount > 0 ? optimisticLikesCount.toLocaleString() : 'Like'}</span>
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                className={`h-9 space-x-2 ${optimisticReposted ? 'text-green-500 border-green-500 hover:bg-green-50 dark:hover:bg-green-950' : ''}`}
-                onClick={handleRepost}
-                disabled={repostMutation.isPending}
-                data-testid="button-repost"
-              >
-                <Repeat2 className="w-4 h-4" />
-                <span>{optimisticRepostsCount > 0 ? optimisticRepostsCount.toLocaleString() : 'Repost'}</span>
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 space-x-2"
-                onClick={() => {
-                  const commentsSection = document.getElementById('comments-section');
-                  commentsSection?.scrollIntoView({ behavior: 'smooth' });
-                }}
-                data-testid="button-comment-scroll"
-              >
-                <MessageCircle className="w-4 h-4" />
-                <span>{post.commentsCount || 0} Comments</span>
-              </Button>
+            {/* Article Content - Prose Styling */}
+            <div 
+              className="prose prose-lg dark:prose-invert max-w-none mb-12"
+              data-testid="article-content"
+            >
+              <div 
+                className="whitespace-pre-wrap leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: post.content }}
+              />
             </div>
 
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className={`h-9 ${optimisticBookmarked ? 'text-blue-500 border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950' : ''}`}
-                onClick={handleBookmark}
-                disabled={bookmarkMutation.isPending}
-                data-testid="button-bookmark-footer"
-              >
-                <Bookmark className={`w-4 h-4 ${optimisticBookmarked ? 'fill-current' : ''}`} />
-              </Button>
+            {/* Engagement Actions */}
+            <Separator className="my-8" />
+            
+            <div className="flex items-center justify-between py-4 flex-wrap gap-4">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={`space-x-2 ${optimisticLiked ? 'text-red-500 border-red-500 hover:bg-red-50 dark:hover:bg-red-950' : ''}`}
+                  onClick={handleLike}
+                  disabled={likeMutation.isPending}
+                  data-testid="button-like-footer"
+                >
+                  <Heart className={`w-4 h-4 ${optimisticLiked ? 'fill-current' : ''}`} />
+                  <span>{optimisticLikesCount > 0 ? optimisticLikesCount.toLocaleString() : 'Like'}</span>
+                </Button>
 
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9"
-                onClick={handleShare}
-                data-testid="button-share-footer"
-              >
-                <Share className="w-4 h-4" />
-              </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={`space-x-2 ${optimisticReposted ? 'text-green-500 border-green-500 hover:bg-green-50 dark:hover:bg-green-950' : ''}`}
+                  onClick={handleRepost}
+                  disabled={repostMutation.isPending}
+                  data-testid="button-repost"
+                >
+                  <Repeat2 className="w-4 h-4" />
+                  <span>{optimisticRepostsCount > 0 ? optimisticRepostsCount.toLocaleString() : 'Repost'}</span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={`space-x-2 ${optimisticBookmarked ? 'text-blue-500 border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950' : ''}`}
+                  onClick={handleBookmark}
+                  disabled={bookmarkMutation.isPending}
+                  data-testid="button-bookmark-footer"
+                >
+                  <Bookmark className={`w-4 h-4 ${optimisticBookmarked ? 'fill-current' : ''}`} />
+                  <span>Bookmark</span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="space-x-2"
+                  onClick={handleShare}
+                  data-testid="button-share-footer"
+                >
+                  <Share className="w-4 h-4" />
+                  <span>Share</span>
+                </Button>
+              </div>
             </div>
-          </div>
+          </article>
 
           <Separator className="my-8" />
 
@@ -495,7 +446,7 @@ export default function PostPage() {
             <h2 className="text-2xl font-bold mb-6">Comments</h2>
             <CommentThread postId={postId!} />
           </div>
-        </article>
+        </div>
       </div>
 
       <MobileNav />
