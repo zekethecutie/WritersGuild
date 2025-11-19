@@ -72,14 +72,26 @@ function PostCard({ post }: PostCardProps) {
     navigate(`/post/${post.id}`);
   };
 
+  const getCategoryColor = (category?: string) => {
+    switch(category?.toLowerCase()) {
+      case 'literary': return 'bg-purple-500 dark:bg-purple-700 text-white';
+      case 'news': return 'bg-blue-500 dark:bg-blue-700 text-white';
+      case 'opinion': return 'bg-orange-500 dark:bg-orange-700 text-white';
+      case 'personal column': return 'bg-pink-500 dark:bg-pink-700 text-white';
+      case 'culture': return 'bg-teal-500 dark:bg-teal-700 text-white';
+      case 'technology': return 'bg-green-500 dark:bg-green-700 text-white';
+      default: return 'bg-gray-500 dark:bg-gray-700 text-white';
+    }
+  };
+
   return (
     <Card 
-      className="overflow-hidden cursor-pointer hover-elevate transition-all"
+      className="overflow-hidden cursor-pointer hover-elevate transition-all border-border"
       onClick={handleCardClick}
       data-testid={`card-post-${post.id}`}
     >
-      {/* Cover Image */}
-      {coverImage && (
+      {/* Cover Image with Category Badge */}
+      {coverImage ? (
         <div className="relative w-full overflow-hidden" style={{ aspectRatio: '16/9' }}>
           <img
             src={coverImage}
@@ -87,65 +99,78 @@ function PostCard({ post }: PostCardProps) {
             className="w-full h-full object-cover"
             data-testid={`img-cover-${post.id}`}
           />
+          {post.category && (
+            <Badge 
+              className={`absolute top-4 left-4 ${getCategoryColor(post.category)} font-semibold`}
+              data-testid={`badge-category-${post.id}`}
+            >
+              {post.category}
+            </Badge>
+          )}
+        </div>
+      ) : (
+        <div className="relative w-full bg-gradient-to-br from-muted/50 to-muted overflow-hidden" style={{ aspectRatio: '16/9' }}>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-6xl font-bold text-muted-foreground/20">
+              {post.title?.[0]?.toUpperCase() || 'W'}
+            </div>
+          </div>
+          {post.category && (
+            <Badge 
+              className={`absolute top-4 left-4 ${getCategoryColor(post.category)} font-semibold`}
+              data-testid={`badge-category-${post.id}`}
+            >
+              {post.category}
+            </Badge>
+          )}
         </div>
       )}
 
-      <div className="p-6 space-y-4">
-        {/* Author Info */}
-        <div className="flex items-center gap-3">
-          <Avatar className="w-10 h-10">
-            <AvatarImage 
-              src={getProfileImageUrl(author.profileImageUrl)} 
-              alt={author.displayName}
-            />
-            <AvatarFallback>
-              {author.displayName?.slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-
-          <div className="flex items-center gap-2 text-sm">
-            <span className="font-medium text-foreground" data-testid={`text-author-${post.id}`}>
-              {author.displayName}
-            </span>
-            {author.isVerified && (
-              <CheckCircle className="w-4 h-4 text-blue-500" />
-            )}
-          </div>
-        </div>
-
-        {/* Title */}
-        <h2 className="text-2xl font-bold leading-tight" data-testid={`text-title-${post.id}`}>
+      <div className="p-6 space-y-3">
+        {/* Title - Frontman style (larger, more prominent) */}
+        <h2 className="text-xl sm:text-2xl font-bold leading-tight line-clamp-2" data-testid={`text-title-${post.id}`}>
           {post.title || 'Untitled'}
         </h2>
 
         {/* Excerpt */}
-        <p className="text-muted-foreground line-clamp-3" data-testid={`text-excerpt-${post.id}`}>
-          {post.excerpt || post.content}
-        </p>
+        {post.excerpt && (
+          <p className="text-sm text-muted-foreground line-clamp-2" data-testid={`text-excerpt-${post.id}`}>
+            {post.excerpt}
+          </p>
+        )}
 
-        {/* Metadata Line */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
-          {post.category && (
-            <>
-              <Badge variant="secondary" className="text-xs">
-                {post.category}
-              </Badge>
-              <span>•</span>
-            </>
-          )}
-          
-          <div className="flex items-center gap-1">
-            <Clock className="w-3.5 h-3.5" />
+        {/* Author Info & Metadata - Frontman style */}
+        <div className="flex items-center justify-between gap-3 pt-2">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <Avatar className="w-8 h-8 flex-shrink-0">
+              <AvatarImage 
+                src={getProfileImageUrl(author.profileImageUrl)} 
+                alt={author.displayName}
+              />
+              <AvatarFallback className="text-xs">
+                {author.displayName?.slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
+              <span className="font-medium text-foreground truncate" data-testid={`text-author-${post.id}`}>
+                {author.displayName}
+              </span>
+              {author.isVerified && (
+                <CheckCircle className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs text-muted-foreground flex-shrink-0">
             <span data-testid={`text-readtime-${post.id}`}>
               {readTime} min read
             </span>
+            <span>•</span>
+            <time data-testid={`text-date-${post.id}`}>
+              {formatPublishDate(post.publishedAt || post.createdAt || new Date())}
+            </time>
           </div>
-
-          <span>•</span>
-
-          <time data-testid={`text-date-${post.id}`}>
-            {formatPublishDate(post.publishedAt || post.createdAt || new Date())}
-          </time>
         </div>
       </div>
     </Card>

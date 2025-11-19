@@ -262,17 +262,6 @@ export default function PostPage() {
   const author = post.author || {} as User;
   const coverImage = post.coverImageUrl || (post.imageUrls && post.imageUrls.length > 0 ? post.imageUrls[0] : null);
   
-  const getCategoryColor = (category?: string) => {
-    switch(category?.toLowerCase()) {
-      case 'literary': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
-      case 'news': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-      case 'opinion': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
-      case 'culture': return 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-300';
-      case 'technology': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
-    }
-  };
-
   const calculateReadTime = (content: string | undefined | null) => {
     if (!content) return 1;
     const wordsPerMinute = 200;
@@ -281,6 +270,18 @@ export default function PostPage() {
   };
 
   const readTime = calculateReadTime(post.content);
+
+  const getCategoryColor = (category?: string) => {
+    switch(category?.toLowerCase()) {
+      case 'literary': return 'bg-purple-500 dark:bg-purple-700 text-white';
+      case 'news': return 'bg-blue-500 dark:bg-blue-700 text-white';
+      case 'opinion': return 'bg-orange-500 dark:bg-orange-700 text-white';
+      case 'personal column': return 'bg-pink-500 dark:bg-pink-700 text-white';
+      case 'culture': return 'bg-teal-500 dark:bg-teal-700 text-white';
+      case 'technology': return 'bg-green-500 dark:bg-green-700 text-white';
+      default: return 'bg-gray-500 dark:bg-gray-700 text-white';
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -300,70 +301,115 @@ export default function PostPage() {
               <ArrowLeft className="w-4 h-4" />
               <span className="hidden sm:inline">Back</span>
             </Button>
+            
+            {/* Engagement Actions in Header */}
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className={optimisticLiked ? 'text-red-500' : ''}
+                onClick={handleLike}
+                disabled={likeMutation.isPending}
+                data-testid="button-like-header"
+              >
+                <Heart className={`w-5 h-5 ${optimisticLiked ? 'fill-current' : ''}`} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={optimisticBookmarked ? 'text-blue-500' : ''}
+                onClick={handleBookmark}
+                disabled={bookmarkMutation.isPending}
+                data-testid="button-bookmark-header"
+              >
+                <Bookmark className={`w-5 h-5 ${optimisticBookmarked ? 'fill-current' : ''}`} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleShare}
+                data-testid="button-share-header"
+              >
+                <Share className="w-5 h-5" />
+              </Button>
+            </div>
           </div>
         </div>
 
         {/* Article Content Container */}
-        <div className="max-w-4xl mx-auto p-6">
+        <div className="max-w-4xl mx-auto px-6 py-8">
           <article className="mb-12">
-            {/* Category & Metadata Badges */}
-            <div className="flex items-center gap-2 mb-6 flex-wrap">
-              {post.category && (
-                <Badge variant="secondary" className="text-xs">
+            {/* Category Badge */}
+            {post.category && (
+              <div className="mb-4">
+                <Badge 
+                  className={`${getCategoryColor(post.category)} font-semibold text-sm`}
+                  data-testid={`badge-category-${post.id}`}
+                >
                   {post.category}
                 </Badge>
-              )}
-              <Badge variant="outline" className="text-xs">
-                {readTime} min read
-              </Badge>
-              {(post.viewsCount || 0) > 0 && (
-                <Badge variant="outline" className="text-xs">
-                  <Eye className="w-3 h-3 mr-1" />
-                  {(post.viewsCount || 0).toLocaleString()} views
-                </Badge>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Title */}
-            <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight" data-testid="text-article-title">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 leading-tight" data-testid="text-article-title">
               {post.title || 'Untitled'}
             </h1>
 
-            {/* Author & Publish Date */}
-            <div className="flex items-center gap-4 mb-8 pb-6 border-b border-border">
-              <Link href={`/profile/${author.username}`}>
-                <Avatar className="w-12 h-12 cursor-pointer hover:opacity-80 transition-opacity">
-                  <AvatarImage src={getProfileImageUrl(author.profileImageUrl)} alt={author.displayName} />
-                  <AvatarFallback>{author.displayName?.[0] || 'U'}</AvatarFallback>
-                </Avatar>
-              </Link>
+            {/* Excerpt/Subtitle */}
+            {post.excerpt && (
+              <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
+                {post.excerpt}
+              </p>
+            )}
 
-              <div className="flex-1">
-                <Link
-                  href={`/profile/${author.username}`}
-                  className="hover:text-foreground transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-base" data-testid="text-author-name">
-                      {author.displayName || 'Unknown Author'}
-                    </span>
-                    {author.isVerified && (
-                      <CheckCircle className="w-4 h-4 text-blue-500" />
-                    )}
-                  </div>
+            {/* Author & Metadata */}
+            <div className="flex items-center justify-between gap-4 mb-8 pb-6 border-b border-border flex-wrap">
+              <div className="flex items-center gap-3">
+                <Link href={`/profile/${author.username}`}>
+                  <Avatar className="w-12 h-12 cursor-pointer hover:opacity-80 transition-opacity">
+                    <AvatarImage src={getProfileImageUrl(author.profileImageUrl)} alt={author.displayName} />
+                    <AvatarFallback>{author.displayName?.[0] || 'U'}</AvatarFallback>
+                  </Avatar>
                 </Link>
 
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                  <time data-testid="text-publish-date">
-                    {post.publishedAt ? formatDistanceToNow(new Date(post.publishedAt), { addSuffix: true }) : 'Draft'}
-                  </time>
+                <div className="flex-1">
+                  <Link
+                    href={`/profile/${author.username}`}
+                    className="hover:text-foreground transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-base" data-testid="text-author-name">
+                        {author.displayName || 'Unknown Author'}
+                      </span>
+                      {author.isVerified && (
+                        <CheckCircle className="w-4 h-4 text-blue-500" />
+                      )}
+                    </div>
+                  </Link>
+
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                    <time data-testid="text-publish-date">
+                      {post.publishedAt ? formatDistanceToNow(new Date(post.publishedAt), { addSuffix: true }) : 'Draft'}
+                    </time>
+                    <span>•</span>
+                    <span>{readTime} min read</span>
+                  </div>
                 </div>
               </div>
+
+              {/* View count */}
+              {(post.viewsCount || 0) > 0 && (
+                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Eye className="w-4 h-4" />
+                  <span>{(post.viewsCount || 0).toLocaleString()} views</span>
+                </div>
+              )}
             </div>
 
             {/* Cover Image (if present) */}
             {coverImage && (
-              <div className="mb-8 rounded-lg overflow-hidden">
+              <div className="mb-10 -mx-6 sm:mx-0 sm:rounded-lg overflow-hidden">
                 <img
                   src={coverImage}
                   alt={post.title || 'Article cover'}
@@ -373,9 +419,9 @@ export default function PostPage() {
               </div>
             )}
 
-            {/* Article Content - Prose Styling */}
+            {/* Article Content - Enhanced Prose Styling */}
             <div 
-              className="prose prose-lg dark:prose-invert max-w-none mb-12"
+              className="prose prose-lg dark:prose-invert max-w-none mb-12 prose-headings:font-bold prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-p:leading-relaxed prose-p:text-foreground/90 prose-li:text-foreground/90 prose-strong:text-foreground prose-a:text-primary"
               data-testid="article-content"
             >
               <div 
