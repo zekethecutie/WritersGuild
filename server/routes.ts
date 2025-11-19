@@ -359,7 +359,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/posts', requireAuth, writeLimiter, async (req: any, res) => {
     try {
       const userId = req.session.userId;
-      const { title, content, postType, genre, privacy, imageUrls, spotifyTrackData, collaborators: collaboratorIds, mentions, hashtags } = req.body;
+      const { title, content, category, excerpt, coverImageUrl, privacy, imageUrls, spotifyTrackData, collaborators: collaboratorIds, mentions, hashtags } = req.body;
 
       // Validate content presence
       if (!content || !content.trim()) {
@@ -372,20 +372,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Count words in content for tracking
       const wordCount = content.trim().split(/\s+/).filter(word => word.length > 0).length;
 
+      // Auto-generate excerpt if not provided
+      const finalExcerpt = excerpt?.trim() || content.replace(/<[^>]*>/g, '').slice(0, 200);
+
+      // Calculate read time (average 200 words per minute)
+      const readTimeMinutes = Math.max(1, Math.ceil(wordCount / 200));
+
       // Create the post
       const postData = {
         authorId: userId,
         title: title || null,
         content,
         formattedContent: processedContent,
-        postType,
-        genre: genre || null,
+        excerpt: finalExcerpt,
+        category: category || 'general',
+        coverImageUrl: coverImageUrl || null,
+        readTimeMinutes,
+        publishedAt: new Date(),
         spotifyTrackId: spotifyTrackData?.id || null,
         spotifyTrackData: spotifyTrackData || null,
         imageUrls: imageUrls || [],
         isPrivate: privacy === "private",
-        mentions: mentions || [],
-        hashtags: hashtags || [],
         likesCount: 0,
         commentsCount: 0,
         repostsCount: 0,
@@ -447,8 +454,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           authorId: posts.authorId,
           title: posts.title,
           content: posts.content,
-          postType: posts.postType,
-          genre: posts.genre,
+          excerpt: posts.excerpt,
+          category: posts.category,
+          coverImageUrl: posts.coverImageUrl,
+          readTimeMinutes: posts.readTimeMinutes,
+          publishedAt: posts.publishedAt,
           spotifyTrackData: posts.spotifyTrackData,
           imageUrls: posts.imageUrls,
           isPrivate: posts.isPrivate,
@@ -534,8 +544,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         authorId: post.authorId,
         title: post.title,
         content: post.content,
-        postType: post.postType,
-        genre: post.genre,
+        excerpt: post.excerpt,
+        category: post.category,
+        coverImageUrl: post.coverImageUrl,
+        readTimeMinutes: post.readTimeMinutes,
+        publishedAt: post.publishedAt,
         spotifyTrackData: post.spotifyTrackData,
         imageUrls: post.imageUrls,
         isPrivate: post.isPrivate,
@@ -615,8 +628,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           authorId: posts.authorId,
           title: posts.title,
           content: posts.content,
-          postType: posts.postType,
-          genre: posts.genre,
+          excerpt: posts.excerpt,
+          category: posts.category,
+          coverImageUrl: posts.coverImageUrl,
+          readTimeMinutes: posts.readTimeMinutes,
+          publishedAt: posts.publishedAt,
           spotifyTrackData: posts.spotifyTrackData,
           imageUrls: posts.imageUrls,
           isPrivate: posts.isPrivate,
@@ -666,8 +682,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         authorId: postData.authorId,
         title: postData.title,
         content: postData.content,
-        postType: postData.postType,
-        genre: postData.genre,
+        excerpt: postData.excerpt,
+        category: postData.category,
+        coverImageUrl: postData.coverImageUrl,
+        readTimeMinutes: postData.readTimeMinutes,
+        publishedAt: postData.publishedAt,
         spotifyTrackData: postData.spotifyTrackData,
         imageUrls: postData.imageUrls,
         isPrivate: postData.isPrivate,
@@ -1799,7 +1818,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.session.userId;
       const { id: postId } = req.params;
-      const { title, content, postType, genre, privacy, imageUrls, spotifyTrackData, collaborators } = req.body;
+      const { title, content, category, excerpt, coverImageUrl, privacy, imageUrls, spotifyTrackData, collaborators } = req.body;
 
       if (!content || !content.trim()) {
         return res.status(400).json({ message: "Content is required" });
@@ -1821,8 +1840,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         content: content.trim(),
       };
 
-      if (postType) updateData.postType = postType;
-      if (genre) updateData.genre = genre;
+      if (category) updateData.category = category;
+      if (excerpt) updateData.excerpt = excerpt;
+      if (coverImageUrl !== undefined) updateData.coverImageUrl = coverImageUrl;
       if (privacy !== undefined) updateData.isPrivate = privacy === 'private';
       if (imageUrls) updateData.imageUrls = imageUrls;
       if (spotifyTrackData) updateData.spotifyTrackData = spotifyTrackData;

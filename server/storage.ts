@@ -873,16 +873,7 @@ export class DatabaseStorage implements IStorage {
     const searchTerm = `%${query.toLowerCase()}%`;
 
     const result = await db
-      .select({
-        id: users.id,
-        username: users.username,
-        displayName: users.displayName,
-        profileImageUrl: users.profileImageUrl,
-        isVerified: users.isVerified,
-        bio: users.bio,
-        followersCount: users.followersCount,
-        createdAt: users.createdAt,
-      })
+      .select()
       .from(users)
       .where(
         and(
@@ -1016,16 +1007,7 @@ export class DatabaseStorage implements IStorage {
 
   async getSuggestedUsers(currentUserId: string, limit: number = 5): Promise<User[]> {
     const result = await db
-      .select({
-        id: users.id,
-        username: users.username,
-        displayName: users.displayName,
-        profileImageUrl: users.profileImageUrl,
-        isVerified: users.isVerified,
-        bio: users.bio,
-        followersCount: users.followersCount,
-        createdAt: users.createdAt,
-      })
+      .select()
       .from(users)
       .where(
         and(
@@ -1888,8 +1870,9 @@ export class DatabaseStorage implements IStorage {
         id: posts.id,
         title: posts.title,
         content: posts.content,
-        postType: posts.postType,
-        genre: posts.genre,
+        excerpt: posts.excerpt,
+        category: posts.category,
+        coverImageUrl: posts.coverImageUrl,
         imageUrls: posts.imageUrls,
         spotifyTrackData: posts.spotifyTrackData,
         createdAt: posts.createdAt,
