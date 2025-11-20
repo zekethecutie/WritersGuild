@@ -190,6 +190,26 @@ export default function Profile() {
     enabled: !!profileUser?.id,
   });
 
+  // Fetch user reposts
+  const { 
+    data: userReposts, 
+    isLoading: repostsLoading 
+  } = useQuery({
+    queryKey: ["/api/users", profileUser?.id, "reposts"],
+    queryFn: () => fetch(`/api/users/${profileUser.id}/reposts`, { credentials: 'include' }).then(res => res.json()),
+    enabled: !!profileUser?.id,
+  });
+
+  // Fetch user bookmarks (only for own profile)
+  const { 
+    data: userBookmarks, 
+    isLoading: bookmarksLoading 
+  } = useQuery({
+    queryKey: ["/api/users", profileUser?.id, "bookmarks"],
+    queryFn: () => fetch(`/api/users/${profileUser.id}/bookmarks`, { credentials: 'include' }).then(res => res.json()),
+    enabled: !!profileUser?.id && isOwnProfile,
+  });
+
   // Handle errors
   useEffect(() => {
     if (profileError && isUnauthorizedError(profileError as Error)) {
@@ -664,15 +684,38 @@ export default function Profile() {
             </TabsContent>
 
             <TabsContent value="reposts" className="mt-0">
-              <div className="p-12 text-center">
-                <div className="w-16 h-16 bg-muted rounded-xl flex items-center justify-center mb-4 mx-auto">
-                  <Repeat2 className="w-8 h-8 text-muted-foreground" />
+              {repostsLoading ? (
+                <div className="space-y-0">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="border-b border-border p-6">
+                      <div className="flex space-x-3">
+                        <Skeleton className="w-10 h-10 rounded-full" />
+                        <div className="flex-1 space-y-2">
+                          <Skeleton className="h-4 w-1/4" />
+                          <Skeleton className="h-4 w-full" />
+                          <Skeleton className="h-4 w-3/4" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <h3 className="text-lg font-semibold mb-2">No reposts yet</h3>
-                <p className="text-muted-foreground">
-                  Posts reposted by {isOwnProfile ? "you" : profileUser.firstName} will appear here
-                </p>
-              </div>
+              ) : userReposts?.length === 0 ? (
+                <div className="p-12 text-center">
+                  <div className="w-16 h-16 bg-muted rounded-xl flex items-center justify-center mb-4 mx-auto">
+                    <Repeat2 className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">No reposts yet</h3>
+                  <p className="text-muted-foreground">
+                    Posts reposted by {isOwnProfile ? "you" : profileUser.displayName} will appear here
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-0">
+                  {userReposts?.map((post: Post) => (
+                    <PostCard key={post.id} post={post} />
+                  ))}
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="stories" className="mt-0">
@@ -683,15 +726,38 @@ export default function Profile() {
 
             {isOwnProfile && (
               <TabsContent value="bookmarks" className="mt-0">
-                <div className="p-12 text-center">
-                  <div className="w-16 h-16 bg-muted rounded-xl flex items-center justify-center mb-4 mx-auto">
-                    <Bookmark className="w-8 h-8 text-muted-foreground" />
+                {bookmarksLoading ? (
+                  <div className="space-y-0">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className="border-b border-border p-6">
+                        <div className="flex space-x-3">
+                          <Skeleton className="w-10 h-10 rounded-full" />
+                          <div className="flex-1 space-y-2">
+                            <Skeleton className="h-4 w-1/4" />
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-3/4" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <h3 className="text-lg font-semibold mb-2">No bookmarks yet</h3>
-                  <p className="text-muted-foreground">
-                    Save posts to read later and they'll appear here
-                  </p>
-                </div>
+                ) : userBookmarks?.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <div className="w-16 h-16 bg-muted rounded-xl flex items-center justify-center mb-4 mx-auto">
+                      <Bookmark className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-semibold mb-2">No bookmarks yet</h3>
+                    <p className="text-muted-foreground">
+                      Save posts to read later and they'll appear here
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-0">
+                    {userBookmarks?.map((post: Post) => (
+                      <PostCard key={post.id} post={post} />
+                    ))}
+                  </div>
+                )}
               </TabsContent>
             )}
           </Tabs>

@@ -431,6 +431,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Send notifications to mentioned users
+      if (mentions && Array.isArray(mentions) && mentions.length > 0) {
+        for (const username of mentions) {
+          try {
+            const mentionedUser = await storage.getUserByUsername(username);
+            if (mentionedUser && mentionedUser.id !== userId) {
+              // Create and broadcast notification
+              const notification = await storage.createNotification({
+                userId: mentionedUser.id,
+                type: 'mention',
+                actorId: userId,
+                postId: newPost.id,
+                isRead: false,
+                data: { postTitle: title || 'Untitled Post' }
+              });
+
+              // Broadcast real-time notification
+              if ((app as any).broadcastNotification) {
+                (app as any).broadcastNotification(mentionedUser.id, notification);
+              }
+            }
+          } catch (error) {
+            console.error(`Failed to notify mentioned user @${username}:`, error);
+          }
+        }
+      }
+
       // Update word count for today
       if (wordCount > 0) {
         await storage.updateDailyWordCount(userId, wordCount);
@@ -440,6 +467,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating post:", error);
       res.status(500).json({ message: "Failed to create post" });
+    }
+  });
+
+  // Get single post with collaborators
+  app.get('/api/posts/:id', async (req, res) => {
+    try {
+      const { id: postId } = req.params;
+      const userId = (req as any).session?.userId;
+
+      const post = await storage.getPost(postId);
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      // Get author data
+      const author = await storage.getUser(post.authorId);
+
+      // Get accepted collaborators
+      const collaborators = await storage.getPostCollaborators(postId);
+
+      // Get engagement data for current user if logged in
+      let isLiked = false;
+      let isBookmarked = false;
+      let isReposted = false;
+
+      if (userId) {
+        const [hasLiked, hasBookmarked, hasReposted] = await Promise.all([
+          storage.hasUserLikedPost(userId, postId),
+          storage.isPostBookmarked(userId, postId),
+          storage.hasUserReposted(userId, postId),
+        ]);
+        isLiked = hasLiked;
+        isBookmarked = hasBookmarked;
+        isReposted = hasReposted;
+      }
+
+      res.json({
+        ...post,
+        author,
+        collaborators,
+        isLiked,
+        isBookmarked,
+        isReposted,
+      });
+    } catch (error) {
+      console.error("Error fetching post:", error);
+      res.status(500).json({ message: "Failed to fetch post" });
     }
   });
 
@@ -732,6 +806,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user posts:", error);
       res.status(500).json({ message: "Failed to fetch user posts" });
+    }
+  });
+
+  // Get user's reposts
+  app.get('/api/users/:userId/reposts', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const currentUserId = req.session?.userId;
+
+      const repostedPosts = await storage.getUserReposts(userId);
+
+      // Fetch author data for each post
+      const postsWithAuthors = await Promise.all(
+        repostedPosts.map(async (post) => {
+          const author = await storage.getUser(post.authorId);
+          
+          // Get engagement data for current user if logged in
+          let isLiked = false;
+          let isBookmarked = false;
+          let isReposted = false;
+
+          if (currentUserId) {
+            const [hasLiked, hasBookmarked, hasReposted] = await Promise.all([
+              storage.hasUserLikedPost(currentUserId, post.id),
+              storage.isPostBookmarked(currentUserId, post.id),
+              storage.hasUserReposted(currentUserId, post.id),
+            ]);
+            isLiked = hasLiked;
+            isBookmarked = hasBookmarked;
+            isReposted = hasReposted;
+          }
+
+          return {
+            ...post,
+            author,
+            isLiked,
+            isBookmarked,
+            isReposted,
+          };
+        })
+      );
+
+      res.json(postsWithAuthors);
+    } catch (error) {
+      console.error("Error fetching user reposts:", error);
+      res.status(500).json({ message: "Failed to fetch user reposts" });
+    }
+  });
+
+  // Get user's bookmarks
+  app.get('/api/users/:userId/bookmarks', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const currentUserId = req.session?.userId;
+
+      // Only allow users to see their own bookmarks
+      if (!currentUserId || currentUserId !== userId) {
+        return res.status(403).json({ message: "You can only view your own bookmarks" });
+      }
+
+      const bookmarkedPosts = await storage.getUserBookmarks(userId);
+
+      // Fetch author data for each post
+      const postsWithAuthors = await Promise.all(
+        bookmarkedPosts.map(async (post) => {
+          const author = await storage.getUser(post.authorId);
+          
+          // Get engagement data for current user if logged in
+          let isLiked = false;
+          let isBookmarked = true; // Always true for bookmarks page
+          let isReposted = false;
+
+          if (currentUserId) {
+            const [hasLiked, hasReposted] = await Promise.all([
+              storage.hasUserLikedPost(currentUserId, post.id),
+              storage.hasUserReposted(currentUserId, post.id),
+            ]);
+            isLiked = hasLiked;
+            isReposted = hasReposted;
+          }
+
+          return {
+            ...post,
+            author,
+            isLiked,
+            isBookmarked,
+            isReposted,
+          };
+        })
+      );
+
+      res.json(postsWithAuthors);
+    } catch (error) {
+      console.error("Error fetching user bookmarks:", error);
+      res.status(500).json({ message: "Failed to fetch user bookmarks" });
     }
   });
 
@@ -1398,6 +1567,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(503).json({ message: "Service temporarily unavailable" });
       }
       res.status(500).json({ message: "Failed to mark all notifications as read" });
+    }
+  });
+
+  // Collaboration routes
+  app.post('/api/collaborations/:id/accept', requireAuth, writeLimiter, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { id: collaborationId } = req.params;
+
+      // Get collaboration details
+      const [collaboration] = await db
+        .select()
+        .from(postCollaborators)
+        .where(eq(postCollaborators.id, collaborationId));
+
+      if (!collaboration) {
+        return res.status(404).json({ message: "Collaboration invitation not found" });
+      }
+
+      // Verify the user is the collaborator
+      if (collaboration.collaboratorId !== userId) {
+        return res.status(403).json({ message: "Unauthorized to accept this invitation" });
+      }
+
+      // Update status to accepted
+      await db
+        .update(postCollaborators)
+        .set({ 
+          status: 'accepted',
+          acceptedAt: new Date()
+        })
+        .where(eq(postCollaborators.id, collaborationId));
+
+      // Create notification for the inviter
+      const notification = await storage.createNotification({
+        userId: collaboration.invitedById,
+        type: 'collaboration_accepted',
+        actorId: userId,
+        postId: collaboration.postId,
+        isRead: false,
+        data: {}
+      });
+
+      // Broadcast real-time notification
+      if ((app as any).broadcastNotification) {
+        (app as any).broadcastNotification(collaboration.invitedById, notification);
+      }
+
+      res.json({ message: "Collaboration accepted" });
+    } catch (error) {
+      console.error("Error accepting collaboration:", error);
+      res.status(500).json({ message: "Failed to accept collaboration" });
+    }
+  });
+
+  app.post('/api/collaborations/:id/decline', requireAuth, writeLimiter, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { id: collaborationId } = req.params;
+
+      // Get collaboration details
+      const [collaboration] = await db
+        .select()
+        .from(postCollaborators)
+        .where(eq(postCollaborators.id, collaborationId));
+
+      if (!collaboration) {
+        return res.status(404).json({ message: "Collaboration invitation not found" });
+      }
+
+      // Verify the user is the collaborator
+      if (collaboration.collaboratorId !== userId) {
+        return res.status(403).json({ message: "Unauthorized to decline this invitation" });
+      }
+
+      // Update status to declined
+      await db
+        .update(postCollaborators)
+        .set({ status: 'declined' })
+        .where(eq(postCollaborators.id, collaborationId));
+
+      res.json({ message: "Collaboration declined" });
+    } catch (error) {
+      console.error("Error declining collaboration:", error);
+      res.status(500).json({ message: "Failed to decline collaboration" });
     }
   });
 

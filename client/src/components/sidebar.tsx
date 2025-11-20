@@ -141,15 +141,6 @@ export default function Sidebar() {
                   <HelpCircle className="w-4 h-4 mr-2" />
                   Help Center
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => window.open("https://github.com/replit", "_blank")}>
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  About Writers Guild
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => window.open("https://replit.com", "_blank")}>
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Built with Replit
-                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
         </div>

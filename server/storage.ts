@@ -14,6 +14,7 @@ import {
   seriesFollowers,
   seriesLikes,
   readingProgress,
+  postCollaborators,
   type User,
   type UpsertUser,
   type InsertPost,
@@ -70,6 +71,7 @@ export interface IStorage {
   // Repost operations
   repostPost(userId: string, postId: string, comment?: string): Promise<Repost>;
   unrepost(userId: string, postId: string): Promise<void>;
+  getUserReposts(userId: string): Promise<Post[]>;
 
   // Bookmark operations
   bookmarkPost(userId: string, postId: string): Promise<Bookmark>;
@@ -120,6 +122,9 @@ export interface IStorage {
   // Guest access restriction
   isGuestReadable(entityType: string, entityId: string, userId?: string): Promise<boolean>;
   isGuestInteractable(entityType: string, entityId: string, userId?: string): Promise<boolean>;
+
+  // Collaborator methods
+  getPostCollaborators(postId: string): Promise<User[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -712,6 +717,35 @@ export class DatabaseStorage implements IStorage {
       .update(posts)
       .set({ repostsCount: sql`${posts.repostsCount} - 1` })
       .where(eq(posts.id, postId));
+  }
+
+  async getUserReposts(userId: string): Promise<Post[]> {
+    return db.select({
+      id: posts.id,
+      authorId: posts.authorId,
+      title: posts.title,
+      content: posts.content,
+      formattedContent: posts.formattedContent,
+      excerpt: posts.excerpt,
+      coverImageUrl: posts.coverImageUrl,
+      category: posts.category,
+      readTimeMinutes: posts.readTimeMinutes,
+      publishedAt: posts.publishedAt,
+      spotifyTrackId: posts.spotifyTrackId,
+      spotifyTrackData: posts.spotifyTrackData,
+      imageUrls: posts.imageUrls,
+      isPrivate: posts.isPrivate,
+      likesCount: posts.likesCount,
+      commentsCount: posts.commentsCount,
+      repostsCount: posts.repostsCount,
+      viewsCount: posts.viewsCount,
+      createdAt: posts.createdAt,
+      updatedAt: posts.updatedAt,
+    })
+      .from(posts)
+      .innerJoin(reposts, eq(reposts.postId, posts.id))
+      .where(eq(reposts.userId, userId))
+      .orderBy(desc(reposts.createdAt));
   }
 
   // Bookmark operations
@@ -2091,6 +2125,23 @@ export class DatabaseStorage implements IStorage {
   async isGuestInteractable(entityType: string, entityId: string, userId?: string): Promise<boolean> {
     if (userId) return true;
     return false;
+  }
+
+  async getPostCollaborators(postId: string): Promise<User[]> {
+    const collaboratorData = await db
+      .select({
+        user: users,
+      })
+      .from(postCollaborators)
+      .innerJoin(users, eq(postCollaborators.collaboratorId, users.id))
+      .where(
+        and(
+          eq(postCollaborators.postId, postId),
+          eq(postCollaborators.status, 'accepted')
+        )
+      );
+
+    return collaboratorData.map(row => row.user);
   }
 }
 

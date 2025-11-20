@@ -9,6 +9,7 @@ import type { Post, User } from "@shared/schema";
 interface PostCardProps {
   post: Post & {
     author?: User;
+    collaborators?: User[];
   };
 }
 
@@ -91,7 +92,7 @@ function PostCard({ post }: PostCardProps) {
       data-testid={`card-post-${post.id}`}
     >
       {/* Cover Image with Category Badge */}
-      {coverImage ? (
+      {coverImage && (
         <div className="relative w-full overflow-hidden" style={{ aspectRatio: '16/9' }}>
           <img
             src={coverImage}
@@ -108,25 +109,18 @@ function PostCard({ post }: PostCardProps) {
             </Badge>
           )}
         </div>
-      ) : (
-        <div className="relative w-full bg-gradient-to-br from-muted/50 to-muted overflow-hidden" style={{ aspectRatio: '16/9' }}>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-6xl font-bold text-muted-foreground/20">
-              {post.title?.[0]?.toUpperCase() || 'W'}
-            </div>
-          </div>
-          {post.category && (
-            <Badge 
-              className={`absolute top-4 left-4 ${getCategoryColor(post.category)} font-semibold`}
-              data-testid={`badge-category-${post.id}`}
-            >
-              {post.category}
-            </Badge>
-          )}
-        </div>
       )}
 
       <div className="p-6 space-y-3">
+        {/* Category badge when no cover image */}
+        {!coverImage && post.category && (
+          <Badge 
+            className={`${getCategoryColor(post.category)} font-semibold`}
+            data-testid={`badge-category-${post.id}`}
+          >
+            {post.category}
+          </Badge>
+        )}
         {/* Title - Frontman style (larger, more prominent) */}
         <h2 className="text-xl sm:text-2xl font-bold leading-tight line-clamp-2" data-testid={`text-title-${post.id}`}>
           {post.title || 'Untitled'}
@@ -155,6 +149,13 @@ function PostCard({ post }: PostCardProps) {
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
               <span className="font-medium text-foreground truncate" data-testid={`text-author-${post.id}`}>
                 {author.displayName}
+                {post.collaborators && post.collaborators.length > 0 && (
+                  <span>
+                    {post.collaborators.map((collab, idx) => (
+                      <span key={collab.id}> & {collab.displayName}</span>
+                    ))}
+                  </span>
+                )}
               </span>
               {author.isVerified && (
                 <CheckCircle className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />

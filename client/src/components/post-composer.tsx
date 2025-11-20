@@ -58,6 +58,10 @@ export default function PostComposer() {
   const [collaboratorSearchQuery, setCollaboratorSearchQuery] = useState("");
   const [mentions, setMentions] = useState<Set<string>>(new Set());
   const [hashtags, setHashtags] = useState<Set<string>>(new Set());
+  const [mentionDropdownVisible, setMentionDropdownVisible] = useState(false);
+  const [mentionSearchText, setMentionSearchText] = useState("");
+  const [mentionCursorPos, setMentionCursorPos] = useState(0);
+  const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Parse mentions and hashtags from content
   useEffect(() => {
@@ -111,6 +115,71 @@ export default function PostComposer() {
     enabled: !!collaboratorSearchQuery.trim() && showCollaboratorSearch,
     retry: 1,
   });
+
+  // Search for users to mention
+  const mentionSearchQuery = useQuery({
+    queryKey: ["/api/users/search", "mention", mentionSearchText],
+    queryFn: async () => {
+      if (!mentionSearchText.trim()) return [];
+      try {
+        const response = await fetch(`/api/users/search?q=${encodeURIComponent(mentionSearchText)}`, {
+          credentials: 'include'
+        });
+        if (!response.ok) return [];
+        return await response.json();
+      } catch (error) {
+        console.error('Mention search error:', error);
+        return [];
+      }
+    },
+    enabled: !!mentionSearchText.trim() && mentionDropdownVisible,
+    retry: 1,
+  });
+
+  // Handle content changes and detect @ for mentions
+  const handleContentChange = (newContent: string) => {
+    setContent(newContent);
+
+    // Get cursor position
+    const cursorPos = contentTextareaRef.current?.selectionStart || 0;
+    
+    // Look for @ symbol before cursor
+    const textBeforeCursor = newContent.substring(0, cursorPos);
+    const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+    
+    // Check if we're in a mention context
+    if (lastAtIndex !== -1) {
+      const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1);
+      // Check if there's no space after @, which means we're still typing the mention
+      if (!textAfterAt.includes(' ') && !textAfterAt.includes('\n')) {
+        setMentionSearchText(textAfterAt);
+        setMentionCursorPos(lastAtIndex);
+        setMentionDropdownVisible(true);
+        return;
+      }
+    }
+    
+    // Hide dropdown if not in mention context
+    setMentionDropdownVisible(false);
+    setMentionSearchText("");
+  };
+
+  // Handle mention selection
+  const handleMentionSelect = (user: any) => {
+    const beforeMention = content.substring(0, mentionCursorPos);
+    const afterMention = content.substring(mentionCursorPos + 1 + mentionSearchText.length);
+    const newContent = `${beforeMention}@${user.username} ${afterMention}`;
+    setContent(newContent);
+    setMentionDropdownVisible(false);
+    setMentionSearchText("");
+    
+    // Focus back on textarea
+    setTimeout(() => {
+      contentTextareaRef.current?.focus();
+      const newCursorPos = mentionCursorPos + user.username.length + 2;
+      contentTextareaRef.current?.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
+  };
 
   const createPostMutation = useMutation({
     mutationFn: async (postData: any) => {
@@ -576,13 +645,42 @@ export default function PostComposer() {
               />
             </div>
           ) : (
-            <Textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Write your article content..."
-              className="resize-none min-h-[300px] border-border"
-              data-testid="textarea-post-content"
-            />
+            <div className="relative">
+              <Textarea
+                ref={contentTextareaRef}
+                value={content}
+                onChange={(e) => handleContentChange(e.target.value)}
+                placeholder="Write your article content..."
+                className="resize-none min-h-[300px] border-border"
+                data-testid="textarea-post-content"
+              />
+              {mentionDropdownVisible && mentionSearchQuery.data && Array.isArray(mentionSearchQuery.data) && mentionSearchQuery.data.length > 0 && (
+                <Card className="absolute left-0 right-0 top-full mt-1 z-50 max-h-60 overflow-y-auto border-border shadow-lg">
+                  <CardContent className="p-2">
+                    <div className="space-y-1">
+                      {mentionSearchQuery.data.map((searchUser: any) => (
+                        <div
+                          key={searchUser.id}
+                          className="flex items-center gap-3 p-2 rounded-md cursor-pointer hover-elevate active-elevate-2"
+                          onClick={() => handleMentionSelect(searchUser)}
+                          data-testid={`mention-option-${searchUser.username}`}
+                        >
+                          <img
+                            src={searchUser.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${searchUser.username}`}
+                            alt={searchUser.displayName}
+                            className="w-8 h-8 rounded-full"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{searchUser.displayName}</p>
+                            <p className="text-xs text-muted-foreground truncate">@{searchUser.username}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           )}
         </div>
 

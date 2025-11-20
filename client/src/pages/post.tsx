@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { getProfileImageUrl } from "@/lib/defaultImages";
+import { linkifyMentions } from "@/lib/utils";
 import type { Post, User } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
 
@@ -426,7 +427,7 @@ export default function PostPage() {
             >
               <div 
                 className="whitespace-pre-wrap leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: post.content }}
+                dangerouslySetInnerHTML={{ __html: linkifyMentions(post.content) }}
               />
             </div>
 
