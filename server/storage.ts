@@ -1012,17 +1012,11 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           ne(users.id, currentUserId),
-          notExists(
-            db
-              .select()
-              .from(follows)
-              .where(
-                and(
-                  eq(follows.followerId, currentUserId),
-                  eq(follows.followingId, users.id)
-                )
-              )
-          )
+          sql`NOT EXISTS (
+            SELECT 1 FROM ${follows}
+            WHERE ${follows.followerId} = ${currentUserId}
+            AND ${follows.followingId} = ${users.id}
+          )`
         )
       )
       .orderBy(desc(users.followersCount))
