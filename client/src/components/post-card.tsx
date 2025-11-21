@@ -1,20 +1,44 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { CheckCircle, Clock } from "lucide-react";
+import { CheckCircle, Clock, MoreVertical, Edit, Trash2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { getProfileImageUrl } from "@/lib/defaultImages";
 import type { Post, User } from "@shared/schema";
+import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import EditPostModal from "@/components/edit-post-modal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface PostCardProps {
   post: Post & {
     author?: User;
     collaborators?: User[];
   };
+  isLiked?: boolean;
+  likesCount?: number;
+  isBookmarked?: boolean;
+  isReposted?: boolean;
+  repostsCount?: number;
 }
 
-function PostCard({ post }: PostCardProps) {
+function PostCard({ post, isLiked, likesCount, isBookmarked, isReposted, repostsCount }: PostCardProps) {
   const [, navigate] = useLocation();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   // Create fallback author if none provided
   const authorId = post.authorId || 'unknown';
@@ -43,6 +67,15 @@ function PostCard({ post }: PostCardProps) {
     createdAt: new Date(),
     updatedAt: new Date()
   } as User;
+
+  // State for modal and delete dialog
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [optimisticLiked, setOptimisticLiked] = useState(isLiked || false);
+  const [optimisticLikesCount, setOptimisticLikesCount] = useState(likesCount || 0);
+  const [optimisticBookmarked, setOptimisticBookmarked] = useState(isBookmarked || false);
+  const [optimisticReposted, setOptimisticReposted] = useState(isReposted || false);
+  const [optimisticRepostsCount, setOptimisticRepostsCount] = useState(repostsCount || 0);
 
   // Calculate read time
   const calculateReadTime = (content: string | undefined | null) => {
@@ -85,8 +118,75 @@ function PostCard({ post }: PostCardProps) {
     }
   };
 
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (postId: string) => {
+      const response = await fetch(`/api/posts/${postId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to delete post');
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Post deleted",
+        description: "Your article has been permanently removed",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      setShowDeleteDialog(false);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete article",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Repost mutation
+  const repostMutation = useMutation({
+    mutationFn: async (postId: string) => {
+      const response = await fetch(`/api/posts/${postId}/repost`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to repost');
+      return response.json();
+    },
+    onMutate: async () => {
+      const wasReposted = optimisticReposted;
+      setOptimisticReposted(!wasReposted);
+      setOptimisticRepostsCount(prev => wasReposted ? prev - 1 : prev + 1);
+      return { wasReposted };
+    },
+    onError: (error, variables, context) => {
+      if (context) {
+        setOptimisticReposted(context.wasReposted);
+        setOptimisticRepostsCount(prev => context.wasReposted ? prev + 1 : prev - 1);
+      }
+      toast({
+        title: "Error",
+        description: "Failed to repost article",
+        variant: "destructive",
+      });
+    },
+    onSuccess: (result) => {
+      if (result.reposted !== undefined) {
+        setOptimisticReposted(result.reposted);
+      }
+      toast({
+        title: result.reposted ? "Reposted" : "Repost removed",
+        description: result.reposted ? "Article has been shared to your followers" : "Repost has been removed",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+    },
+  });
+
+
   return (
-    <Card 
+    <Card
       className="overflow-hidden cursor-pointer hover-elevate transition-all border-border post-card-hover"
       onClick={handleCardClick}
       data-testid={`card-post-${post.id}`}
@@ -101,7 +201,7 @@ function PostCard({ post }: PostCardProps) {
             data-testid={`img-cover-${post.id}`}
           />
           {post.category && (
-            <Badge 
+            <Badge
               className={`absolute top-4 left-4 ${getCategoryColor(post.category)} font-semibold`}
               data-testid={`badge-category-${post.id}`}
             >
@@ -114,7 +214,7 @@ function PostCard({ post }: PostCardProps) {
       <div className="p-6 space-y-3">
         {/* Category badge when no cover image */}
         {!coverImage && post.category && (
-          <Badge 
+          <Badge
             className={`${getCategoryColor(post.category)} font-semibold`}
             data-testid={`badge-category-${post.id}`}
           >
@@ -137,8 +237,8 @@ function PostCard({ post }: PostCardProps) {
         <div className="flex items-center justify-between gap-3 pt-2">
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <Avatar className="w-8 h-8 flex-shrink-0">
-              <AvatarImage 
-                src={getProfileImageUrl(author.profileImageUrl)} 
+              <AvatarImage
+                src={getProfileImageUrl(author.profileImageUrl)}
                 alt={author.displayName}
               />
               <AvatarFallback className="text-xs">
@@ -174,6 +274,80 @@ function PostCard({ post }: PostCardProps) {
           </div>
         </div>
       </div>
+      {/* Dropdown for post options */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <div className="absolute top-4 right-4 p-1 rounded-md bg-secondary hover:bg-secondary/70">
+            <MoreVertical className="w-4 h-4 text-muted-foreground" />
+          </div>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuItem onClick={() => navigate(`/post/${post.id}`)}>
+            <Eye className="mr-2 h-4 w-4" />
+            View Post
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          {/* Edit and Delete options for own posts or admin */}
+          {(user?.id === author.id || user?.role === 'admin') && (
+            <>
+              <DropdownMenuItem onClick={() => setShowEditModal(true)}>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit Post
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setShowDeleteDialog(true)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Post
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
+          {/* Collaborator feature - add UI indicator when clicked */}
+          <DropdownMenuItem onClick={() => { /* Handle collaborator add */ }}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Add Collaborator
+          </DropdownMenuItem>
+          {/* Spotify integration - add button to attach songs */}
+          <DropdownMenuItem onClick={() => { /* Handle Spotify attach */ }}>
+            <img src="/spotify-icon.svg" alt="Spotify" className="mr-2 h-4 w-4" />
+            Attach Song
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Edit Post Modal */}
+      {showEditModal && (
+        <EditPostModal
+          post={post}
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+        />
+      )}
+
+      {/* Delete Post Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Article?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete your article
+              "{post.title || 'Untitled'}" and remove all associated data including comments and likes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteMutation.mutate(post.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete Article"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

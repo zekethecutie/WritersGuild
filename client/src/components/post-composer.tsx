@@ -5,8 +5,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import RichTextEditor from "@/components/rich-text-editor";
-// import { SpotifyTrackDisplay } from "@/components/spotify-track-display"; // UNFINISHED FEATURE
-// import { SpotifySearch } from "@/components/spotify-search"; // UNFINISHED FEATURE
+import { SpotifyTrackDisplay } from "@/components/spotify-track-display";
+import { SpotifySearch } from "@/components/spotify-search";
 import ImageGallery from "@/components/image-gallery";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,9 +62,10 @@ export default function PostComposer() {
   const [mentionSearchText, setMentionSearchText] = useState("");
   const [mentionCursorPos, setMentionCursorPos] = useState(0);
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  // Spotify track state
   const [spotifyTrack, setSpotifyTrack] = useState<any>(null);
   const [showSpotifySearch, setShowSpotifySearch] = useState(false);
-  const [spotifySearchQuery, setSpotifySearchQuery] = useState("");
 
   // Parse mentions and hashtags from content
   useEffect(() => {
@@ -439,10 +440,13 @@ export default function PostComposer() {
       hashtags: Array.from(hashtags),
       collaborators: collaborators.length > 0 ? collaborators.map(c => c.id) : undefined,
       spotifyTrackData: spotifyTrack ? {
+        id: spotifyTrack.id,
         name: spotifyTrack.name,
-        artist: spotifyTrack.artist,
-        imageUrl: spotifyTrack.imageUrl,
-        spotifyId: spotifyTrack.id,
+        artist: spotifyTrack.artists?.[0]?.name || 'Unknown Artist',
+        album: spotifyTrack.album?.name,
+        image: spotifyTrack.album?.images?.[0]?.url,
+        preview_url: spotifyTrack.preview_url,
+        external_urls: spotifyTrack.external_urls
       } : undefined,
     };
 
@@ -954,65 +958,21 @@ export default function PostComposer() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => {
-                      setShowSpotifySearch(false);
-                      setSpotifySearchQuery("");
-                    }}
+                    onClick={() => setShowSpotifySearch(false)}
                     className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
                   >
                     <X className="w-4 h-4" />
                   </Button>
                 </div>
 
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                  <Input
-                    placeholder="Search by song name, artist, or album..."
-                    value={spotifySearchQuery}
-                    onChange={(e) => setSpotifySearchQuery(e.target.value)}
-                    className="pl-10 bg-background"
-                    data-testid="input-spotify-search"
-                    autoFocus
-                  />
-                </div>
-
-                <div className="text-center py-8 border rounded-lg bg-background">
-                  <Music className="w-12 h-12 mx-auto text-muted-foreground/50 mb-2" />
-                  <p className="text-sm text-muted-foreground font-medium">Search for tracks</p>
-                  <p className="text-xs text-muted-foreground mt-1">Type to find songs to attach to your article</p>
-                </div>
-
-                {spotifyTrack && (
-                  <div className="pt-3 border-t border-green-200 dark:border-green-800">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-semibold text-foreground flex items-center gap-1">
-                        <Music className="w-4 h-4 text-green-500" />
-                        Selected
-                      </p>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSpotifyTrack(null)}
-                        className="h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                    <div className="mt-2 p-2 bg-background border rounded-lg flex items-center gap-2">
-                      {spotifyTrack.imageUrl && (
-                        <img
-                          src={spotifyTrack.imageUrl}
-                          alt={spotifyTrack.name}
-                          className="w-8 h-8 rounded"
-                        />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate">{spotifyTrack.name}</p>
-                        <p className="text-xs text-muted-foreground truncate">{spotifyTrack.artist}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <SpotifySearch
+                  onTrackSelect={(track) => {
+                    setSpotifyTrack(track);
+                    setShowSpotifySearch(false);
+                  }}
+                  selectedTrack={spotifyTrack}
+                  placeholder="Search for a song to attach to your article..."
+                />
               </div>
             </CardContent>
           </Card>
@@ -1051,24 +1011,30 @@ export default function PostComposer() {
               variant="outline"
               size="sm"
               onClick={() => setShowCollaboratorSearch(!showCollaboratorSearch)}
-              className={showCollaboratorSearch || collaborators.length > 0 ? "bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700" : ""}
+              className={`${showCollaboratorSearch || collaborators.length > 0 ? "bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : ""} transition-all`}
               title={collaborators.length > 0 ? `${collaborators.length} collaborator${collaborators.length !== 1 ? 's' : ''} added` : "Add collaborators"}
               data-testid="button-add-collaborators"
             >
-              <UserPlus className="w-4 h-4 mr-2" />
+              <UserPlus className={`w-4 h-4 mr-2 ${collaborators.length > 0 ? 'text-blue-500' : ''}`} />
               Collaborators {collaborators.length > 0 && `(${collaborators.length})`}
+              {collaborators.length > 0 && (
+                <span className="ml-1">✓</span>
+              )}
             </Button>
 
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowSpotifySearch(!showSpotifySearch)}
-              className={showSpotifySearch || spotifyTrack ? "bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700" : ""}
+              className={`${showSpotifySearch || spotifyTrack ? "bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700 text-green-600 dark:text-green-400" : ""} transition-all`}
               title="Attach Spotify Track"
               data-testid="button-add-spotify"
             >
-              <Music className="w-4 h-4 mr-2" />
-              Spotify Track {spotifyTrack && "✓"}
+              <Music className={`w-4 h-4 mr-2 ${spotifyTrack ? 'text-green-500' : ''}`} />
+              Spotify Track
+              {spotifyTrack && (
+                <span className="ml-1">✓</span>
+              )}
             </Button>
           </div>
 

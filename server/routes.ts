@@ -821,7 +821,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const postsWithAuthors = await Promise.all(
         repostedPosts.map(async (post) => {
           const author = await storage.getUser(post.authorId);
-          
+
           // Get engagement data for current user if logged in
           let isLiked = false;
           let isBookmarked = false;
@@ -872,7 +872,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const postsWithAuthors = await Promise.all(
         bookmarkedPosts.map(async (post) => {
           const author = await storage.getUser(post.authorId);
-          
+
           // Get engagement data for current user if logged in
           let isLiked = false;
           let isBookmarked = true; // Always true for bookmarks page
@@ -1411,18 +1411,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Series routes
-  // Get public series
+  // Get all series (public)
   app.get("/api/series", async (req, res) => {
     try {
-      const { genre, limit = "20", offset = "0" } = req.query;
-      const seriesList = await storage.getPublicSeries(
-        parseInt(limit as string),
-        parseInt(offset as string),
-        genre as string
-      );
-      res.json(seriesList);
+      const { authorId } = req.query;
+
+      let query = db
+        .select({
+          series: series,
+          author: {
+            id: users.id,
+            username: users.username,
+            displayName: users.displayName,
+            profileImageUrl: users.profileImageUrl,
+            isVerified: users.isVerified,
+          },
+        })
+        .from(series)
+        .leftJoin(users, eq(series.authorId, users.id))
+        .where(eq(series.isPublished, true))
+        .orderBy(desc(series.createdAt))
+        .limit(50);
+
+      if (authorId && typeof authorId === 'string') {
+        query = query.where(eq(series.authorId, authorId)) as any;
+      }
+
+      const result = await query;
+
+      const formattedSeries = result.map((s) => ({
+        ...s.series,
+        author: s.author,
+      }));
+
+      res.json(formattedSeries);
     } catch (error) {
       console.error("Error fetching series:", error);
+      res.status(500).json({ error: "Failed to fetch series" });
+    }
+  });
+
+  // Get user's own series (authenticated)
+  app.get("/api/series/my-series", async (req, res) => {
+    try {
+      const userId = req.session?.userId;
+      if (!userId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const result = await db
+        .select({
+          series: series,
+          author: {
+            id: users.id,
+            username: users.username,
+            displayName: users.displayName,
+            profileImageUrl: users.profileImageUrl,
+            isVerified: users.isVerified,
+          },
+        })
+        .from(series)
+        .leftJoin(users, eq(series.authorId, users.id))
+        .where(eq(series.authorId, userId))
+        .orderBy(desc(series.createdAt));
+
+      const formattedSeries = result.map((s) => ({
+        ...s.series,
+        author: s.author,
+      }));
+
+      console.log(`Fetched ${formattedSeries.length} series for user ${userId}`);
+      res.json(formattedSeries);
+    } catch (error) {
+      console.error("Error fetching user's series:", error);
       res.status(500).json({ error: "Failed to fetch series" });
     }
   });
