@@ -161,19 +161,19 @@ function MyStoriesSection() {
 
   return (
     <div className="space-y-3">
-      {Array.isArray(myStories) && myStories.length > 0 && myStories.map((post: any) => (
+      {Array.isArray(myStories) && myStories.map((post: any) => (
         <Card key={post.id} className="group hover:shadow-lg transition-shadow p-4">
           <div className="flex gap-4">
             {post.coverImageUrl && (
               <img
                 src={post.coverImageUrl}
-                alt={post.title}
+                alt={post.title || 'Post cover'}
                 className="w-24 h-24 rounded-lg object-cover flex-shrink-0"
               />
             )}
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between mb-2 gap-2">
-                <h3 className="font-semibold text-base line-clamp-2">{post.title}</h3>
+                <h3 className="font-semibold text-base line-clamp-2">{post.title || 'Untitled'}</h3>
                 <Button
                   size="sm"
                   variant="ghost"
@@ -186,30 +186,32 @@ function MyStoriesSection() {
               </div>
 
               <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                {post.excerpt || post.content?.substring(0, 100)}
+                {post.excerpt || (post.content ? post.content.substring(0, 100) : 'No description')}
               </p>
 
               <div className="flex items-center justify-between text-xs text-muted-foreground mb-3 gap-3 flex-wrap">
                 <div className="flex items-center gap-3">
                   <span className="flex items-center gap-1">
                     <Heart className="w-3 h-3" />
-                    {post.likesCount || 0}
+                    {post.likesCount ?? 0}
                   </span>
                   <span className="flex items-center gap-1">
                     <MessageSquare className="w-3 h-3" />
-                    {post.commentsCount || 0}
+                    {post.commentsCount ?? 0}
                   </span>
-                  <span className="text-xs">
-                    {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
-                  </span>
+                  {post.createdAt && (
+                    <span className="text-xs">
+                      {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+                    </span>
+                  )}
                 </div>
               </div>
 
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" asChild>
+                <Button size="sm" variant="outline" asChild data-testid="button-read-post">
                   <a href={`/post/${post.id}`}>Read</a>
                 </Button>
-                <Button size="sm" asChild>
+                <Button size="sm" asChild data-testid="button-edit-post">
                   <a href={`/post/${post.id}/edit`}>Edit</a>
                 </Button>
               </div>
