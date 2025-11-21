@@ -62,6 +62,9 @@ export default function PostComposer() {
   const [mentionSearchText, setMentionSearchText] = useState("");
   const [mentionCursorPos, setMentionCursorPos] = useState(0);
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const [spotifyTrack, setSpotifyTrack] = useState<any>(null);
+  const [showSpotifySearch, setShowSpotifySearch] = useState(false);
+  const [spotifySearchQuery, setSpotifySearchQuery] = useState("");
 
   // Parse mentions and hashtags from content
   useEffect(() => {
