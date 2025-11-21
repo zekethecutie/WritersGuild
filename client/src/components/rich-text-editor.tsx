@@ -7,6 +7,7 @@ import FontFamily from '@tiptap/extension-font-family';
 import Highlight from '@tiptap/extension-highlight';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
+import HardBreak from '@tiptap/extension-hard-break';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { 
@@ -71,6 +72,14 @@ export default function RichTextEditor({
     extensions: [
       StarterKit.configure({
         link: false, // Disable the default link extension from StarterKit
+        hardBreak: false, // Disable default HardBreak to use custom configuration
+      }),
+      HardBreak.extend({
+        addKeyboardShortcuts() {
+          return {
+            'Shift-Enter': () => this.editor.commands.setHardBreak(),
+          }
+        },
       }),
       TextAlign.configure({
         types: ['heading', 'paragraph'],
@@ -96,10 +105,10 @@ export default function RichTextEditor({
     },
     editorProps: {
       attributes: {
-        class: `prose prose-sm sm:prose-base lg:prose-lg xl:prose-2xl prose-invert mx-auto focus:outline-none min-h-[120px] prose-strong:text-white prose-em:text-white prose-code:text-white ${
+        class: `prose prose-sm sm:prose-base lg:prose-lg xl:prose-2xl prose-invert mx-auto focus:outline-none min-h-[120px] prose-strong:text-white prose-em:text-white prose-code:text-white break-words ${
           postType === 'poetry' ? 'whitespace-pre-wrap font-serif leading-relaxed' : ''
         } ${className}`,
-        style: 'color: white;',
+        style: 'color: white; overflow-wrap: break-word; word-wrap: break-word; word-break: break-word;',
       },
     },
   });
@@ -346,9 +355,10 @@ export default function RichTextEditor({
         />
       </div>
 
-      {/* Character Count */}
-      <div className="px-4 pb-2 text-xs text-muted-foreground text-right">
-        {editor.storage.characterCount?.characters() || 0} characters
+      {/* Character and Word Count */}
+      <div className="px-4 pb-2 text-xs text-muted-foreground flex justify-between">
+        <span>{editor.getText().trim().split(/\s+/).filter(w => w.length > 0).length} words</span>
+        <span>{editor.storage.characterCount?.characters() || 0} characters</span>
       </div>
     </div>
   );
