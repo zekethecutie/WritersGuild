@@ -148,9 +148,12 @@ export default function NotificationsPage() {
 
   const handleAcceptCollaboration = async (postId: string, notificationId: string) => {
     try {
-      const response = await fetch(`/api/collaborations/${postId}/accept`, {
+      const response = await fetch(`/api/posts/${postId}/collaborators/accept`, {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        }
       });
 
       if (response.ok) {
@@ -160,6 +163,8 @@ export default function NotificationsPage() {
         });
         markAsRead(notificationId);
         fetchNotifications();
+      } else {
+        throw new Error('Failed to accept collaboration');
       }
     } catch (error) {
       console.error('Error accepting collaboration:', error);
@@ -173,9 +178,12 @@ export default function NotificationsPage() {
 
   const handleRejectCollaboration = async (postId: string, notificationId: string) => {
     try {
-      const response = await fetch(`/api/collaborations/${postId}/reject`, {
+      const response = await fetch(`/api/posts/${postId}/collaborators/reject`, {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        }
       });
 
       if (response.ok) {
@@ -185,6 +193,8 @@ export default function NotificationsPage() {
         });
         markAsRead(notificationId);
         fetchNotifications();
+      } else {
+        throw new Error('Failed to reject collaboration');
       }
     } catch (error) {
       console.error('Error rejecting collaboration:', error);
@@ -287,7 +297,7 @@ export default function NotificationsPage() {
                 <Card 
                   key={notification.id} 
                   className={`cursor-pointer transition-colors hover:bg-muted/50 ${
-                    !notification.isRead ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800' : ''
+                    !notification.isRead ? 'border-2 border-primary shadow-lg shadow-primary/20' : 'border'
                   }`}
                   onClick={() => !notification.isRead && markAsRead(notification.id)}
                 >

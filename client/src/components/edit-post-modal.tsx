@@ -370,7 +370,19 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
 
           {/* Content */}
           <div>
-            <label htmlFor="content" className="text-sm font-medium">Content</label>
+            <div className="flex items-center justify-between mb-2">
+              <label htmlFor="content" className="text-sm font-medium">Content</label>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsRichTextMode(!isRichTextMode)}
+                className={`h-8 px-3 ${isRichTextMode ? "bg-primary/10 text-primary" : ""}`}
+                title="Toggle Rich Text Editor"
+              >
+                <Type className="w-4 h-4 mr-2" />
+                {isRichTextMode ? "Plain Text" : "Rich Text"}
+              </Button>
+            </div>
             <div className="mt-1">
               {isRichTextMode ? (
                 <RichTextEditor
@@ -505,14 +517,18 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
 
           {/* Spotify Search */}
           {showSpotify && (
-            <Card>
+            <Card className="border-green-200 dark:border-green-800 bg-card">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-medium">Add Music</h4>
+                  <h4 className="font-medium flex items-center gap-2">
+                    <Music className="w-4 h-4 text-green-500" />
+                    Add Music
+                  </h4>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowSpotify(false)}
+                    className="hover:bg-destructive/10 hover:text-destructive"
                   >
                     <X className="w-4 h-4" />
                   </Button>
@@ -531,15 +547,19 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
 
           {/* Collaborator Search */}
           {showCollaboratorSearch && (
-            <Card>
+            <Card className="border-blue-200 dark:border-blue-800 bg-card">
               <CardContent className="p-4">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-medium">Add Collaborators</h4>
+                    <h4 className="font-medium flex items-center gap-2">
+                      <UserPlus className="w-4 h-4 text-blue-500" />
+                      Add Collaborators
+                    </h4>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setShowCollaboratorSearch(false)}
+                      className="hover:bg-destructive/10 hover:text-destructive"
                     >
                       <X className="w-4 h-4" />
                     </Button>
@@ -571,8 +591,8 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
                             key={user.id}
                             className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${
                               isAlreadyCollaborator
-                                ? 'bg-green-50 border-green-200 cursor-not-allowed'
-                                : 'cursor-pointer hover:bg-accent'
+                                ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 cursor-not-allowed'
+                                : 'cursor-pointer hover:bg-accent border-border'
                             }`}
                             onClick={() => !isAlreadyCollaborator && handleAddCollaborator(user)}
                           >
