@@ -282,18 +282,19 @@ export default function Home() {
                   </h3>
                   <div className="space-y-3">
                     {(Array.isArray(trendingTopics) ? trendingTopics : [
-                      { topic: "Poetry", count: 1234 },
-                      { topic: "Fiction", count: 987 },
-                      { topic: "Essays", count: 756 },
-                      { topic: "Short Stories", count: 654 }
+                      { rank: 1, topic: "Poetry", category: "general", hashtag: "#Poetry", posts: 1234 },
+                      { rank: 2, topic: "Fiction", category: "literary", hashtag: "#Fiction", posts: 987 },
+                      { rank: 3, topic: "Essays", category: "opinion", hashtag: "#Essays", posts: 756 },
+                      { rank: 4, topic: "Short Stories", category: "literary", hashtag: "#ShortStories", posts: 654 }
                     ]).slice(0, 4).map((trend: any) => (
                       <div
                         key={trend.rank}
                         className="hover:bg-secondary/50 p-2 rounded-lg cursor-pointer transition-colors"
                         data-testid={`trend-${trend.rank}`}
+                        onClick={() => window.location.href = `/search?q=${encodeURIComponent(trend.hashtag || trend.topic)}`}
                       >
                         <p className="text-sm text-muted-foreground">#{trend.rank} • Trending in {trend.category}</p>
-                        <p className="font-semibold">{trend.hashtag}</p>
+                        <p className="font-semibold">{trend.hashtag || `#${trend.topic}`}</p>
                         <p className="text-xs text-muted-foreground">{trend.posts} posts</p>
                       </div>
                     ))}
@@ -308,14 +309,17 @@ export default function Home() {
                   <div className="space-y-4">
                     {suggestedUsers && suggestedUsers.length > 0 ? suggestedUsers.map((suggestedUser: User) => (
                       <div key={suggestedUser.id} className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
+                        <div 
+                          className="flex items-center space-x-3 flex-1 cursor-pointer"
+                          onClick={() => window.location.href = `/profile/${suggestedUser.username}`}
+                        >
                           <img
                             src={getProfileImageUrl(suggestedUser.profileImageUrl)}
                             alt={suggestedUser.displayName}
                             className="w-10 h-10 rounded-full"
                           />
                           <div>
-                            <p className="font-semibold text-sm">
+                            <p className="font-semibold text-sm hover:text-primary transition-colors">
                               {suggestedUser.displayName}
                             </p>
                             <p className="text-xs text-muted-foreground">
@@ -323,13 +327,19 @@ export default function Home() {
                             </p>
                           </div>
                         </div>
-                        <Button
-                          size="sm"
-                          className="bg-primary text-primary-foreground hover:bg-primary/90"
-                          data-testid={`button-follow-${suggestedUser.username}`}
-                        >
-                          Follow
-                        </Button>
+                        {isAuthenticated && (
+                          <Button
+                            size="sm"
+                            className="bg-primary text-primary-foreground hover:bg-primary/90"
+                            data-testid={`button-follow-${suggestedUser.username}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.location.href = `/profile/${suggestedUser.username}`;
+                            }}
+                          >
+                            Follow
+                          </Button>
+                        )}
                       </div>
                     )) : (
                       <p className="text-sm text-muted-foreground text-center">No suggestions available</p>

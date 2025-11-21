@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { CheckCircle, Clock, MoreVertical, Edit, Trash2, Eye, UserPlus } from "lucide-react";
+import { CheckCircle, Clock, MoreVertical, Edit, Trash2, Eye, UserPlus, MoreHorizontal } from "lucide-react";
 import { useLocation } from "wouter";
 import { getProfileImageUrl } from "@/lib/defaultImages";
 import type { Post, User } from "@shared/schema";
@@ -21,6 +21,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+
 
 interface PostCardProps {
   post: Post & {
@@ -277,18 +279,15 @@ function PostCard({ post, isLiked, likesCount, isBookmarked, isReposted, reposts
       {/* Dropdown for post options */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <div 
+          <div
             className="absolute top-4 right-4 p-1 rounded-md bg-secondary hover:bg-secondary/70 z-10"
             onClick={(e) => e.stopPropagation()}
           >
             <MoreVertical className="w-4 h-4 text-muted-foreground" />
           </div>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuItem onClick={(e) => {
-            e.stopPropagation();
-            navigate(`/post/${post.id}`);
-          }}>
+        <DropdownMenuContent align="end" className="w-48" sideOffset={5}>
+          <DropdownMenuItem onClick={() => window.location.href = `/post/${post.id}`}>
             <Eye className="mr-2 h-4 w-4" />
             View Post
           </DropdownMenuItem>

@@ -687,18 +687,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Popular music posts route - must come before general :id route
-  // Get popular music from posts
-  app.get("/api/music/popular", async (req, res) => {
+  // Get popular music from posts - specific route for home page
+  app.get("/api/posts/popular-music", async (req, res) => {
     try {
-      const userId = req.session?.userId;
-      const musicPosts = await storage.getPopularMusicPosts(20, userId);
+      const { limit = 10 } = req.query;
+      
+      const musicPosts = await db
+        .select({
+          spotifyTrackData: posts.spotifyTrackData,
+          likesCount: posts.likesCount
+        })
+        .from(posts)
+        .where(and(
+          eq(posts.isPrivate, false),
+          sql`${posts.spotifyTrackData} IS NOT NULL`
+        ))
+        .orderBy(desc(posts.likesCount))
+        .limit(parseInt(limit as string));
 
-      // Extract unique Spotify tracks with proper formatting
+      // Extract unique Spotify tracks
       const tracks = musicPosts
         .filter(post => post.spotifyTrackData)
         .map(post => {
-          const trackData = post.spotifyTrackData;
+          const trackData = post.spotifyTrackData as any;
           return {
             id: trackData.id,
             name: trackData.name,
@@ -712,12 +723,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .filter((track, index, self) => 
           index === self.findIndex(t => t?.id === track?.id)
         )
-        .slice(0, 10);
+        .slice(0, parseInt(limit as string));
 
       res.json(tracks);
     } catch (error) {
       console.error("Error fetching popular music:", error);
-      res.status(500).json({ error: "Failed to fetch popular music" });
+      res.status(500).json([]);
     }
   });
 

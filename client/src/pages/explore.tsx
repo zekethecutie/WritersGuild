@@ -405,6 +405,10 @@ export default function Explore() {
                       key={topic.topic}
                       className="flex items-center justify-between hover:bg-secondary/50 p-2 rounded-lg cursor-pointer transition-colors"
                       data-testid={`genre-${index}`}
+                      onClick={() => {
+                        setSearchQuery(topic.topic);
+                        handleSearch();
+                      }}
                     >
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-muted-foreground">#{index + 1}</span>

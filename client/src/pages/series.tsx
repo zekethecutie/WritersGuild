@@ -241,17 +241,21 @@ export default function SeriesPage() {
 
   // Fetch series
   const {
-    data: seriesList = [],
+    data: seriesData = [],
     isLoading,
     error
   } = useQuery({
     queryKey: ["/api/series", { genre: selectedGenre !== "all" ? selectedGenre : undefined }],
-    queryFn: () => {
+    queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedGenre !== "all") params.append("genre", selectedGenre);
-      return fetch(`/api/series?${params}`).then(res => res.json());
+      const response = await fetch(`/api/series?${params}`);
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
     },
   });
+
+  const seriesList = Array.isArray(seriesData) ? seriesData : [];
 
   // Create series mutation
   const createSeriesMutation = useMutation({

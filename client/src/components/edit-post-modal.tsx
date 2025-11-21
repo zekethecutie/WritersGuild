@@ -515,6 +515,29 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
             </div>
           )}
 
+          {/* Spotify Track Display */}
+          {selectedTrack && (
+            <div>
+              <label className="text-sm font-medium">Music</label>
+              <div className="mt-2">
+                <SpotifyTrackDisplay
+                  track={selectedTrack}
+                  size="md"
+                  showPreview={true}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedTrack(null)}
+                  className="mt-2 text-destructive hover:text-destructive"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Remove track
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Spotify Search */}
           {showSpotify && (
             <Card className="border-green-200 dark:border-green-800 bg-card">
