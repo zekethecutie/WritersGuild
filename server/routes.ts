@@ -439,21 +439,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (collaboratorIds && collaboratorIds.length > 0) {
         for (const collaboratorId of collaboratorIds) {
           // Create collaborator invitation
-          await db.insert(postCollaborators).values({
+          const [collaboration] = await db.insert(postCollaborators).values({
             postId: newPost.id,
             collaboratorId,
             invitedById: userId,
             status: 'pending'
-          });
+          }).returning();
 
-          // Send notification to collaborator
+          // Send notification to collaborator with collaboration ID
           const notification = await storage.createNotification({
             userId: collaboratorId,
             type: 'collaboration_invite',
             actorId: userId,
             postId: newPost.id,
             isRead: false,
-            data: { postTitle: title || 'Untitled Post' }
+            data: { postTitle: title || 'Untitled Post', collaborationId: collaboration.id }
           });
 
           // Broadcast real-time notification

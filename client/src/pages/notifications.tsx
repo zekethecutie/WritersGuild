@@ -146,9 +146,9 @@ export default function NotificationsPage() {
     }
   };
 
-  const handleAcceptCollaboration = async (postId: string, notificationId: string) => {
+  const handleAcceptCollaboration = async (collaborationId: string, postId: string, notificationId: string) => {
     try {
-      const response = await fetch(`/api/posts/${postId}/collaborators/accept`, {
+      const response = await fetch(`/api/collaborations/${collaborationId}/accept`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -162,6 +162,8 @@ export default function NotificationsPage() {
           description: "Collaboration accepted!"
         });
         markAsRead(notificationId);
+        // Invalidate post query to refresh collaborators list
+        fetch(`/api/posts/${postId}`, { credentials: 'include' }).then(r => r.json());
         fetchNotifications();
       } else {
         throw new Error('Failed to accept collaboration');
@@ -176,9 +178,9 @@ export default function NotificationsPage() {
     }
   };
 
-  const handleRejectCollaboration = async (postId: string, notificationId: string) => {
+  const handleRejectCollaboration = async (collaborationId: string, postId: string, notificationId: string) => {
     try {
-      const response = await fetch(`/api/posts/${postId}/collaborators/reject`, {
+      const response = await fetch(`/api/collaborations/${collaborationId}/decline`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -351,7 +353,7 @@ export default function NotificationsPage() {
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleAcceptCollaboration(notification.post!.id, notification.id);
+                            handleAcceptCollaboration((notification as any).data?.collaborationId, notification.post!.id, notification.id);
                           }}
                         >
                           Accept
@@ -361,7 +363,7 @@ export default function NotificationsPage() {
                           variant="outline"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleRejectCollaboration(notification.post!.id, notification.id);
+                            handleRejectCollaboration((notification as any).data?.collaborationId, notification.post!.id, notification.id);
                           }}
                         >
                           Decline
