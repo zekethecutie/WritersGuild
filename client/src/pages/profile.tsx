@@ -172,6 +172,9 @@ export default function Profile() {
     enabled: !!profileUsername,
   });
 
+  // Compute isOwnProfile early (needed for queries)
+  const isOwnProfile = currentUser?.id === profileUser?.id;
+
   // Fetch user stats for real follower/following counts
   const { data: userStats } = useQuery({
     queryKey: ["/api/users", profileUser?.id, "stats"],
@@ -223,8 +226,6 @@ export default function Profile() {
       }, 500);
     }
   }, [profileError, toast]);
-
-  const isOwnProfile = currentUser?.id === profileUser?.id;
 
   // Profile picture upload mutation
   const profilePictureMutation = useMutation({
