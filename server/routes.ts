@@ -1459,7 +1459,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { authorId } = req.query;
 
-      let query = db
+      let whereConditions = [eq(series.isPublished, true)];
+      
+      if (authorId && typeof authorId === 'string') {
+        whereConditions.push(eq(series.authorId, authorId));
+      }
+
+      const query = db
         .select({
           series: series,
           author: {
@@ -1472,13 +1478,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .from(series)
         .leftJoin(usersTable, eq(series.authorId, usersTable.id))
-        .where(eq(series.isPublished, true))
+        .where(and(...whereConditions))
         .orderBy(desc(series.createdAt))
         .limit(50);
-
-      if (authorId && typeof authorId === 'string') {
-        query = query.where(eq(series.authorId, authorId)) as any;
-      }
 
       const result = await query;
 

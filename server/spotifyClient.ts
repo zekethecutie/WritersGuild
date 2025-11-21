@@ -10,7 +10,7 @@ export async function getSpotifyClient(): Promise<SpotifyApi> {
 
   try {
     // First try to get from Replit secrets
-    const clientId = process.env.SPOTIFY_CLIENT_ID;
+    const clientId = process.env.SPOTIFY_CLIENT_API || process.env.SPOTIFY_CLIENT_ID;
     const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
 
     if (clientId && clientSecret) {

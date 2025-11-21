@@ -141,6 +141,7 @@ function AppRouter() {
       <Route path="/profile/:username" component={Profile} />
       <Route path="/settings" component={isAuthenticated ? SettingsPage : Landing} />
       <Route path="/guidelines" component={Guidelines} />
+      <Route path="/rules" component={Guidelines} />
       <Route path="/admin-test" component={AdminTest} />
       <Route component={NotFound} />
     </Router>

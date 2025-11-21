@@ -389,7 +389,15 @@ export default function PostPage() {
                       {/* Show collaborators */}
                       {post.collaborators && post.collaborators.length > 0 && (
                         <span className="text-sm text-muted-foreground">
-                          & {post.collaborators.map((c: any) => c.displayName).join(', ')}
+                          &{' '}
+                          {post.collaborators.map((c: any, idx: number) => (
+                            <span key={c.id}>
+                              <Link href={`/profile/${c.username}`} className="hover:underline">
+                                @{c.username}
+                              </Link>
+                              {idx < post.collaborators.length - 1 && ', '}
+                            </span>
+                          ))}
                         </span>
                       )}
                     </div>
