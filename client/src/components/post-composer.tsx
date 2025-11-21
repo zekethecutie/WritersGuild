@@ -148,7 +148,7 @@ export default function PostComposer() {
     setContent(newContent);
 
     // Get cursor position
-    const cursorPos = contentTextareaRef.current ? .selectionStart || 0;
+    const cursorPos = contentTextareaRef.current?.selectionStart || 0;
 
     // Look for @ symbol before cursor
     const textBeforeCursor = newContent.substring(0, cursorPos);
@@ -182,9 +182,9 @@ export default function PostComposer() {
 
     // Focus back on textarea
     setTimeout(() => {
-      contentTextareaRef.current ? .focus();
+      contentTextareaRef.current?.focus();
       const newCursorPos = mentionCursorPos + user.username.length + 2;
-      contentTextareaRef.current ? .setSelectionRange(newCursorPos, newCursorPos);
+      contentTextareaRef.current?.setSelectionRange(newCursorPos, newCursorPos);
     }, 0);
   };
 
@@ -447,9 +447,9 @@ export default function PostComposer() {
       spotifyTrackData: spotifyTrack ? {
         id: spotifyTrack.id,
         name: spotifyTrack.name,
-        artist: spotifyTrack.artists ? .[0] ? .name || 'Unknown Artist',
-        album: spotifyTrack.album ? .name,
-        image: spotifyTrack.album ? .images ? .[0] ? .url,
+        artist: spotifyTrack.artists?.[0]?.name || 'Unknown Artist',
+        album: spotifyTrack.album?.name,
+        image: spotifyTrack.album?.images?.[0]?.url,
         preview_url: spotifyTrack.preview_url,
         external_urls: spotifyTrack.external_urls
       } : undefined,

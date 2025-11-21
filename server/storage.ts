@@ -1860,40 +1860,6 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getChapterById(chapterId: string): Promise<any> {
-    try {
-      const [chapter] = await db.select()
-        .from(chapters)
-        .where(eq(chapters.id, chapterId));
-
-      return chapter || null;
-    } catch (error) {
-      console.error("Error fetching chapter:", error);
-      throw error;
-    }
-  }
-
-  async updateChapter(chapterId: string, updateData: any): Promise<any> {
-    try {
-      const [updated] = await db
-        .update(chapters)
-        .set({
-          title: updateData.title,
-          content: updateData.content,
-          chapterNumber: updateData.chapterNumber,
-          wordCount: updateData.wordCount,
-          updatedAt: new Date()
-        })
-        .where(eq(chapters.id, chapterId))
-        .returning();
-
-      return updated;
-    } catch (error) {
-      console.error("Error updating chapter:", error);
-      throw error;
-    }
-  }
-
   async reactToSeries(userId: string, seriesId: string, reaction: string): Promise<any> {
     return {
       id: crypto.randomUUID(),
