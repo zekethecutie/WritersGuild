@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { CheckCircle, Clock, MoreVertical, Edit, Trash2 } from "lucide-react";
+import { CheckCircle, Clock, MoreVertical, Edit, Trash2, Eye, UserPlus } from "lucide-react";
 import { useLocation } from "wouter";
 import { getProfileImageUrl } from "@/lib/defaultImages";
 import type { Post, User } from "@shared/schema";
