@@ -1052,7 +1052,7 @@ export default function PostComposer() {
               size="sm"
               onClick={() => setShowCollaboratorSearch(!showCollaboratorSearch)}
               className={showCollaboratorSearch || collaborators.length > 0 ? "bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700" : ""}
-              title="Add Collaborators"
+              title={collaborators.length > 0 ? `${collaborators.length} collaborator${collaborators.length !== 1 ? 's' : ''} added` : "Add collaborators"}
               data-testid="button-add-collaborators"
             >
               <UserPlus className="w-4 h-4 mr-2" />

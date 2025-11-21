@@ -1427,6 +1427,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get my published posts (articles)
+  app.get("/api/my-posts", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const posts = await storage.getPostsByUser(userId, 100, 0);
+      res.json(posts || []);
+    } catch (error) {
+      console.error("Error fetching user posts:", error);
+      res.status(500).json({ error: "Failed to fetch user posts" });
+    }
+  });
+
   // Get my stories (user's own stories) - must come before /:id route
   app.get("/api/series/my-stories", requireAuth, async (req: any, res) => {
     try {

@@ -24,7 +24,8 @@ import {
   Filter,
   Search,
   Edit3,
-  X
+  X,
+  MessageSquare
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { getProfileImageUrl } from "@/lib/defaultImages";
@@ -107,26 +108,26 @@ function MyStoriesSection() {
   const queryClient = useQueryClient();
 
   const { data: myStories = [], isLoading } = useQuery({
-    queryKey: ["/api/series/my-stories"],
+    queryKey: ["/api/my-posts"],
     queryFn: async () => {
       try {
-        const response = await apiRequest("GET", "/api/series/my-stories");
+        const response = await apiRequest("GET", "/api/my-posts");
         return Array.isArray(response) ? response : [];
       } catch (error) {
-        console.error("Error fetching my stories:", error);
+        console.error("Error fetching my posts:", error);
         return [];
       }
     },
     enabled: !!user,
   });
 
-  const deleteSeriesMutation = useMutation({
-    mutationFn: async (seriesId: string) => {
-      return apiRequest("DELETE", `/api/series/${seriesId}`);
+  const deletePostMutation = useMutation({
+    mutationFn: async (postId: string) => {
+      return apiRequest("DELETE", `/api/posts/${postId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/series/my-stories"] });
-      toast({ title: "Success", description: "Series deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/my-posts"] });
+      toast({ title: "Success", description: "Post deleted successfully" });
     },
   });
 
@@ -147,83 +148,73 @@ function MyStoriesSection() {
       <Card className="p-8 text-center border-2 border-dashed">
         <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
         <h3 className="text-lg font-semibold mb-2">No stories yet</h3>
-        <p className="text-muted-foreground mb-4">Start your writing journey by creating your first series</p>
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          Create Your First Story
+        <p className="text-muted-foreground mb-4">Start your writing journey by publishing your first article</p>
+        <Button asChild>
+          <a href="/">
+            <Plus className="w-4 h-4 mr-2" />
+            Write Your First Story
+          </a>
         </Button>
       </Card>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {Array.isArray(myStories) && myStories.length > 0 && myStories.map((story: any) => (
-        <Card key={story.id} className="group hover:shadow-lg transition-shadow">
-          <div className="aspect-[3/4] bg-gradient-to-br from-primary/20 to-accent/20 rounded-t-lg flex items-center justify-center relative">
-            {story.coverImageUrl ? (
+    <div className="space-y-3">
+      {Array.isArray(myStories) && myStories.length > 0 && myStories.map((post: any) => (
+        <Card key={post.id} className="group hover:shadow-lg transition-shadow p-4">
+          <div className="flex gap-4">
+            {post.coverImageUrl && (
               <img
-                src={story.coverImageUrl}
-                alt={story.title}
-                className="w-full h-full object-cover rounded-t-lg"
+                src={post.coverImageUrl}
+                alt={post.title}
+                className="w-24 h-24 rounded-lg object-cover flex-shrink-0"
               />
-            ) : (
-              <BookOpen className="w-16 h-16 text-muted-foreground" />
             )}
-            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Button size="sm" variant="secondary">
-                <Edit3 className="w-4 h-4" />
-              </Button>
-            </div>
-            {story.isCompleted && (
-              <Badge className="absolute top-2 left-2 bg-green-500/10 text-green-500 border-green-500/30">
-                Complete
-              </Badge>
-            )}
-          </div>
-          <CardContent className="p-4">
-            <div className="flex items-start justify-between mb-2">
-              <h3 className="font-semibold text-lg line-clamp-1">{story.title}</h3>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => deleteSeriesMutation.mutate(story.id)}
-                className="opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between mb-2 gap-2">
+                <h3 className="font-semibold text-base line-clamp-2">{post.title}</h3>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => deletePostMutation.mutate(post.id)}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                  data-testid="button-delete-post"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
 
-            <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-              {story.description}
-            </p>
+              <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                {post.excerpt || post.content?.substring(0, 100)}
+              </p>
 
-            <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
-              <div className="flex items-center gap-3">
-                <span className="flex items-center gap-1">
-                  <BookOpen className="w-3 h-3" />
-                  {story.chaptersCount}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Users className="w-3 h-3" />
-                  {story.followersCount}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Heart className="w-3 h-3" />
-                  {story.likesCount}
-                </span>
+              <div className="flex items-center justify-between text-xs text-muted-foreground mb-3 gap-3 flex-wrap">
+                <div className="flex items-center gap-3">
+                  <span className="flex items-center gap-1">
+                    <Heart className="w-3 h-3" />
+                    {post.likesCount || 0}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <MessageSquare className="w-3 h-3" />
+                    {post.commentsCount || 0}
+                  </span>
+                  <span className="text-xs">
+                    {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" asChild>
+                  <a href={`/post/${post.id}`}>Read</a>
+                </Button>
+                <Button size="sm" asChild>
+                  <a href={`/post/${post.id}/edit`}>Edit</a>
+                </Button>
               </div>
             </div>
-
-            <div className="flex gap-2">
-              <Button size="sm" className="flex-1" asChild>
-                <a href={`/story/${story.id}`}>Manage</a>
-              </Button>
-              <Button size="sm" variant="outline" asChild>
-                <a href={`/story/${story.id}/edit`}>Edit</a>
-              </Button>
-            </div>
-          </CardContent>
+          </div>
         </Card>
       ))}
     </div>
