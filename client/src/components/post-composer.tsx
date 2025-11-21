@@ -438,6 +438,12 @@ export default function PostComposer() {
       mentions: Array.from(mentions),
       hashtags: Array.from(hashtags),
       collaborators: collaborators.length > 0 ? collaborators.map(c => c.id) : undefined,
+      spotifyTrackData: spotifyTrack ? {
+        name: spotifyTrack.name,
+        artist: spotifyTrack.artist,
+        imageUrl: spotifyTrack.imageUrl,
+        spotifyId: spotifyTrack.id,
+      } : undefined,
     };
 
     createPostMutation.mutate(postData);
@@ -898,6 +904,120 @@ export default function PostComposer() {
                 </CardContent>
               </Card>
             )}
+
+        {/* Spotify Track Display */}
+        {spotifyTrack && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Music className="w-4 h-4 text-green-500" />
+              <span className="text-sm font-semibold">Selected Track</span>
+            </div>
+            <div className="flex items-center bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3 justify-between">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                {spotifyTrack.imageUrl && (
+                  <img
+                    src={spotifyTrack.imageUrl}
+                    alt={spotifyTrack.name}
+                    className="w-12 h-12 rounded border border-green-300"
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate">{spotifyTrack.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {spotifyTrack.artist}
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSpotifyTrack(null)}
+                className="ml-2 h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                data-testid="button-remove-spotify"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Spotify Search */}
+        {showSpotifySearch && (
+          <Card className="mb-4 border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/20">
+            <CardContent className="pt-4">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-semibold text-sm flex items-center gap-2">
+                    <Music className="w-4 h-4 text-green-500" />
+                    Search Spotify Tracks
+                  </h4>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setShowSpotifySearch(false);
+                      setSpotifySearchQuery("");
+                    }}
+                    className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                  <Input
+                    placeholder="Search by song name, artist, or album..."
+                    value={spotifySearchQuery}
+                    onChange={(e) => setSpotifySearchQuery(e.target.value)}
+                    className="pl-10 bg-background"
+                    data-testid="input-spotify-search"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="text-center py-8 border rounded-lg bg-background">
+                  <Music className="w-12 h-12 mx-auto text-muted-foreground/50 mb-2" />
+                  <p className="text-sm text-muted-foreground font-medium">Search for tracks</p>
+                  <p className="text-xs text-muted-foreground mt-1">Type to find songs to attach to your article</p>
+                </div>
+
+                {spotifyTrack && (
+                  <div className="pt-3 border-t border-green-200 dark:border-green-800">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-foreground flex items-center gap-1">
+                        <Music className="w-4 h-4 text-green-500" />
+                        Selected
+                      </p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSpotifyTrack(null)}
+                        className="h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                    <div className="mt-2 p-2 bg-background border rounded-lg flex items-center gap-2">
+                      {spotifyTrack.imageUrl && (
+                        <img
+                          src={spotifyTrack.imageUrl}
+                          alt={spotifyTrack.name}
+                          className="w-8 h-8 rounded"
+                        />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate">{spotifyTrack.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{spotifyTrack.artist}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <Separator />
 
         {/* Toolbar and Actions */}
@@ -937,6 +1057,18 @@ export default function PostComposer() {
             >
               <UserPlus className="w-4 h-4 mr-2" />
               Collaborators {collaborators.length > 0 && `(${collaborators.length})`}
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowSpotifySearch(!showSpotifySearch)}
+              className={showSpotifySearch || spotifyTrack ? "bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700" : ""}
+              title="Attach Spotify Track"
+              data-testid="button-add-spotify"
+            >
+              <Music className="w-4 h-4 mr-2" />
+              Spotify Track {spotifyTrack && "✓"}
             </Button>
           </div>
 
