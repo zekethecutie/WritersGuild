@@ -2636,6 +2636,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Settings endpoints
+  app.put('/api/user/profile', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { displayName, bio, location, website } = req.body;
+
+      const updatedUser = await storage.updateUserProfile(userId, {
+        displayName,
+        bio,
+        location,
+        website,
+      });
+      res.json(updatedUser);
+    } catch (error: any) {
+      console.error("Error updating profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  app.put('/api/user/privacy', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { profileVisibility, showEmail, showFollowers, showFollowing, allowMessages, allowCollaborations } = req.body;
+
+      // Store privacy settings in session for now (would be database in production)
+      if (!req.session) req.session = {};
+      req.session.privacySettings = {
+        profileVisibility,
+        showEmail,
+        showFollowers,
+        showFollowing,
+        allowMessages,
+        allowCollaborations,
+      };
+
+      res.json({ success: true, message: "Privacy settings updated" });
+    } catch (error: any) {
+      console.error("Error updating privacy settings:", error);
+      res.status(500).json({ message: "Failed to update privacy settings" });
+    }
+  });
+
+  app.put('/api/user/notifications', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { emailNotifications, pushNotifications, commentNotifications, followNotifications, collaborationNotifications, weeklyDigest } = req.body;
+
+      // Store notification settings in session for now (would be database in production)
+      if (!req.session) req.session = {};
+      req.session.notificationSettings = {
+        emailNotifications,
+        pushNotifications,
+        commentNotifications,
+        followNotifications,
+        collaborationNotifications,
+        weeklyDigest,
+      };
+
+      res.json({ success: true, message: "Notification settings updated" });
+    } catch (error: any) {
+      console.error("Error updating notification settings:", error);
+      res.status(500).json({ message: "Failed to update notification settings" });
+    }
+  });
+
+  app.put('/api/user/theme', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { colorScheme, fontSize, compactMode } = req.body;
+
+      // Store theme settings in session for now (would be database in production)
+      if (!req.session) req.session = {};
+      req.session.themeSettings = {
+        colorScheme,
+        fontSize,
+        compactMode,
+      };
+
+      res.json({ success: true, message: "Theme settings updated" });
+    } catch (error: any) {
+      console.error("Error updating theme settings:", error);
+      res.status(500).json({ message: "Failed to update theme settings" });
+    }
+  });
+
   // Create HTTP server
   const httpServer = createServer(app);
 
