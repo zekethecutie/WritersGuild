@@ -11,7 +11,7 @@ import MemoryStore from "memorystore";
 import rateLimit from "express-rate-limit";
 import { eq, desc, asc, like, ilike, and, or, isNull, sql, gt, lt, gte, lte, ne, count, inArray } from "drizzle-orm";
 import { db } from "./db"; // Assuming db is your Drizzle client instance
-import { users, posts, comments, notifications, series, chapters, bookmarks, likes, follows, reposts, postCollaborators } from "../shared/schema"; // Import necessary tables and schema
+import { users as usersTable, posts, comments, notifications, series, chapters, bookmarks, likes, follows, reposts, postCollaborators } from "../shared/schema"; // Import necessary tables and schema
 import { insertPostSchema, insertCommentSchema } from "@shared/schema";
 import { DatabaseStorage } from "./storage";
 import { getSpotifyClient } from "./spotifyClient";
@@ -339,7 +339,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/users/:username', async (req, res) => {
+  // Search users
+  app.get("/api/users/search", async (req, res) => {
+    try {
+      const { q } = req.query;
+
+      if (!q || typeof q !== 'string') {
+        return res.json([]);
+      }
+
+      const searchTerm = q.toLowerCase().trim();
+
+      const users = await db
+        .select({
+          id: usersTable.id,
+          username: usersTable.username,
+          displayName: usersTable.displayName,
+          profileImageUrl: usersTable.profileImageUrl,
+        })
+        .from(usersTable)
+        .where(
+          sql`LOWER(${usersTable.username}) LIKE ${`%${searchTerm}%`} OR LOWER(${usersTable.displayName}) LIKE ${`%${searchTerm}%`}`
+        )
+        .limit(10);
+
+      res.json(users);
+    } catch (error) {
+      console.error("User search error:", error);
+      res.status(500).json({ message: "Failed to search users" });
+    }
+  });
+
+  // Get user profile
+  app.get("/api/users/:username", async (req, res) => {
     try {
       const { username } = req.params;
       const user = await storage.getUserByUsername(username);
@@ -543,16 +575,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           createdAt: posts.createdAt,
           updatedAt: posts.updatedAt,
           // Include author data directly in the query
-          authorDisplayName: users.displayName,
-          authorUsername: users.username,
-          authorProfileImageUrl: users.profileImageUrl,
-          authorIsVerified: users.isVerified,
-          authorIsAdmin: users.isAdmin,
-          authorIsSuperAdmin: users.isSuperAdmin,
-          authorUserRole: users.userRole,
+          authorDisplayName: usersTable.displayName,
+          authorUsername: usersTable.username,
+          authorProfileImageUrl: usersTable.profileImageUrl,
+          authorIsVerified: usersTable.isVerified,
+          authorIsAdmin: usersTable.isAdmin,
+          authorIsSuperAdmin: usersTable.isSuperAdmin,
+          authorUserRole: usersTable.userRole,
         })
         .from(posts)
-        .leftJoin(users, eq(posts.authorId, users.id))
+        .leftJoin(usersTable, eq(posts.authorId, usersTable.id))
         .where(eq(posts.isPrivate, false))
         .orderBy(desc(posts.createdAt))
         .limit(50);
@@ -587,13 +619,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .select({
           postId: postCollaborators.postId,
           collaboratorId: postCollaborators.collaboratorId,
-          collaboratorUsername: users.username,
-          collaboratorDisplayName: users.displayName,
-          collaboratorProfileImageUrl: users.profileImageUrl,
+          collaboratorUsername: usersTable.username,
+          collaboratorDisplayName: usersTable.displayName,
+          collaboratorProfileImageUrl: usersTable.profileImageUrl,
           status: postCollaborators.status
         })
         .from(postCollaborators)
-        .leftJoin(users, eq(postCollaborators.collaboratorId, users.id))
+        .leftJoin(usersTable, eq(postCollaborators.collaboratorId, usersTable.id))
         .where(and(
           inArray(postCollaborators.postId, postIds),
           eq(postCollaborators.status, 'accepted')
@@ -717,16 +749,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           createdAt: posts.createdAt,
           updatedAt: posts.updatedAt,
           // Author data
-          authorDisplayName: users.displayName,
-          authorUsername: users.username,
-          authorProfileImageUrl: users.profileImageUrl,
-          authorIsVerified: users.isVerified,
-          authorIsAdmin: users.isAdmin,
-          authorIsSuperAdmin: users.isSuperAdmin,
-          authorUserRole: users.userRole,
+          authorDisplayName: usersTable.displayName,
+          authorUsername: usersTable.username,
+          authorProfileImageUrl: usersTable.profileImageUrl,
+          authorIsVerified: usersTable.isVerified,
+          authorIsAdmin: usersTable.isAdmin,
+          authorIsSuperAdmin: usersTable.isSuperAdmin,
+          authorUserRole: usersTable.userRole,
         })
         .from(posts)
-        .leftJoin(users, eq(posts.authorId, users.id))
+        .leftJoin(usersTable, eq(posts.authorId, usersTable.id))
         .where(eq(posts.id, postId))
         .limit(1);
 
@@ -1310,17 +1342,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const searchResults = await db
         .select({
-          id: users.id,
-          username: users.username,
-          displayName: users.displayName,
-          profileImageUrl: users.profileImageUrl,
-          bio: users.bio,
+          id: usersTable.id,
+          username: usersTable.username,
+          displayName: usersTable.displayName,
+          profileImageUrl: usersTable.profileImageUrl,
+          bio: usersTable.bio,
         })
-        .from(users)
+        .from(usersTable)
         .where(
           or(
-            ilike(users.username, `%${searchQuery}%`),
-            ilike(users.displayName, `%${searchQuery}%`)
+            ilike(usersTable.username, `%${searchQuery}%`),
+            ilike(usersTable.displayName, `%${searchQuery}%`)
           )
         )
         .limit(10);
@@ -1420,15 +1452,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .select({
           series: series,
           author: {
-            id: users.id,
-            username: users.username,
-            displayName: users.displayName,
-            profileImageUrl: users.profileImageUrl,
-            isVerified: users.isVerified,
+            id: usersTable.id,
+            username: usersTable.username,
+            displayName: usersTable.displayName,
+            profileImageUrl: usersTable.profileImageUrl,
+            isVerified: usersTable.isVerified,
           },
         })
         .from(series)
-        .leftJoin(users, eq(series.authorId, users.id))
+        .leftJoin(usersTable, eq(series.authorId, usersTable.id))
         .where(eq(series.isPublished, true))
         .orderBy(desc(series.createdAt))
         .limit(50);
@@ -1463,15 +1495,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .select({
           series: series,
           author: {
-            id: users.id,
-            username: users.username,
-            displayName: users.displayName,
-            profileImageUrl: users.profileImageUrl,
-            isVerified: users.isVerified,
+            id: usersTable.id,
+            username: usersTable.username,
+            displayName: usersTable.displayName,
+            profileImageUrl: usersTable.profileImageUrl,
+            isVerified: usersTable.isVerified,
           },
         })
         .from(series)
-        .leftJoin(users, eq(series.authorId, users.id))
+        .leftJoin(usersTable, eq(series.authorId, usersTable.id))
         .where(eq(series.authorId, userId))
         .orderBy(desc(series.createdAt));
 
@@ -1976,14 +2008,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const collaborators = await db
         .select({
-          id: users.id,
-          username: users.username,
-          displayName: users.displayName,
-          profileImageUrl: users.profileImageUrl,
+          id: usersTable.id,
+          username: usersTable.username,
+          displayName: usersTable.displayName,
+          profileImageUrl: usersTable.profileImageUrl,
           status: postCollaborators.status
         })
         .from(postCollaborators)
-        .leftJoin(users, eq(postCollaborators.collaboratorId, users.id))
+        .leftJoin(usersTable, eq(postCollaborators.collaboratorId, usersTable.id))
         .where(eq(postCollaborators.postId, postId));
 
       res.json(collaborators);
@@ -2026,7 +2058,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin routes
   app.get('/api/admin/stats', requireAuth, requireAdmin, async (req: any, res) => {
     try {
-      const userCount = await db.select().from(users);
+      const userCount = await db.select().from(usersTable);
       const postCount = await db.select().from(posts);
       const commentCount = await db.select().from(comments);
 
@@ -2049,8 +2081,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if user already exists
       const existingUser = await db
         .select()
-        .from(users)
-        .where(or(eq(users.username, username), eq(users.email, email)))
+        .from(usersTable)
+        .where(or(eq(usersTable.username, username), eq(usersTable.email, email)))
         .limit(1);
 
       if (existingUser.length > 0) {
@@ -2059,7 +2091,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create test user
       const hashedPassword = await bcrypt.hash('testpassword123', 10);
-      const [newUser] = await db.insert(users).values({
+      const [newUser] = await db.insert(usersTable).values({
         id: crypto.randomUUID(),
         username,
         displayName,

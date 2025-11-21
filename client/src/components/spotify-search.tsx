@@ -150,7 +150,7 @@ export function SpotifySearch({ onTrackSelect, selectedTrack, placeholder, class
           value={searchQuery}
           onChange={(e) => handleSearch(e.target.value)}
           onFocus={() => setShowResults(true)}
-          className="pl-10"
+          className="pl-10 bg-background"
         />
       </div>
 
