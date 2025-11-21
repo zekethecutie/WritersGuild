@@ -347,11 +347,17 @@ export default function SeriesPage() {
     });
   };
 
-  const filteredSeries = seriesList.filter((series: Series) =>
-    series.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    series.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    series.author.displayName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter series based on search and genre
+  const filteredSeries = Array.isArray(seriesList) ? seriesList.filter((series: any) => {
+    const matchesSearch = !searchQuery ||
+      series.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      series.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      series.author?.displayName?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesGenre = selectedGenre === "all" || series.genre === selectedGenre;
+
+    return matchesSearch && matchesGenre;
+  }) : [];
 
   const genres = ["Romance", "Fantasy", "Mystery", "Sci-Fi", "Drama", "Comedy", "Horror", "Adventure"];
 

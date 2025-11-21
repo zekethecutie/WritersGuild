@@ -1039,24 +1039,37 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async getSuggestedUsers(currentUserId: string, limit: number = 5): Promise<User[]> {
-    const result = await db
-      .select()
-      .from(users)
-      .where(
-        and(
-          ne(users.id, currentUserId),
-          sql`NOT EXISTS (
-            SELECT 1 FROM ${follows}
-            WHERE ${follows.followerId} = ${currentUserId}
-            AND ${follows.followingId} = ${users.id}
-          )`
+  async getSuggestedUsers(currentUserId: string, limit: number = 5): Promise<any[]> {
+    try {
+      const suggestedUsers = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          displayName: users.displayName,
+          profileImageUrl: users.profileImageUrl,
+          bio: users.bio,
+          isVerified: users.isVerified,
+          followersCount: sql<number>`(
+            SELECT COUNT(*) FROM ${follows} WHERE ${follows.followingId} = ${users.id}
+          )`,
+        })
+        .from(users)
+        .where(
+          and(
+            ne(users.id, currentUserId),
+            sql`${users.id} NOT IN (
+              SELECT ${follows.followingId} FROM ${follows} WHERE ${follows.followerId} = ${currentUserId}
+            )`
+          )
         )
-      )
-      .orderBy(desc(users.followersCount))
-      .limit(limit);
+        .orderBy(desc(sql<number>`(SELECT COUNT(*) FROM ${follows} WHERE ${follows.followingId} = ${users.id})`))
+        .limit(limit);
 
-    return result;
+      return suggestedUsers;
+    } catch (error) {
+      console.error('Error fetching suggested users:', error);
+      return [];
+    }
   }
 
   async getTrendingTopics(): Promise<{ rank: number; category: string; hashtag: string; posts: string }[]> {

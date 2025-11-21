@@ -860,30 +860,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const repostedPosts = await storage.getUserReposts(userId);
 
-      // Fetch author data for each post
+      // Fetch author data and collaborators for each post
       const postsWithAuthors = await Promise.all(
         repostedPosts.map(async (post) => {
           const author = await storage.getUser(post.authorId);
+          const collaborators = await storage.getPostCollaborators(post.id);
 
           // Get engagement data for current user if logged in
           let isLiked = false;
           let isBookmarked = false;
-          let isReposted = false;
+          let isReposted = true; // Always true for reposts page
 
           if (currentUserId) {
-            const [hasLiked, hasBookmarked, hasReposted] = await Promise.all([
+            const [hasLiked, hasBookmarked] = await Promise.all([
               storage.hasUserLikedPost(currentUserId, post.id),
               storage.isPostBookmarked(currentUserId, post.id),
-              storage.hasUserReposted(currentUserId, post.id),
             ]);
             isLiked = hasLiked;
             isBookmarked = hasBookmarked;
-            isReposted = hasReposted;
           }
 
           return {
             ...post,
             author,
+            collaborators,
             isLiked,
             isBookmarked,
             isReposted,
@@ -1241,9 +1241,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (isReposted) {
         await storage.unrepost(userId, postId);
+        
+        // Decrement repost count
+        await db
+          .update(posts)
+          .set({ repostsCount: sql`${posts.repostsCount} - 1` })
+          .where(eq(posts.id, postId));
+        
         res.json({ reposted: false, message: "Repost removed" });
       } else {
         const repost = await storage.repostPost(userId, postId, comment);
+
+        // Increment repost count
+        await db
+          .update(posts)
+          .set({ repostsCount: sql`${posts.repostsCount} + 1` })
+          .where(eq(posts.id, postId));
 
         // Get post to find the author for notification
         const post = await storage.getPost(postId);
@@ -1459,10 +1472,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { authorId } = req.query;
 
-      let whereConditions = [eq(series.isPublished, true)];
+      let whereCondition;
       
       if (authorId && typeof authorId === 'string') {
-        whereConditions.push(eq(series.authorId, authorId));
+        whereCondition = and(eq(series.isPrivate, false), eq(series.authorId, authorId));
+      } else {
+        whereCondition = eq(series.isPrivate, false);
       }
 
       const query = db
@@ -1478,7 +1493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .from(series)
         .leftJoin(usersTable, eq(series.authorId, usersTable.id))
-        .where(and(...whereConditions))
+        .where(whereCondition)
         .orderBy(desc(series.createdAt))
         .limit(50);
 

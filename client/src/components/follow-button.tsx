@@ -68,8 +68,13 @@ export default function FollowButton({
           });
 
       if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(errorData || 'Failed to update follow status');
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch {
+          errorData = { message: 'Failed to update follow status' };
+        }
+        throw new Error(errorData.message || 'Failed to update follow status');
       }
 
       return response.json();

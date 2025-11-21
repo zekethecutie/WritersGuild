@@ -677,9 +677,9 @@ export default function Profile() {
                 <div className="w-16 h-16 bg-muted rounded-xl flex items-center justify-center mb-4 mx-auto">
                   <Heart className="w-8 h-8 text-muted-foreground" />
                 </div>
-                <h3 className="text-lg font-semibold mb-2">No likes yet</h3>
+                <h3 className="text-lg font-semibold mb-2">Coming Soon</h3>
                 <p className="text-muted-foreground">
-                  Posts liked by {isOwnProfile ? "you" : profileUser.firstName} will appear here
+                  Liked posts will appear here soon
                 </p>
               </div>
             </TabsContent>
