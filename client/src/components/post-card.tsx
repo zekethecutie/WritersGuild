@@ -87,7 +87,7 @@ function PostCard({ post }: PostCardProps) {
 
   return (
     <Card 
-      className="overflow-hidden cursor-pointer hover-elevate transition-all border-border"
+      className="overflow-hidden cursor-pointer hover-elevate transition-all border-border post-card-hover"
       onClick={handleCardClick}
       data-testid={`card-post-${post.id}`}
     >
