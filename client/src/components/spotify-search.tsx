@@ -150,13 +150,13 @@ export function SpotifySearch({ onTrackSelect, selectedTrack, placeholder, class
           value={searchQuery}
           onChange={(e) => handleSearch(e.target.value)}
           onFocus={() => setShowResults(true)}
-          className="pl-10 bg-background"
+          className="pl-10 bg-card border-border"
         />
       </div>
 
       {/* Search Results */}
       {showResults && (searchQuery || isLoading) && (
-        <Card className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border shadow-lg">
+        <Card className="absolute top-full left-0 right-0 z-50 mt-1 bg-card border shadow-lg">
           <ScrollArea className="max-h-80">
             <div className="p-2">
               {isLoading && (

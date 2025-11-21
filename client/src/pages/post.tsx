@@ -379,12 +379,18 @@ export default function PostPage() {
                     href={`/profile/${author.username}`}
                     className="hover:text-foreground transition-colors"
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-base" data-testid="text-author-name">
                         {author.displayName || 'Unknown Author'}
                       </span>
                       {author.isVerified && (
                         <CheckCircle className="w-4 h-4 text-blue-500" />
+                      )}
+                      {/* Show collaborators */}
+                      {post.collaborators && post.collaborators.length > 0 && (
+                        <span className="text-sm text-muted-foreground">
+                          & {post.collaborators.map((c: any) => c.displayName).join(', ')}
+                        </span>
                       )}
                     </div>
                   </Link>
@@ -424,12 +430,8 @@ export default function PostPage() {
             <div 
               className="prose prose-lg dark:prose-invert max-w-none mb-12 prose-headings:font-bold prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-p:leading-relaxed prose-p:text-foreground/90 prose-li:text-foreground/90 prose-strong:text-foreground prose-a:text-primary"
               data-testid="article-content"
-            >
-              <div 
-                className="whitespace-pre-wrap leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: linkifyMentions(post.content) }}
-              />
-            </div>
+              dangerouslySetInnerHTML={{ __html: linkifyMentions(post.content) }}
+            />
 
             {/* Engagement Actions */}
             <Separator className="my-8" />

@@ -754,7 +754,7 @@ export default function PostComposer() {
 
         {/* Collaborator Search */}
         {showCollaboratorSearch && (
-          <Card className="mb-4 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/20">
+          <Card className="mb-4 border-blue-200 dark:border-blue-800 bg-card">
             <CardContent className="pt-4">
               <div className="space-y-3">
                 <div className="flex items-center justify-between mb-2">
@@ -781,7 +781,7 @@ export default function PostComposer() {
                     placeholder="Search users by name or username..."
                     value={collaboratorSearchQuery}
                     onChange={(e) => setCollaboratorSearchQuery(e.target.value)}
-                    className="pl-10 bg-background"
+                    className="pl-10 bg-card border-border"
                     data-testid="input-collaborator-search"
                     autoFocus
                   />
@@ -955,7 +955,7 @@ export default function PostComposer() {
 
         {/* Spotify Search */}
         {showSpotifySearch && (
-          <Card className="mb-4 border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/20">
+          <Card className="mb-4 border-green-200 dark:border-green-800 bg-card">
             <CardContent className="pt-4">
               <div className="space-y-3">
                 <div className="flex items-center justify-between mb-2">

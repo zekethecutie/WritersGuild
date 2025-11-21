@@ -358,7 +358,7 @@ export default function RichTextEditor({
       {/* Character and Word Count */}
       <div className="px-4 pb-2 text-xs text-muted-foreground flex justify-between">
         <span>{editor.getText().trim().split(/\s+/).filter(w => w.length > 0).length} words</span>
-        <span>{editor.storage.characterCount?.characters() || 0} characters</span>
+        <span>{editor.getText().length} characters</span>
       </div>
     </div>
   );

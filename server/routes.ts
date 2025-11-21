@@ -689,7 +689,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Popular music posts route - must come before general :id route
   // Get popular music from posts
-  app.get("/api/posts/popular-music", async (req, res) => {
+  app.get("/api/music/popular", async (req, res) => {
     try {
       const userId = req.session?.userId;
       const musicPosts = await storage.getPopularMusicPosts(20, userId);
