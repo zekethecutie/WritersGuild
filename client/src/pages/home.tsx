@@ -205,7 +205,7 @@ export default function Home() {
               </div>
 
               {/* Posts Feed */}
-              <div className="space-y-0">
+              <div className="space-y-4">
                 {postsLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <div key={i} className="border-b border-border p-6">
