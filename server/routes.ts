@@ -2988,51 +2988,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/feedback', async (req: any, res) => {
     try {
       const { category, subject, message, contactEmail } = req.body;
-      const userId = req.session?.userId;
+      const userId = req.session?.userId || null;
 
       // Validate required fields
       if (!subject || !message) {
         return res.status(400).json({ message: "Subject and message are required" });
       }
 
-      // Store feedback in database
-      const feedbackRecord = await db.insert(feedback).values({
-        userId: userId,
-        category: category || 'general',
-        subject,
-        message,
-        contactEmail: contactEmail || '',
-      }).returning();
-
-      // Send notification to all admins
       try {
-        const admins = await db
-          .select()
-          .from(usersTable)
-          .where(or(eq(usersTable.isAdmin, true), eq(usersTable.isSuperAdmin, true)));
+        // Store feedback in database
+        const feedbackRecord = await db.insert(feedback).values({
+          userId: userId,
+          category: category || 'general',
+          subject,
+          message,
+          contactEmail: contactEmail || '',
+        }).returning();
 
-        for (const admin of admins) {
-          await db.insert(notifications).values({
-            userId: admin.id,
-            type: 'feedback',
-            actorId: userId,
-            data: JSON.stringify({
-              category,
-              subject,
-              message,
-              contactEmail,
-            }),
-          });
-        }
-      } catch (notificationError) {
-        console.log("Could not send admin notifications:", notificationError);
+        // Send notification to all admins (non-blocking)
+        setImmediate(async () => {
+          try {
+            const admins = await db
+              .select()
+              .from(usersTable)
+              .where(or(eq(usersTable.isAdmin, true), eq(usersTable.isSuperAdmin, true)));
+
+            if (admins && admins.length > 0) {
+              for (const admin of admins) {
+                await db.insert(notifications).values({
+                  userId: admin.id,
+                  type: 'feedback',
+                  actorId: userId,
+                  data: JSON.stringify({
+                    category,
+                    subject,
+                    message,
+                    contactEmail,
+                  }),
+                });
+              }
+            }
+          } catch (notificationError) {
+            console.log("Could not send admin notifications:", notificationError);
+          }
+        });
+
+        res.status(201).json({
+          success: true,
+          message: "Thank you for your feedback! Our admin team has been notified.",
+          feedbackId: feedbackRecord[0]?.id,
+        });
+      } catch (dbError: any) {
+        console.error("Database error submitting feedback:", dbError);
+        res.status(500).json({ message: "Failed to submit feedback to database" });
       }
-
-      res.status(201).json({
-        success: true,
-        message: "Thank you for your feedback! Our admin team has been notified.",
-        feedbackId: feedbackRecord[0]?.id,
-      });
     } catch (error: any) {
       console.error("Error submitting feedback:", error);
       res.status(500).json({ message: "Failed to submit feedback" });
