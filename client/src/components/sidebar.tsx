@@ -196,18 +196,6 @@ export default function Sidebar() {
             </DropdownMenu>
         </div>
 
-        {/* Guest Button - Updated styling */}
-        {!isAuthenticated && (
-          <Button
-            variant="outline"
-            className="w-full mt-4 font-semibold border-primary text-primary hover:bg-primary/10"
-            onClick={() => window.location.href = '/explore'}
-            data-testid="button-continue-as-guest"
-          >
-            Continue as Guest
-          </Button>
-        )}
-
         {/* Auth Dialog for restricted nav items */}
         <AuthDialog
           open={showAuthDialog}
