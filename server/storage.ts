@@ -2122,6 +2122,87 @@ export class DatabaseStorage implements IStorage {
 
     return collaboratorData.map(row => row.user);
   }
+
+  // Admin Dashboard Methods
+  async getAdminStats(): Promise<any> {
+    const totalUsers = await db
+      .select({ count: count() })
+      .from(users);
+    
+    const totalReaders = await db
+      .select({ count: count() })
+      .from(users)
+      .where(eq(users.userRole, 'reader'));
+    
+    const totalWriters = await db
+      .select({ count: count() })
+      .from(users)
+      .where(eq(users.userRole, 'writer'));
+    
+    const verifiedUsers = await db
+      .select({ count: count() })
+      .from(users)
+      .where(eq(users.isVerified, true));
+    
+    const totalPosts = await db
+      .select({ count: count() })
+      .from(posts);
+    
+    const totalSeries = await db
+      .select({ count: count() })
+      .from(series);
+    
+    const totalLikes = await db
+      .select({ count: count() })
+      .from(likes);
+
+    return {
+      totalUsers: totalUsers[0]?.count || 0,
+      activeUsers: totalUsers[0]?.count || 0, // Simplified - all users considered active
+      totalReaders: totalReaders[0]?.count || 0,
+      totalWriters: totalWriters[0]?.count || 0,
+      verifiedUsers: verifiedUsers[0]?.count || 0,
+      totalPosts: totalPosts[0]?.count || 0,
+      totalArticles: totalPosts[0]?.count || 0, // Posts are articles
+      totalSeries: totalSeries[0]?.count || 0,
+      totalLikes: totalLikes[0]?.count || 0,
+    };
+  }
+
+  async getAllUsers(searchQuery?: string, limit: number = 100): Promise<User[]> {
+    if (searchQuery) {
+      return db
+        .select()
+        .from(users)
+        .where(
+          or(
+            ilike(users.username, `%${searchQuery}%`),
+            ilike(users.displayName, `%${searchQuery}%`),
+            ilike(users.email, `%${searchQuery}%`)
+          )
+        )
+        .limit(limit);
+    }
+    return db.select().from(users).limit(limit);
+  }
+
+  async updateUserAdminStatus(userId: string, isAdmin: boolean): Promise<User> {
+    const updated = await db
+      .update(users)
+      .set({ isAdmin })
+      .where(eq(users.id, userId))
+      .returning();
+    return updated[0];
+  }
+
+  async updateUserVerificationStatus(userId: string, isVerified: boolean): Promise<User> {
+    const updated = await db
+      .update(users)
+      .set({ isVerified })
+      .where(eq(users.id, userId))
+      .returning();
+    return updated[0];
+  }
 }
 
 export const storage = new DatabaseStorage();

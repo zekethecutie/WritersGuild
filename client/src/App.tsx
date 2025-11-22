@@ -21,6 +21,7 @@ import ChapterEditor from "@/pages/chapter-editor";
 import PostPage from "@/pages/post";
 import Guidelines from "@/pages/guidelines";
 import HelpPage from "@/pages/help";
+import AdminDashboard from "@/pages/admin-dashboard";
 import AdminTest from "@/pages/admin-test";
 import { lazy, Suspense, Component } from "react";
 
@@ -144,6 +145,7 @@ function AppRouter() {
       <Route path="/guidelines" component={Guidelines} />
       <Route path="/rules" component={Guidelines} />
       <Route path="/help" component={HelpPage} />
+      <Route path="/admin" component={isAuthenticated ? AdminDashboard : Landing} />
       <Route path="/admin-test" component={AdminTest} />
       <Route component={NotFound} />
     </Router>
