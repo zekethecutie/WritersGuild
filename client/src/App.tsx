@@ -100,7 +100,8 @@ function AppRouter() {
 
   return (
     <Router>
-      <Route path="/" component={Home} />
+      <Route path="/" component={Landing} />
+      <Route path="/homefeed" component={Home} />
       <Route path="/explore" component={Explore} />
       <Route path="/series" component={SeriesPage} />
       <Route path="/series/:id/edit" component={isAuthenticated ? SeriesEditPage : Landing} />

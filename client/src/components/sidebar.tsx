@@ -55,7 +55,7 @@ export default function Sidebar() {
   const unreadCount = notifications?.filter((n: any) => !n.isRead).length || 0;
 
   const publicItems = [
-    { icon: Home, label: "Home", path: "/", active: location === "/" },
+    { icon: Home, label: "Home", path: "/homefeed", active: location === "/homefeed" },
     { icon: Search, label: "Search", path: "/search", active: location === "/search" },
     { icon: Compass, label: "Explore", path: "/explore", active: location === "/explore" },
     { icon: BookOpen, label: "Stories", path: "/series", active: location === "/series" },
@@ -75,7 +75,7 @@ export default function Sidebar() {
     <div className="fixed left-0 top-0 h-full w-64 bg-card border-r border-border z-10 hidden lg:block">
       <div className="p-6">
         {/* Logo */}
-        <Link href="/" className="flex items-center space-x-3 mb-8 hover:opacity-80 transition-opacity">
+        <Link href="/" className="flex items-center space-x-3 mb-8 hover:opacity-80 transition-opacity" data-testid="logo-link">
           <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
             <Feather className="w-6 h-6 text-primary-foreground" />
           </div>
