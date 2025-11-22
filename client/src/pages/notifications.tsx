@@ -8,16 +8,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import Sidebar from "@/components/sidebar";
 import MobileNav from "@/components/mobile-nav";
-import { Bell, Heart, MessageCircle, Repeat, UserPlus, Check, ArrowLeft, X } from "lucide-react";
+import { Bell, Heart, MessageCircle, Repeat, UserPlus, Check, ArrowLeft, X, HelpCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
 interface Notification {
   id: string;
-  type: 'like' | 'comment' | 'follow' | 'repost' | 'collaboration_invite';
+  type: 'like' | 'comment' | 'follow' | 'repost' | 'collaboration_invite' | 'feedback';
   isRead: boolean;
   createdAt: string;
-  actor: {
+  actor?: {
     id: string;
     username: string;
     displayName: string;
@@ -27,6 +27,13 @@ interface Notification {
   post?: {
     id: string;
     content: string;
+  };
+  data?: {
+    category?: string;
+    subject?: string;
+    message?: string;
+    contactEmail?: string;
+    collaborationId?: string;
   };
 }
 
@@ -124,6 +131,8 @@ export default function NotificationsPage() {
         return <Repeat className="h-4 w-4 text-purple-500" />;
       case 'collaboration_invite':
         return <UserPlus className="h-4 w-4 text-blue-500" />;
+      case 'feedback':
+        return <HelpCircle className="h-4 w-4 text-orange-500" />;
       default:
         return <Bell className="h-4 w-4" />;
     }
@@ -141,6 +150,8 @@ export default function NotificationsPage() {
         return 'reposted your post';
       case 'collaboration_invite':
         return 'invited you to collaborate on a post';
+      case 'feedback':
+        return 'sent feedback';
       default:
         return 'interacted with your content';
     }
@@ -295,85 +306,137 @@ export default function NotificationsPage() {
                 </Card>
               ))
             ) : filteredNotifications.length > 0 ? (
-              filteredNotifications.map((notification) => (
-                <Card 
-                  key={notification.id} 
-                  className={`cursor-pointer transition-colors hover:bg-muted/50 ${
-                    !notification.isRead ? 'border-2 border-primary shadow-lg shadow-primary/20' : 'border'
-                  }`}
-                  onClick={() => !notification.isRead && markAsRead(notification.id)}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="relative">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={notification.actor?.profileImageUrl} />
-                          <AvatarFallback>
-                            {notification.actor?.displayName?.slice(0, 2)?.toUpperCase() || "??"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-1">
-                          {getNotificationIcon(notification.type)}
-                        </div>
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium">{notification.actor?.displayName || "Unknown User"}</span>
-                          {notification.actor?.isVerified && (
-                            <Badge variant="secondary" className="h-4 w-4 p-0">✓</Badge>
+              filteredNotifications.map((notification) => {
+                // Special rendering for feedback notifications
+                if (notification.type === 'feedback') {
+                  return (
+                    <Card 
+                      key={notification.id}
+                      className={`${
+                        !notification.isRead ? 'border-2 border-orange-500 shadow-lg shadow-orange-500/20' : 'border'
+                      }`}
+                      onClick={() => !notification.isRead && markAsRead(notification.id)}
+                    >
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 flex-1">
+                            <div className="mt-1 p-2 bg-orange-100 dark:bg-orange-950 rounded-full">
+                              <HelpCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <CardTitle className="text-lg">{notification.data?.subject || 'Feedback'}</CardTitle>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                Category: <Badge variant="secondary" className="ml-1">{notification.data?.category || 'general'}</Badge>
+                              </p>
+                            </div>
+                          </div>
+                          {!notification.isRead && (
+                            <div className="h-3 w-3 bg-orange-500 rounded-full flex-shrink-0 mt-1" />
                           )}
-                          <span className="text-sm text-muted-foreground">
-                            @{notification.actor?.username || "unknown"}
-                          </span>
-                          <span className="text-sm text-muted-foreground">
-                            {getNotificationText(notification)}
-                          </span>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="bg-muted p-4 rounded-md">
+                          <p className="text-sm whitespace-pre-wrap">{notification.data?.message}</p>
                         </div>
                         
-                        {notification.post && (
-                          <div 
-                            className="text-sm text-muted-foreground mt-1 line-clamp-2"
-                            dangerouslySetInnerHTML={{ __html: notification.post.content }}
-                          />
+                        {notification.data?.contactEmail && (
+                          <div className="flex justify-between items-center text-xs text-muted-foreground bg-muted p-3 rounded">
+                            <span>Contact: {notification.data.contactEmail}</span>
+                            <span>{new Date(notification.createdAt).toLocaleString()}</span>
+                          </div>
                         )}
-                        
-                        <p className="text-xs text-muted-foreground mt-2">
-                          {new Date(notification.createdAt).toLocaleString()}
-                        </p>
-                      </div>
-                      
-                      {!notification.isRead && (
-                        <div className="h-2 w-2 bg-blue-500 rounded-full" />
-                      )}
-                    </div>
+                        {!notification.data?.contactEmail && (
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(notification.createdAt).toLocaleString()}
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                }
 
-                    {notification.type === 'collaboration_invite' && !notification.isRead && notification.post && (
-                      <div className="flex gap-2 mt-3">
-                        <Button
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleAcceptCollaboration((notification as any).data?.collaborationId, notification.post!.id, notification.id);
-                          }}
-                        >
-                          Accept
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRejectCollaboration((notification as any).data?.collaborationId, notification.post!.id, notification.id);
-                          }}
-                        >
-                          Decline
-                        </Button>
+                // Normal notification rendering
+                return (
+                  <Card 
+                    key={notification.id} 
+                    className={`cursor-pointer transition-colors hover:bg-muted/50 ${
+                      !notification.isRead ? 'border-2 border-primary shadow-lg shadow-primary/20' : 'border'
+                    }`}
+                    onClick={() => !notification.isRead && markAsRead(notification.id)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="relative">
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage src={notification.actor?.profileImageUrl} />
+                            <AvatarFallback>
+                              {notification.actor?.displayName?.slice(0, 2)?.toUpperCase() || "??"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-1">
+                            {getNotificationIcon(notification.type)}
+                          </div>
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium">{notification.actor?.displayName || "Unknown User"}</span>
+                            {notification.actor?.isVerified && (
+                              <Badge variant="secondary" className="h-4 w-4 p-0">✓</Badge>
+                            )}
+                            <span className="text-sm text-muted-foreground">
+                              @{notification.actor?.username || "unknown"}
+                            </span>
+                            <span className="text-sm text-muted-foreground">
+                              {getNotificationText(notification)}
+                            </span>
+                          </div>
+                          
+                          {notification.post && (
+                            <div 
+                              className="text-sm text-muted-foreground mt-1 line-clamp-2"
+                              dangerouslySetInnerHTML={{ __html: notification.post.content }}
+                            />
+                          )}
+                          
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {new Date(notification.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                        
+                        {!notification.isRead && (
+                          <div className="h-2 w-2 bg-blue-500 rounded-full" />
+                        )}
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))
+
+                      {notification.type === 'collaboration_invite' && !notification.isRead && notification.post && (
+                        <div className="flex gap-2 mt-3">
+                          <Button
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAcceptCollaboration((notification as any).data?.collaborationId, notification.post!.id, notification.id);
+                            }}
+                          >
+                            Accept
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRejectCollaboration((notification as any).data?.collaborationId, notification.post!.id, notification.id);
+                            }}
+                          >
+                            Decline
+                          </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })
             ) : (
               <Card>
                 <CardContent className="p-12 text-center">
