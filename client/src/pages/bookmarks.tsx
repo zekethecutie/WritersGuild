@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import Sidebar from "@/components/sidebar";
 import MobileNav from "@/components/mobile-nav";
+import { MobileNavButtons } from "@/components/mobile-nav-buttons";
 import PostCard from "@/components/post-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,11 +39,14 @@ export default function Bookmarks() {
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
 
   // Fetch bookmarked posts
-  const { data: bookmarks = [], isLoading, refetch } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ["/api/bookmarks"],
-    queryFn: () => apiRequest("GET", "/api/bookmarks") as unknown as Promise<BookmarkedPost[]>,
+    queryFn: () => apiRequest("GET", "/api/bookmarks"),
     enabled: isAuthenticated,
   });
+
+  // Ensure bookmarks is always an array
+  const bookmarks = Array.isArray(data) ? data : [];
 
   // Remove bookmark
   const removeBookmarkMutation = useMutation({
@@ -285,6 +289,7 @@ export default function Bookmarks() {
       </div>
       
       <MobileNav />
+      <MobileNavButtons />
     </div>
   );
 }
