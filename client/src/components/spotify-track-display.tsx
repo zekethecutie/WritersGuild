@@ -39,42 +39,50 @@ interface SpotifyTrackDisplayProps {
 // Hook to fetch full track details when we only have basic info
 function useTrackDetails(track: SpotifyTrack | null) {
   const [fullTrack, setFullTrack] = React.useState<SpotifyTrack | null>(track);
+  const [attemptedFetch, setAttemptedFetch] = React.useState(false);
 
   React.useEffect(() => {
     if (!track) {
       setFullTrack(null);
+      setAttemptedFetch(false);
       return;
     }
 
     // Check if we have preview_url already (could be from full API response or stored data)
     if ('preview_url' in track && track.preview_url) {
       setFullTrack(track);
+      setAttemptedFetch(true);
       return;
     }
 
     // If we don't have preview_url, fetch full track details
-    if (track.id) {
+    if (track.id && !attemptedFetch) {
       const fetchTrackDetails = async () => {
         try {
           const response = await fetch(`/api/spotify/track/${track.id}`);
           if (response.ok) {
             const fullTrackData = await response.json();
+            console.log('✅ Fetched track details with preview:', fullTrackData.preview_url ? 'YES' : 'NO');
             // Merge with existing track data to preserve any fields we have
             setFullTrack({ ...track, ...fullTrackData } as SpotifyTrack);
           } else {
+            console.warn('Failed to fetch track details, status:', response.status);
             setFullTrack(track);
           }
         } catch (error) {
           console.error('Failed to fetch track details:', error);
           setFullTrack(track);
+        } finally {
+          setAttemptedFetch(true);
         }
       };
 
       fetchTrackDetails();
-    } else {
+    } else if (!track.id) {
       setFullTrack(track);
+      setAttemptedFetch(true);
     }
-  }, [track]);
+  }, [track, attemptedFetch]);
 
   return fullTrack;
 }
@@ -131,16 +139,18 @@ export function SpotifyTrackDisplay({ track, size = "md", showPreview = true, cl
     setIsLoading(true);
 
     try {
-      let currentTrack = fullTrack;
+      let currentTrack = { ...fullTrack };
       
       // Get preview URL if not available
       if (!currentTrack?.preview_url && currentTrack?.id) {
+        console.log('🔍 Fetching preview for track:', currentTrack.id);
         try {
           const response = await fetch(`/api/spotify/track/${currentTrack.id}`);
           if (response.ok) {
             const trackData = await response.json();
+            console.log('✅ Track data fetched, preview:', trackData.preview_url ? 'YES' : 'NO');
             if (trackData.preview_url) {
-              currentTrack = { ...currentTrack, preview_url: trackData.preview_url };
+              currentTrack = { ...currentTrack, ...trackData };
             }
           }
         } catch (error) {
@@ -149,6 +159,7 @@ export function SpotifyTrackDisplay({ track, size = "md", showPreview = true, cl
       }
       
       if (!currentTrack?.preview_url) {
+        console.warn('⚠️ No preview URL found for track');
         toast({
           title: "No preview available",
           description: "This track doesn't have a preview. Open in Spotify to play the full track.",
@@ -163,45 +174,49 @@ export function SpotifyTrackDisplay({ track, size = "md", showPreview = true, cl
       if (isPlaying && audioRef.current) {
         audioRef.current.pause();
         setIsPlaying(false);
-      } else {
-        if (!audioRef.current || audioRef.current.src !== currentTrack.preview_url) {
-          if (audioRef.current) {
-            audioRef.current.pause();
-            audioRef.current = null;
-          }
-          
-          const newAudio = new Audio();
-          
-          newAudio.addEventListener('ended', () => {
-            setIsPlaying(false);
-          });
-          
-          newAudio.addEventListener('error', (e) => {
-            console.error("Audio error:", e);
-            setIsPlaying(false);
-            toast({
-              title: "Playback error",
-              description: "Could not load preview. Open in Spotify to play.",
-              variant: "destructive",
-            });
-          });
+        setIsLoading(false);
+        return;
+      }
 
-          newAudio.crossOrigin = "anonymous";
-          newAudio.preload = "auto";
-          newAudio.src = currentTrack.preview_url;
-          audioRef.current = newAudio;
-        }
+      // Create or update audio element
+      if (!audioRef.current) {
+        const newAudio = new Audio();
+        newAudio.crossOrigin = "anonymous";
+        newAudio.preload = "auto";
         
-        try {
-          const playPromise = audioRef.current.play();
-          if (playPromise !== undefined) {
-            await playPromise;
-            setIsPlaying(true);
-          }
-        } catch (error) {
-          console.error("Audio play error:", error);
+        newAudio.addEventListener('ended', () => {
+          console.log('✅ Preview finished');
           setIsPlaying(false);
+        }, { once: true });
+        
+        newAudio.addEventListener('error', (e) => {
+          console.error("Audio error:", e);
+          setIsPlaying(false);
+          toast({
+            title: "Playback error",
+            description: "Could not load preview. Open in Spotify to play.",
+            variant: "destructive",
+          });
+        });
+
+        audioRef.current = newAudio;
+      }
+
+      if (audioRef.current.src !== currentTrack.preview_url) {
+        audioRef.current.src = currentTrack.preview_url;
+      }
+
+      try {
+        console.log('▶️ Playing preview from:', currentTrack.preview_url.substring(0, 50) + '...');
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          await playPromise;
+          setIsPlaying(true);
+          console.log('✅ Preview playing');
         }
+      } catch (error) {
+        console.error("Audio play error:", error);
+        setIsPlaying(false);
       }
     } finally {
       setIsLoading(false);
