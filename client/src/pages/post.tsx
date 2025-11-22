@@ -10,6 +10,7 @@ import MobileNav from "@/components/mobile-nav";
 import CommentThread from "@/components/comment-thread";
 import LoadingScreen from "@/components/loading-screen";
 import FollowButton from "@/components/follow-button";
+import EditPostModal from "@/components/edit-post-modal";
 import { SpotifyTrackDisplay } from "@/components/spotify-track-display";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +26,8 @@ import {
   MessageCircle,
   Repeat2,
   CheckCircle,
-  Eye
+  Eye,
+  Edit
 } from "lucide-react";
 import { Link } from "wouter";
 import { getProfileImageUrl } from "@/lib/defaultImages";
@@ -40,6 +42,9 @@ export default function PostPage() {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Edit modal state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // Optimistic states
   const [optimisticLiked, setOptimisticLiked] = useState(false);
