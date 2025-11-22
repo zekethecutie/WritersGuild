@@ -56,15 +56,25 @@ export async function getSpotifyClient(): Promise<SpotifyApi> {
     const clientId = process.env.SPOTIFY_CLIENT_ID;
     const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
 
+    console.log('🔍 Spotify credentials check:');
+    console.log('  SPOTIFY_CLIENT_ID:', clientId ? `[${clientId.substring(0, 8)}...]` : 'NOT SET');
+    console.log('  SPOTIFY_CLIENT_SECRET:', clientSecret ? '[SET]' : 'NOT SET');
+
     if (clientId && clientSecret) {
       console.log('✅ Using Spotify Client Credentials from environment variables');
       
-      const client = SpotifyApi.withClientCredentials(clientId, clientSecret);
-      return client;
+      try {
+        const client = SpotifyApi.withClientCredentials(clientId, clientSecret);
+        console.log('✅ Spotify client created successfully');
+        return client;
+      } catch (initError) {
+        console.error('❌ Error initializing Spotify client:', initError);
+        throw initError;
+      }
     }
 
     // Second priority: Try Replit connector
-    console.log('SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET not found in environment, trying Replit connector...');
+    console.log('⚠️ SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET not found in environment, trying Replit connector...');
     const settings = await getAccessTokenFromConnector();
     
     if (settings.oauth?.credentials) {
