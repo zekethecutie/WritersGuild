@@ -108,11 +108,11 @@ function MyStoriesSection() {
   const queryClient = useQueryClient();
 
   const { data: myStories = [], isLoading } = useQuery({
-    queryKey: ["/api/user/my-stories"],
+    queryKey: ["/api/series/my-stories"],
     queryFn: async () => {
       if (!user?.id) return [];
       try {
-        const response = await apiRequest("GET", `/api/users/${user.id}/posts`);
+        const response = await apiRequest("GET", `/api/series/my-stories`);
         const data = await response.json();
         return Array.isArray(data) ? data : [];
       } catch (error) {
@@ -171,7 +171,7 @@ function MyStoriesSection() {
             {story.coverImageUrl && (
               <img
                 src={story.coverImageUrl}
-                alt={story.title || 'Story cover'}
+                alt={story.title || 'Untitled Story'}
                 className="w-32 h-32 rounded-lg object-cover flex-shrink-0"
               />
             )}
@@ -191,27 +191,28 @@ function MyStoriesSection() {
                 </div>
 
                 <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                  {story.excerpt || story.content?.substring(0, 120) || 'No description'}
+                  {story.description || 'No description'}
                 </p>
               </div>
 
               <div className="flex items-center justify-between text-xs text-muted-foreground gap-3 flex-wrap mb-3">
                 <div className="flex items-center gap-4 flex-wrap">
                   <span className="flex items-center gap-1">
+                    <BookOpen className="w-3 h-3" />
+                    {story.chaptersCount ?? 0} chapters
+                  </span>
+                  <span className="flex items-center gap-1">
                     <Heart className="w-3 h-3" />
                     {story.likesCount ?? 0}
                   </span>
                   <span className="flex items-center gap-1">
-                    <MessageSquare className="w-3 h-3" />
-                    {story.commentsCount ?? 0}
+                    <Users className="w-3 h-3" />
+                    {story.followersCount ?? 0} followers
                   </span>
-                  {story.category && <Badge variant="secondary" className="text-xs">{story.category}</Badge>}
-                  {story.readTimeMinutes && (
-                    <span className="text-xs">{story.readTimeMinutes} min read</span>
-                  )}
-                  {story.publishedAt && (
+                  {story.genre && <Badge variant="secondary" className="text-xs">{story.genre}</Badge>}
+                  {story.createdAt && (
                     <span className="text-xs">
-                      {formatDistanceToNow(new Date(story.publishedAt), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(story.createdAt), { addSuffix: true })}
                     </span>
                   )}
                 </div>
@@ -219,10 +220,10 @@ function MyStoriesSection() {
 
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" asChild data-testid="button-read-story">
-                  <a href={`/posts/${story.id}`}>Read</a>
+                  <a href={`/story/${story.id}`}>Read</a>
                 </Button>
                 <Button size="sm" asChild data-testid="button-edit-story">
-                  <a href={`/posts/${story.id}/edit`}>Edit</a>
+                  <a href={`/story/${story.id}/edit`}>Edit</a>
                 </Button>
               </div>
             </div>
