@@ -230,9 +230,15 @@ export class DatabaseStorage implements IStorage {
       const userList = await db.select().from(users).where(eq(users.username, username));
       const user = userList[0];
       if (user) {
-        const deactivation = await db.select().from(userDeactivations).where(eq(userDeactivations.userId, user.id)).limit(1);
-        if (deactivation.length > 0) {
-          return undefined;
+        try {
+          const deactivation = await db.select().from(userDeactivations).where(eq(userDeactivations.userId, user.id)).limit(1);
+          if (deactivation.length > 0) {
+            return undefined;
+          }
+        } catch (deactivationError: any) {
+          if (deactivationError.code !== '42P01') {
+            throw deactivationError;
+          }
         }
       }
       return user;
@@ -247,9 +253,15 @@ export class DatabaseStorage implements IStorage {
       const userList = await db.select().from(users).where(eq(users.email, email));
       const user = userList[0];
       if (user) {
-        const deactivation = await db.select().from(userDeactivations).where(eq(userDeactivations.userId, user.id)).limit(1);
-        if (deactivation.length > 0) {
-          return undefined;
+        try {
+          const deactivation = await db.select().from(userDeactivations).where(eq(userDeactivations.userId, user.id)).limit(1);
+          if (deactivation.length > 0) {
+            return undefined;
+          }
+        } catch (deactivationError: any) {
+          if (deactivationError.code !== '42P01') {
+            throw deactivationError;
+          }
         }
       }
       return user;
