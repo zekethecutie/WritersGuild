@@ -9,10 +9,13 @@ import Sidebar from "@/components/sidebar";
 import MobileNav from "@/components/mobile-nav";
 import CommentThread from "@/components/comment-thread";
 import LoadingScreen from "@/components/loading-screen";
+import FollowButton from "@/components/follow-button";
+import { SpotifyTrackDisplay } from "@/components/spotify-track-display";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Card, CardContent } from "@/components/ui/card";
 import { 
   ArrowLeft, 
   AlertCircle,
@@ -413,6 +416,11 @@ export default function PostPage() {
                 </div>
               </div>
 
+              {/* Follow Button */}
+              {user && user.id !== author.id && (
+                <FollowButton userId={author.id} size="sm" />
+              )}
+
               {/* View count */}
               {(post.viewsCount || 0) > 0 && (
                 <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -440,6 +448,16 @@ export default function PostPage() {
               data-testid="article-content"
               dangerouslySetInnerHTML={{ __html: linkifyMentions(post.content) }}
             />
+
+            {/* Spotify Track Display */}
+            {post.spotifyTrackData && (
+              <div className="my-12">
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold mb-4">Soundtrack for this article</h3>
+                </div>
+                <SpotifyTrackDisplay track={post.spotifyTrackData} size="lg" />
+              </div>
+            )}
 
             {/* Engagement Actions */}
             <Separator className="my-8" />
