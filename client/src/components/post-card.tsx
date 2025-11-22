@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import EditPostModal from "@/components/edit-post-modal";
+import AuthDialog from "@/components/auth-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,9 +39,10 @@ interface PostCardProps {
 
 function PostCard({ post, isLiked, likesCount, isBookmarked, isReposted, repostsCount }: PostCardProps) {
   const [, navigate] = useLocation();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
 
   // Create fallback author if none provided
   const authorId = post.authorId || 'unknown';
