@@ -49,7 +49,6 @@ export const users = pgTable("users", {
   isVerified: boolean("is_verified").default(false),
   isAdmin: boolean("is_admin").default(false),
   isSuperAdmin: boolean("is_super_admin").default(false),
-  isDeactivated: boolean("is_deactivated").default(false),
   postsCount: integer("posts_count").default(0),
   commentsCount: integer("comments_count").default(0),
   createdAt: timestamp("created_at").defaultNow(),
