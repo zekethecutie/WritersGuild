@@ -11,6 +11,7 @@ import CommentThread from "@/components/comment-thread";
 import LoadingScreen from "@/components/loading-screen";
 import FollowButton from "@/components/follow-button";
 import EditPostModal from "@/components/edit-post-modal";
+import AuthDialog from "@/components/auth-dialog";
 import { SpotifyTrackDisplay } from "@/components/spotify-track-display";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +46,7 @@ export default function PostPage() {
 
   // Edit modal state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
 
   // Optimistic states
   const [optimisticLiked, setOptimisticLiked] = useState(false);
@@ -184,11 +186,7 @@ export default function PostPage() {
   // Engagement handlers
   const handleLike = () => {
     if (!user) {
-      toast({
-        title: "Sign in required",
-        description: "You need to be signed in to like articles",
-        variant: "default",
-      });
+      setShowAuthDialog(true);
       return;
     }
     likeMutation.mutate({ postId: postId!, isLiked: optimisticLiked });
@@ -196,11 +194,7 @@ export default function PostPage() {
 
   const handleBookmark = () => {
     if (!user) {
-      toast({
-        title: "Sign in required",
-        description: "You need to be signed in to bookmark articles",
-        variant: "default",
-      });
+      setShowAuthDialog(true);
       return;
     }
     bookmarkMutation.mutate({ postId: postId!, isBookmarked: optimisticBookmarked });
@@ -208,11 +202,7 @@ export default function PostPage() {
 
   const handleRepost = () => {
     if (!user) {
-      toast({
-        title: "Sign in required",
-        description: "You need to be signed in to repost",
-        variant: "default",
-      });
+      setShowAuthDialog(true);
       return;
     }
     repostMutation.mutate(postId!);
@@ -303,7 +293,13 @@ export default function PostPage() {
             <Button 
               variant="ghost" 
               size="sm" 
-              onClick={() => window.history.back()}
+              onClick={() => {
+                if (window.history.length > 1) {
+                  window.history.back();
+                } else {
+                  setLocation("/explore");
+                }
+              }}
               className="flex items-center gap-2"
               data-testid="button-back"
             >
@@ -552,6 +548,13 @@ export default function PostPage() {
           onClose={() => setIsEditModalOpen(false)}
         />
       )}
+
+      {/* Auth Dialog for guest interactions */}
+      <AuthDialog
+        open={showAuthDialog}
+        onOpenChange={setShowAuthDialog}
+        onSuccess={() => window.location.reload()}
+      />
 
       <MobileNav />
     </div>
