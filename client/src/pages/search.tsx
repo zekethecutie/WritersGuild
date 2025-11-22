@@ -87,11 +87,11 @@ export default function SearchPage() {
         minEngagement: filters.minEngagement.toString()
       });
 
-      const response = await fetch(`/api/search?${params}`);
+      const response = await fetch(`/api/search?${params}`, { credentials: 'include' });
       if (!response.ok) throw new Error('Search failed');
       return response.json();
     },
-    enabled: isAuthenticated && debouncedQuery.trim().length > 0,
+    enabled: debouncedQuery.trim().length > 0,
   });
 
   const resetFilters = () => {
@@ -106,21 +106,6 @@ export default function SearchPage() {
       minEngagement: 0
     });
   };
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Sign in to search</h2>
-            <p className="text-muted-foreground">
-              You need to be signed in to search for posts and users.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background">

@@ -96,19 +96,16 @@ export default function Home() {
     enabled: !!isAuthenticated,
   });
 
-  // Handle post errors
+  // Handle post errors (but don't redirect guests)
   useEffect(() => {
-    if (postsError && isUnauthorizedError(postsError as Error)) {
+    if (postsError && isUnauthorizedError(postsError as Error) && isAuthenticated) {
       toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
+        title: "Error",
+        description: "Failed to load posts",
         variant: "destructive",
       });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
     }
-  }, [postsError, toast]);
+  }, [postsError, toast, isAuthenticated]);
 
   // Infinite scroll handler
   useEffect(() => {
