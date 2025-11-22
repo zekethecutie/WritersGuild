@@ -75,20 +75,6 @@ export default function Explore() {
     users: TrendingUser[];
   }>({ posts: [], users: [] });
 
-  // Redirect if not authenticated
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
-      return;
-    }
-  }, [isAuthenticated, authLoading, toast]);
 
   // Fetch explore data
   useEffect(() => {
@@ -100,10 +86,10 @@ export default function Explore() {
       setIsLoadingExploreData(true);
 
       const [trendingRes, popularRes, topicsRes, usersRes] = await Promise.allSettled([
-        fetch('/api/trending/posts?limit=20'),
-        fetch('/api/explore/popular?limit=20'),
-        fetch('/api/explore/trending-topics'),
-        fetch('/api/users/trending?limit=10')
+        fetch('/api/trending/posts?limit=20', { credentials: 'include' }),
+        fetch('/api/explore/popular?limit=20', { credentials: 'include' }),
+        fetch('/api/explore/trending-topics', { credentials: 'include' }),
+        fetch('/api/users/trending?limit=10', { credentials: 'include' })
       ]);
 
       if (trendingRes.status === 'fulfilled' && trendingRes.value.ok) {
@@ -134,6 +120,7 @@ export default function Explore() {
         console.error("Error fetching trending users:", usersRes.reason);
       }
 
+
     } catch (error) {
       console.error("An unexpected error occurred during fetchExploreData:", error);
     } finally {
@@ -147,8 +134,8 @@ export default function Explore() {
 
     try {
       const [postsRes, usersRes] = await Promise.allSettled([
-        fetch(`/api/search/posts?q=${encodeURIComponent(searchQuery)}&limit=20`),
-        fetch(`/api/search/users?q=${encodeURIComponent(searchQuery)}&limit=20`)
+        fetch(`/api/search/posts?q=${encodeURIComponent(searchQuery)}&limit=20`, { credentials: 'include' }),
+        fetch(`/api/search/users?q=${encodeURIComponent(searchQuery)}&limit=20`, { credentials: 'include' })
       ]);
 
       const posts = postsRes.status === 'fulfilled' && postsRes.value.ok
