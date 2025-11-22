@@ -89,7 +89,7 @@ export default function AuthDialog({
         });
         onOpenChange(false);
         onSuccess?.();
-        window.location.reload(); // Refresh to update auth state
+        window.location.href = '/homefeed';
       } else {
         const errorData = await response.json();
         toast({
@@ -180,7 +180,7 @@ export default function AuthDialog({
         });
         onOpenChange(false);
         onSuccess?.();
-        window.location.reload(); // Refresh to update auth state
+        window.location.href = '/homefeed';
       } else {
         const errorData = await response.json();
         toast({
