@@ -150,29 +150,24 @@ export default function AdminDashboard() {
   );
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="min-h-screen bg-background">
       <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <MobileNav />
-        <main className="flex-1 overflow-y-auto">
-          <div className="p-6 space-y-8">
-            <div className="flex items-center gap-3 mb-6">
-              <Shield className="w-8 h-8 text-primary" />
-              <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-            </div>
+      <div className="lg:ml-64">
+        <div className="container max-w-7xl mx-auto p-6">
+          <div className="flex items-center gap-3 mb-8">
+            <Shield className="w-8 h-8 text-primary" />
+            <h1 className="text-4xl font-bold">Admin Dashboard</h1>
+          </div>
 
-            {/* Statistics Grid */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <StatCard icon={Users} label="Total Users" value={stats?.totalUsers} />
-              <StatCard icon={BarChart3} label="Active Users" value={stats?.activeUsers} />
-              <StatCard icon={Users} label="Readers" value={stats?.totalReaders} />
-              <StatCard icon={BookOpen} label="Writers" value={stats?.totalWriters} />
-              <StatCard icon={CheckCircle} label="Verified" value={stats?.verifiedUsers} />
-              <StatCard icon={BookOpen} label="Posts" value={stats?.totalPosts} />
-              <StatCard icon={BookOpen} label="Articles" value={stats?.totalArticles} />
-              <StatCard icon={BookOpen} label="Series" value={stats?.totalSeries} />
-              <StatCard icon={Heart} label="Total Likes" value={stats?.totalLikes} />
-            </div>
+          {/* Statistics Grid */}
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 mb-8">
+            <StatCard icon={Users} label="Total Users" value={stats?.totalUsers} />
+            <StatCard icon={BarChart3} label="Active Users" value={stats?.activeUsers} />
+            <StatCard icon={Users} label="Readers" value={stats?.totalReaders} />
+            <StatCard icon={BookOpen} label="Writers" value={stats?.totalWriters} />
+            <StatCard icon={CheckCircle} label="Verified Users" value={stats?.verifiedUsers} />
+            <StatCard icon={Heart} label="Total Likes" value={stats?.totalLikes} />
+          </div>
 
             {/* User Management */}
             <Card>
@@ -323,8 +318,7 @@ export default function AdminDashboard() {
                 </div>
               </CardContent>
             </Card>
-          </div>
-        </main>
+        </div>
       </div>
     </div>
   );

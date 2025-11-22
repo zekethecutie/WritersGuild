@@ -108,10 +108,11 @@ function MyStoriesSection() {
   const queryClient = useQueryClient();
 
   const { data: myStories = [], isLoading } = useQuery({
-    queryKey: [`/api/users/${user?.id}/posts`],
+    queryKey: ["/api/user/my-stories"],
     queryFn: async () => {
+      if (!user?.id) return [];
       try {
-        const response = await apiRequest("GET", `/api/users/${user?.id}/posts`);
+        const response = await apiRequest("GET", `/api/users/${user.id}/posts`);
         return Array.isArray(response) ? response : [];
       } catch (error) {
         console.error("Error fetching my stories:", error);
@@ -119,6 +120,8 @@ function MyStoriesSection() {
       }
     },
     enabled: !!user?.id,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
   const deletePostMutation = useMutation({
@@ -126,7 +129,7 @@ function MyStoriesSection() {
       return apiRequest("DELETE", `/api/posts/${postId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/users/${user?.id}/posts`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user/my-stories"] });
       toast({ title: "Success", description: "Story deleted successfully" });
     },
   });
