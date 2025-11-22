@@ -2896,17 +2896,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/admin/users/:id', requireSuperAdmin, async (req: any, res) => {
     try {
+      const adminId = req.session.userId;
       const userId = req.params.id;
-      const { isAdmin, isVerified, isDeactivated } = req.body;
+      const { isAdmin, isVerified } = req.body;
 
       if (typeof isAdmin === 'boolean') {
         await storage.updateUserAdminStatus(userId, isAdmin);
       }
       if (typeof isVerified === 'boolean') {
         await storage.updateUserVerificationStatus(userId, isVerified);
-      }
-      if (typeof isDeactivated === 'boolean') {
-        await db.update(usersTable).set({ isDeactivated }).where(eq(usersTable.id, userId));
       }
 
       const updatedUser = await storage.getUser(userId);
@@ -2919,9 +2917,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/admin/users/:id', requireSuperAdmin, async (req: any, res) => {
     try {
+      const adminId = req.session.userId;
       const userId = req.params.id;
-      await db.update(usersTable).set({ isDeactivated: true }).where(eq(usersTable.id, userId));
-      res.json({ message: "User account deactivated" });
+      const { reason } = req.body;
+      
+      await storage.deactivateUser(userId, adminId, reason);
+      res.json({ message: "User account deactivated successfully" });
     } catch (error: any) {
       console.error("Error deactivating user:", error);
       res.status(500).json({ message: "Failed to deactivate user" });
