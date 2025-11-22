@@ -20,7 +20,8 @@ import {
   Shield, // Added Shield icon for rules
   ExternalLink, // Added ExternalLink icon for external links
   Trophy, // Added Trophy icon for leaderboard
-  TestTube // Added TestTube icon for admin test
+  TestTube, // Added TestTube icon for admin test
+  Lock // Added Lock icon for restricted nav items
 } from "lucide-react";
 import { getProfileImageUrl } from "@/lib/defaultImages";
 import { Link, useLocation } from "wouter";
@@ -31,6 +32,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import PostModal from "@/components/post-modal";
+import AuthDialog from "@/components/auth-dialog";
 import { cn } from "@/lib/utils";
 
 
@@ -40,7 +42,8 @@ export default function Sidebar() {
   const [location] = useLocation();
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [showPostModal, setShowPostModal] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false); // State to control user dropdown visibility
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
 
   // Fetch real notification count
   const { data: notifications } = useQuery({
@@ -51,17 +54,22 @@ export default function Sidebar() {
 
   const unreadCount = notifications?.filter((n: any) => !n.isRead).length || 0;
 
-  const navigationItems = [
+  const publicItems = [
     { icon: Home, label: "Home", path: "/", active: location === "/" },
     { icon: Search, label: "Search", path: "/search", active: location === "/search" },
     { icon: Compass, label: "Explore", path: "/explore", active: location === "/explore" },
     { icon: BookOpen, label: "Stories", path: "/series", active: location === "/series" },
     { icon: Trophy, label: "Leaderboard", path: "/leaderboard", active: location === "/leaderboard" },
+  ];
+
+  const restrictedItems = [
     { icon: Bell, label: "Notifications", path: "/notifications", active: location === "/notifications", badge: unreadCount > 0 ? unreadCount : undefined },
     { icon: Bookmark, label: "Bookmarks", path: "/bookmarks", active: location === "/bookmarks" },
     { icon: User, label: "Profile", path: `/profile/${user?.username || user?.id}`, active: location.startsWith("/profile") },
     { icon: Cog, label: "Settings", path: "/settings", active: location === "/settings" },
   ];
+
+  const navigationItems = isAuthenticated ? [...publicItems, ...restrictedItems] : publicItems;
 
   return (
     <div className="fixed left-0 top-0 h-full w-64 bg-card border-r border-border z-10 hidden lg:block">
@@ -79,7 +87,7 @@ export default function Sidebar() {
 
         {/* Navigation Menu */}
         <nav className="space-y-2 mb-8">
-          {navigationItems.map((item) => (
+          {publicItems.map((item) => (
             <Link key={item.path} href={item.path}>
               <div
                 className={`flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-colors cursor-pointer ${
@@ -99,6 +107,49 @@ export default function Sidebar() {
               </div>
             </Link>
           ))}
+          
+          {/* Restricted Items - Only for authenticated users */}
+          {restrictedItems.map((item) => {
+            if (isAuthenticated) {
+              return (
+                <Link key={item.path} href={item.path}>
+                  <div
+                    className={`flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-colors cursor-pointer ${
+                      item.active
+                        ? "bg-primary text-primary-foreground"
+                        : "hover:bg-secondary text-foreground hover:text-foreground"
+                    }`}
+                    data-testid={`nav-${item.label.toLowerCase()}`}
+                  >
+                    <item.icon className="w-5 h-5" />
+                    <span>{item.label}</span>
+                    {item.badge && (
+                      <span className="ml-auto bg-accent text-accent-foreground text-xs px-2 py-1 rounded-full">
+                        {item.badge}
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              );
+            } else {
+              // For guests, show disabled button with lock icon
+              return (
+                <button
+                  key={item.path}
+                  onClick={() => setShowAuthDialog(true)}
+                  className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-colors text-muted-foreground hover:bg-secondary/50 cursor-pointer relative group"
+                  data-testid={`nav-${item.label.toLowerCase()}`}
+                >
+                  <item.icon className="w-5 h-5" />
+                  <span>{item.label}</span>
+                  <Lock className="w-4 h-4 ml-auto opacity-50" />
+                  <div className="absolute right-full mr-2 bottom-1/2 transform translate-y-1/2 bg-foreground text-background text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    Sign in required
+                  </div>
+                </button>
+              );
+            }
+          })}
         </nav>
 
         {/* Compose Button */}
@@ -156,6 +207,13 @@ export default function Sidebar() {
             Continue as Guest
           </Button>
         )}
+
+        {/* Auth Dialog for restricted nav items */}
+        <AuthDialog
+          open={showAuthDialog}
+          onOpenChange={setShowAuthDialog}
+          onSuccess={() => window.location.reload()}
+        />
       </div>
 
       {/* User Profile Card */}
