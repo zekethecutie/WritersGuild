@@ -315,6 +315,7 @@ export class DatabaseStorage implements IStorage {
           isVerified: users.isVerified,
           isAdmin: users.isAdmin,
           isSuperAdmin: users.isSuperAdmin,
+          isDeactivated: users.isDeactivated,
           postsCount: users.postsCount,
           commentsCount: users.commentsCount,
           createdAt: users.createdAt,
@@ -335,7 +336,7 @@ export class DatabaseStorage implements IStorage {
           WHERE ${reposts.userId} = ${userId} 
           AND ${reposts.postId} = ${posts.id}
         )` : sql<boolean>`false`,
-      })
+      }) as any
       .from(posts)
       .leftJoin(users, eq(posts.authorId, users.id))
       .where(eq(posts.isPrivate, false))
@@ -344,7 +345,7 @@ export class DatabaseStorage implements IStorage {
       .offset(offset);
 
     const results = await postsQuery;
-    return results.map(row => ({
+    return results.map((row: any) => ({
       id: row.id,
       authorId: row.authorId,
       title: row.title,
@@ -984,6 +985,7 @@ export class DatabaseStorage implements IStorage {
           isVerified: users.isVerified,
           isAdmin: users.isAdmin,
           isSuperAdmin: users.isSuperAdmin,
+          isDeactivated: users.isDeactivated,
           postsCount: users.postsCount,
           commentsCount: users.commentsCount,
           createdAt: users.createdAt,
@@ -1004,7 +1006,7 @@ export class DatabaseStorage implements IStorage {
           WHERE ${reposts.userId} = ${userId} 
           AND ${reposts.postId} = ${posts.id}
         )` : sql<boolean>`false`,
-      })
+      }) as any
       .from(posts)
       .leftJoin(users, eq(posts.authorId, users.id))
       .where(gte(posts.createdAt, oneDayAgo))
@@ -1013,7 +1015,7 @@ export class DatabaseStorage implements IStorage {
       )
       .limit(limit);
 
-    return trendingPosts.map(row => ({
+    return trendingPosts.map((row: any) => ({
       id: row.id,
       authorId: row.authorId,
       title: row.title,
