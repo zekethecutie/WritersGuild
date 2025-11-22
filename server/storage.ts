@@ -31,7 +31,7 @@ import {
   type WritingGoal,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, or, sql, count, exists, notExists, asc, ne, isNotNull, gte, ilike, coalesce } from "drizzle-orm";
+import { eq, desc, and, or, sql, count, exists, notExists, asc, ne, isNotNull, gte, ilike } from "drizzle-orm";
 import crypto from 'crypto'; // Import crypto for UUID generation
 
 export interface IStorage {
@@ -658,6 +658,7 @@ export class DatabaseStorage implements IStorage {
       isVerified: users.isVerified,
       isAdmin: users.isAdmin,
       isSuperAdmin: users.isSuperAdmin,
+      isDeactivated: users.isDeactivated,
       postsCount: users.postsCount,
       commentsCount: users.commentsCount,
       createdAt: users.createdAt,
@@ -690,6 +691,7 @@ export class DatabaseStorage implements IStorage {
       isVerified: users.isVerified,
       isAdmin: users.isAdmin,
       isSuperAdmin: users.isSuperAdmin,
+      isDeactivated: users.isDeactivated,
       postsCount: users.postsCount,
       commentsCount: users.commentsCount,
       createdAt: users.createdAt,
@@ -906,19 +908,19 @@ export class DatabaseStorage implements IStorage {
   async searchUsers(query: string, currentUserId?: string, limit: number = 10): Promise<User[]> {
     const searchTerm = `%${query.toLowerCase()}%`;
 
+    let whereCondition: any = or(
+      sql`LOWER(${users.username}) LIKE ${searchTerm}`,
+      sql`LOWER(${users.displayName}) LIKE ${searchTerm}`
+    );
+
+    if (currentUserId) {
+      whereCondition = and(ne(users.id, currentUserId), whereCondition);
+    }
+
     const result = await db
       .select()
       .from(users)
-      .where(
-        and(
-          ne(users.id, currentUserId),
-          or(
-            sql`LOWER(${users.username}) LIKE ${searchTerm}`,
-            sql`LOWER(${users.displayName}) LIKE ${searchTerm}`
-          )
-        )
-      )
-      .orderBy(desc(users.followersCount))
+      .where(whereCondition)
       .limit(limit);
 
     return result;
