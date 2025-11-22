@@ -11,7 +11,7 @@ import MemoryStore from "memorystore";
 import rateLimit from "express-rate-limit";
 import { eq, desc, asc, like, ilike, and, or, isNull, sql, gt, lt, gte, lte, ne, count, inArray } from "drizzle-orm";
 import { db } from "./db"; // Assuming db is your Drizzle client instance
-import { users as usersTable, posts, comments, notifications, series, chapters, bookmarks, likes, follows, reposts, postCollaborators } from "../shared/schema"; // Import necessary tables and schema
+import { users as usersTable, posts, comments, notifications, series, chapters, bookmarks, likes, follows, reposts, postCollaborators, feedback } from "../shared/schema"; // Import necessary tables and schema
 import { insertPostSchema, insertCommentSchema } from "@shared/schema";
 import { DatabaseStorage } from "./storage";
 import { getSpotifyClient } from "./spotifyClient";
@@ -2925,33 +2925,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Subject and message are required" });
       }
 
-      // Store feedback in database (using a simple insert)
+      // Store feedback in database
       const feedbackRecord = await db.insert(feedback).values({
-        userId: userId || undefined,
+        userId: userId,
         category: category || 'general',
         subject,
         message,
-        contactEmail: contactEmail || undefined,
+        contactEmail: contactEmail || '',
       }).returning();
 
       // Send notification to all admins
-      const admins = await db
-        .select()
-        .from(usersTable)
-        .where(or(eq(usersTable.isAdmin, true), eq(usersTable.isSuperAdmin, true)));
+      try {
+        const admins = await db
+          .select()
+          .from(usersTable)
+          .where(or(eq(usersTable.isAdmin, true), eq(usersTable.isSuperAdmin, true)));
 
-      for (const admin of admins) {
-        await db.insert(notifications).values({
-          userId: admin.id,
-          type: 'feedback',
-          actorId: userId || undefined,
-          data: {
-            category,
-            subject,
-            message,
-            contactEmail,
-          },
-        });
+        for (const admin of admins) {
+          await db.insert(notifications).values({
+            userId: admin.id,
+            type: 'feedback',
+            actorId: userId,
+            data: JSON.stringify({
+              category,
+              subject,
+              message,
+              contactEmail,
+            }),
+          });
+        }
+      } catch (notificationError) {
+        console.log("Could not send admin notifications:", notificationError);
       }
 
       res.status(201).json({
