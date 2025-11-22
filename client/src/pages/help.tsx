@@ -26,7 +26,8 @@ export default function HelpPage() {
 
   const submitFeedbackMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      return apiRequest("POST", "/api/feedback", data);
+      const response = await apiRequest("POST", "/api/feedback", data);
+      return await response.json();
     },
     onSuccess: () => {
       toast({
