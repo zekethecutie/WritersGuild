@@ -45,7 +45,7 @@ export default function Home() {
     isLoading: postsLoading,
     error: postsError,
   } = useInfiniteQuery({
-    queryKey: ["/api/posts", activeTab === "following" ? user?.id : undefined],
+    queryKey: ["/api/posts", activeTab, activeTab === "following" ? user?.id : undefined],
     queryFn: ({ pageParam = 0 }) =>
       fetch(`/api/posts?limit=20&offset=${pageParam}&userId=${activeTab === "following" ? user?.id || "" : ""}`).then(res => res.json()),
     initialPageParam: 0,
@@ -240,8 +240,8 @@ export default function Home() {
                     </Button>
                   </div>
                 ) : (
-                  allPosts.map((post: any, index: number) => (
-                    <PostCard key={`${post.id}-${index}`} post={post as Post} />
+                  allPosts.map((post: any) => (
+                    <PostCard key={post.id} post={post as Post} />
                   ))
                 )}
 
