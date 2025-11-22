@@ -98,6 +98,23 @@ const requireAdmin = async (req: any, res: any, next: any) => {
   }
 };
 
+// Require super admin middleware
+const requireSuperAdmin = async (req: any, res: any, next: any) => {
+  if (!req.session?.userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  try {
+    const user = await storage.getUser(req.session.userId);
+    if (!user?.isSuperAdmin) {
+      return res.status(403).json({ message: "Forbidden: Super Admin only" });
+    }
+    next();
+  } catch (error) {
+    console.error("Super admin check error:", error);
+    res.status(500).json({ message: "Internal server error during super admin check" });
+  }
+};
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Create storage instance
   const storage = new DatabaseStorage();
@@ -2851,6 +2868,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error updating theme settings:", error);
       res.status(500).json({ message: "Failed to update theme settings" });
+    }
+  });
+
+  // Admin Dashboard Routes
+  app.get('/api/admin/stats', requireSuperAdmin, async (req: any, res) => {
+    try {
+      const stats = await storage.getAdminStats();
+      res.json(stats);
+    } catch (error: any) {
+      console.error("Error fetching admin stats:", error);
+      res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
+  app.get('/api/admin/users', requireSuperAdmin, async (req: any, res) => {
+    try {
+      const searchQuery = req.query.search as string | undefined;
+      const users = await storage.getAllUsers(searchQuery, 100);
+      res.json(users);
+    } catch (error: any) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.patch('/api/admin/users/:id', requireSuperAdmin, async (req: any, res) => {
+    try {
+      const userId = req.params.id;
+      const { isAdmin, isVerified } = req.body;
+
+      if (typeof isAdmin === 'boolean') {
+        await storage.updateUserAdminStatus(userId, isAdmin);
+      }
+      if (typeof isVerified === 'boolean') {
+        await storage.updateUserVerificationStatus(userId, isVerified);
+      }
+
+      const updatedUser = await storage.getUser(userId);
+      res.json(updatedUser);
+    } catch (error: any) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  // Feedback Routes
+  app.post('/api/feedback', async (req: any, res) => {
+    try {
+      const { category, subject, message, contactEmail } = req.body;
+      const userId = req.session?.userId;
+
+      // Validate required fields
+      if (!subject || !message) {
+        return res.status(400).json({ message: "Subject and message are required" });
+      }
+
+      // Store feedback in database (using a simple insert)
+      const feedbackRecord = await db.insert(feedback).values({
+        userId: userId || undefined,
+        category: category || 'general',
+        subject,
+        message,
+        contactEmail: contactEmail || undefined,
+      }).returning();
+
+      // Send notification to all admins
+      const admins = await db
+        .select()
+        .from(usersTable)
+        .where(or(eq(usersTable.isAdmin, true), eq(usersTable.isSuperAdmin, true)));
+
+      for (const admin of admins) {
+        await db.insert(notifications).values({
+          userId: admin.id,
+          type: 'feedback',
+          actorId: userId || undefined,
+          data: {
+            category,
+            subject,
+            message,
+            contactEmail,
+          },
+        });
+      }
+
+      res.status(201).json({
+        success: true,
+        message: "Thank you for your feedback! Our admin team has been notified.",
+        feedbackId: feedbackRecord[0]?.id,
+      });
+    } catch (error: any) {
+      console.error("Error submitting feedback:", error);
+      res.status(500).json({ message: "Failed to submit feedback" });
     }
   });
 
