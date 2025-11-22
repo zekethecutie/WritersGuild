@@ -195,7 +195,7 @@ function PostCard({ post, isLiked, likesCount, isBookmarked, isReposted, reposts
     >
       {/* Cover Image with Category Badge */}
       {coverImage && (
-        <div className="relative w-full overflow-hidden" style={{ aspectRatio: '16/9' }}>
+        <div className="relative w-full overflow-hidden" style={{ aspectRatio: '21/9' }}>
           <img
             src={coverImage}
             alt={post.title || 'Article cover'}

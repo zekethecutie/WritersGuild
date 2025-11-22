@@ -131,25 +131,9 @@ export function SpotifyTrackDisplay({ track, size = "md", showPreview = true, cl
     setIsLoading(true);
 
     try {
-      // Try using Spotify Web Playback SDK if available
-      if ((window as any).Spotify) {
-        const player = (window as any).Spotify.Player;
-        if (player && isPlaying) {
-          // Stop playback via Spotify
-          await fetch('https://api.spotify.com/v1/me/player/pause', {
-            method: 'PUT',
-          });
-          setIsPlaying(false);
-          setUsePreview(false);
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      // Fallback to preview playback
       let currentTrack = fullTrack;
       
-      // First try to get preview URL if not available
+      // Get preview URL if not available
       if (!currentTrack?.preview_url && currentTrack?.id) {
         try {
           const response = await fetch(`/api/spotify/track/${currentTrack.id}`);
@@ -165,11 +149,10 @@ export function SpotifyTrackDisplay({ track, size = "md", showPreview = true, cl
       }
       
       if (!currentTrack?.preview_url) {
-        // Open Spotify directly as fallback
-        window.open(`https://open.spotify.com/track/${currentTrack?.id}`, '_blank');
         toast({
-          title: "Open in Spotify 🎵", 
-          description: "Click the link to play the full track on Spotify!",
+          title: "No preview available",
+          description: "This track doesn't have a preview. Open in Spotify to play the full track.",
+          variant: "destructive",
         });
         setIsLoading(false);
         return;
@@ -197,8 +180,8 @@ export function SpotifyTrackDisplay({ track, size = "md", showPreview = true, cl
             console.error("Audio error:", e);
             setIsPlaying(false);
             toast({
-              title: "Playback error 🎵",
-              description: "Could not load preview. Tap to open in Spotify instead.",
+              title: "Playback error",
+              description: "Could not load preview. Open in Spotify to play.",
               variant: "destructive",
             });
           });
@@ -218,11 +201,6 @@ export function SpotifyTrackDisplay({ track, size = "md", showPreview = true, cl
         } catch (error) {
           console.error("Audio play error:", error);
           setIsPlaying(false);
-          toast({
-            title: "Playback error 🎵",
-            description: "Open in Spotify to play this track.",
-            variant: "destructive",
-          });
         }
       }
     } finally {

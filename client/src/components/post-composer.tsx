@@ -8,6 +8,7 @@ import RichTextEditor from "@/components/rich-text-editor";
 import { SpotifyTrackDisplay } from "@/components/spotify-track-display";
 import { SpotifySearch } from "@/components/spotify-search";
 import ImageGallery from "@/components/image-gallery";
+import ImageCropModal from "@/components/image-crop-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -69,6 +70,10 @@ export default function PostComposer() {
   // Spotify track state
   const [spotifyTrack, setSpotifyTrack] = useState<any>(null);
   const [showSpotifySearch, setShowSpotifySearch] = useState(false);
+
+  // Image crop state
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string>("");
 
   // Parse mentions and hashtags from content
   useEffect(() => {
@@ -244,7 +249,7 @@ export default function PostComposer() {
     if (!file) return;
 
     const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    const maxSize = 10 * 1024 * 1024; // 10MB
+    const maxSize = 10 * 1024 * 1024;
 
     if (!validTypes.includes(file.type)) {
       toast({
@@ -255,7 +260,7 @@ export default function PostComposer() {
       return;
     }
 
-    if (file.size>maxSize) {
+    if (file.size > maxSize) {
       toast({
         title: "File too large",
         description: `${file.name} is larger than 10MB.`,
@@ -264,39 +269,50 @@ export default function PostComposer() {
       return;
     }
 
-    const formData = new FormData();
-    formData.append('images', file);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        setCropImageSrc(e.target.result as string);
+        setShowCropModal(true);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
+  const handleCropComplete = async (croppedImage: string) => {
     setIsUploadingCover(true);
     try {
-      const response = await fetch("/api/upload/images", {
+      const response = await fetch(croppedImage);
+      const blob = await response.blob();
+      const formData = new FormData();
+      formData.append('images', blob, 'cover.jpg');
+
+      const uploadResponse = await fetch("/api/upload/images", {
         method: "POST",
         body: formData,
         credentials: "include",
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Upload failed: ${errorText}`);
+      if (!uploadResponse.ok) {
+        throw new Error("Upload failed");
       }
 
-      const data = await response.json();
+      const data = await uploadResponse.json();
       setCoverImageUrl(data.imageUrls[0]);
 
-      // Clear the input so the same file can be re-selected
       if (coverInputRef.current) {
         coverInputRef.current.value = "";
       }
 
       toast({
-        title: "Cover image uploaded!",
-        description: "Your article cover image has been set.",
+        title: "Cover image set!",
+        description: "Your article cover image is ready.",
       });
     } catch (error) {
-      console.error("Cover image upload error:", error);
+      console.error("Cover upload error:", error);
       toast({
         title: "Upload failed",
-        description: "Failed to upload cover image. Please try again.",
+        description: "Failed to upload cover image.",
         variant: "destructive",
       });
     } finally {
@@ -1071,6 +1087,14 @@ export default function PostComposer() {
           </div>
         </div>
       </CardContent>
+
+      {/* Image Crop Modal */}
+      <ImageCropModal
+        isOpen={showCropModal}
+        imageSrc={cropImageSrc}
+        onCropComplete={handleCropComplete}
+        onClose={() => setShowCropModal(false)}
+      />
     </Card>
   );
 }
