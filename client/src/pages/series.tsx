@@ -113,7 +113,8 @@ function MyStoriesSection() {
       if (!user?.id) return [];
       try {
         const response = await apiRequest("GET", `/api/users/${user.id}/posts`);
-        return Array.isArray(response) ? response : [];
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
       } catch (error) {
         console.error("Error fetching my stories:", error);
         return [];
