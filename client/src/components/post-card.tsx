@@ -286,28 +286,30 @@ function PostCard({ post, isLiked, likesCount, isBookmarked, isReposted, reposts
               {formatPublishDate(post.publishedAt || post.createdAt || new Date())}
             </time>
             {user?.id === post.authorId && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                  <Button size="sm" variant="ghost" className="ml-2" data-testid={`button-menu-${post.id}`}>
-                    <MoreVertical className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                  <DropdownMenuItem onClick={(e) => {e.stopPropagation(); handleCardClick();}} data-testid={`menu-view-${post.id}`}>
-                    <Eye className="w-4 h-4 mr-2" />
-                    View Post
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={(e) => {e.stopPropagation(); setShowEditModal(true);}} data-testid={`menu-edit-${post.id}`}>
-                    <Edit className="w-4 h-4 mr-2" />
-                    Edit Post
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={(e) => {e.stopPropagation(); setShowDeleteDialog(true);}} className="text-destructive" data-testid={`menu-delete-${post.id}`}>
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete Post
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div onClick={(e) => e.stopPropagation()}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" variant="ghost" className="ml-2" data-testid={`button-menu-${post.id}`} onClick={(e) => e.stopPropagation()}>
+                      <MoreVertical className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenuItem onClick={(e) => {e.stopPropagation(); handleCardClick();}} data-testid={`menu-view-${post.id}`}>
+                      <Eye className="w-4 h-4 mr-2" />
+                      View Post
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={(e) => {e.stopPropagation(); setShowEditModal(true);}} data-testid={`menu-edit-${post.id}`}>
+                      <Edit className="w-4 h-4 mr-2" />
+                      Edit Post
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={(e) => {e.stopPropagation(); setShowDeleteDialog(true);}} className="text-destructive" data-testid={`menu-delete-${post.id}`}>
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete Post
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             )}
           </div>
         </div>
@@ -335,7 +337,7 @@ function PostCard({ post, isLiked, likesCount, isBookmarked, isReposted, reposts
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deleteMutation.mutate(post.id)}
+              onClick={(e) => {e.stopPropagation(); e.preventDefault(); deleteMutation.mutate(post.id);}}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={deleteMutation.isPending}
             >
