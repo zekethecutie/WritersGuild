@@ -247,6 +247,7 @@ function PostCard({ post, isLiked, likesCount, isBookmarked, isReposted, reposts
                 {author.displayName?.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
+            <div className="min-w-0 flex-1">
 
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
               <span className="font-medium text-foreground truncate" data-testid={`text-author-${post.id}`}>
