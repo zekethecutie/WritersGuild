@@ -107,18 +107,18 @@ function MyStoriesSection() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: myArticles = [], isLoading } = useQuery({
-    queryKey: ["/api/posts"],
+  const { data: myStories = [], isLoading } = useQuery({
+    queryKey: [`/api/users/${user?.id}/posts`],
     queryFn: async () => {
       try {
-        const response = await apiRequest("GET", "/api/posts");
-        return Array.isArray(response) ? response.filter((p: any) => p.authorId === user?.id) : [];
+        const response = await apiRequest("GET", `/api/users/${user?.id}/posts`);
+        return Array.isArray(response) ? response : [];
       } catch (error) {
-        console.error("Error fetching my articles:", error);
+        console.error("Error fetching my stories:", error);
         return [];
       }
     },
-    enabled: !!user,
+    enabled: !!user?.id,
   });
 
   const deletePostMutation = useMutation({
@@ -126,33 +126,33 @@ function MyStoriesSection() {
       return apiRequest("DELETE", `/api/posts/${postId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
-      toast({ title: "Success", description: "Article deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: [`/api/users/${user?.id}/posts`] });
+      toast({ title: "Success", description: "Story deleted successfully" });
     },
   });
 
   if (isLoading) {
-    return <LoadingScreen title="Loading Your Articles..." subtitle="Gathering your published works" />;
+    return <LoadingScreen title="Loading Your Stories..." subtitle="Gathering your published works" />;
   }
 
-  if (!Array.isArray(myArticles)) {
+  if (!Array.isArray(myStories)) {
     return (
       <div className="text-center py-8">
-        <p className="text-muted-foreground">Unable to load articles. Please try again.</p>
+        <p className="text-muted-foreground">Unable to load stories. Please try again.</p>
       </div>
     );
   }
 
-  if (myArticles.length === 0) {
+  if (myStories.length === 0) {
     return (
       <Card className="p-8 text-center border-2 border-dashed">
         <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-        <h3 className="text-lg font-semibold mb-2">No articles published yet</h3>
+        <h3 className="text-lg font-semibold mb-2">No stories published yet</h3>
         <p className="text-muted-foreground mb-4">Start sharing your thoughts and stories with the community</p>
         <Button asChild>
           <a href="/">
             <Plus className="w-4 h-4 mr-2" />
-            Publish Your First Article
+            Publish Your First Story
           </a>
         </Button>
       </Card>
@@ -161,33 +161,33 @@ function MyStoriesSection() {
 
   return (
     <div className="space-y-4">
-      {Array.isArray(myArticles) && myArticles.map((article: any) => (
-        <Card key={article.id} className="group hover:shadow-lg transition-shadow overflow-hidden">
+      {Array.isArray(myStories) && myStories.map((story: any) => (
+        <Card key={story.id} className="group hover:shadow-lg transition-shadow overflow-hidden">
           <div className="flex gap-4 p-4">
-            {article.coverImageUrl && (
+            {story.coverImageUrl && (
               <img
-                src={article.coverImageUrl}
-                alt={article.title || 'Article cover'}
+                src={story.coverImageUrl}
+                alt={story.title || 'Story cover'}
                 className="w-32 h-32 rounded-lg object-cover flex-shrink-0"
               />
             )}
             <div className="flex-1 min-w-0 flex flex-col justify-between">
               <div>
                 <div className="flex items-start justify-between mb-2 gap-2">
-                  <h3 className="font-semibold text-lg line-clamp-2">{article.title || 'Untitled'}</h3>
+                  <h3 className="font-semibold text-lg line-clamp-2">{story.title || 'Untitled'}</h3>
                   <Button
                     size="icon"
                     variant="ghost"
-                    onClick={() => deletePostMutation.mutate(article.id)}
+                    onClick={() => deletePostMutation.mutate(story.id)}
                     className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                    data-testid="button-delete-article"
+                    data-testid="button-delete-story"
                   >
                     <X className="w-4 h-4" />
                   </Button>
                 </div>
 
                 <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                  {article.excerpt || article.content?.substring(0, 120) || 'No description'}
+                  {story.excerpt || story.content?.substring(0, 120) || 'No description'}
                 </p>
               </div>
 
@@ -195,30 +195,30 @@ function MyStoriesSection() {
                 <div className="flex items-center gap-4 flex-wrap">
                   <span className="flex items-center gap-1">
                     <Heart className="w-3 h-3" />
-                    {article.likesCount ?? 0}
+                    {story.likesCount ?? 0}
                   </span>
                   <span className="flex items-center gap-1">
                     <MessageSquare className="w-3 h-3" />
-                    {article.commentsCount ?? 0}
+                    {story.commentsCount ?? 0}
                   </span>
-                  {article.category && <Badge variant="secondary" className="text-xs">{article.category}</Badge>}
-                  {article.readTimeMinutes && (
-                    <span className="text-xs">{article.readTimeMinutes} min read</span>
+                  {story.category && <Badge variant="secondary" className="text-xs">{story.category}</Badge>}
+                  {story.readTimeMinutes && (
+                    <span className="text-xs">{story.readTimeMinutes} min read</span>
                   )}
-                  {article.publishedAt && (
+                  {story.publishedAt && (
                     <span className="text-xs">
-                      {formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(story.publishedAt), { addSuffix: true })}
                     </span>
                   )}
                 </div>
               </div>
 
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" asChild data-testid="button-read-article">
-                  <a href={`/posts/${article.id}`}>Read</a>
+                <Button size="sm" variant="outline" asChild data-testid="button-read-story">
+                  <a href={`/posts/${story.id}`}>Read</a>
                 </Button>
-                <Button size="sm" asChild data-testid="button-edit-article">
-                  <a href={`/posts/${article.id}/edit`}>Edit</a>
+                <Button size="sm" asChild data-testid="button-edit-story">
+                  <a href={`/posts/${story.id}/edit`}>Edit</a>
                 </Button>
               </div>
             </div>
