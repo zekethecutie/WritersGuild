@@ -108,26 +108,26 @@ function MyStoriesSection() {
   const queryClient = useQueryClient();
 
   const { data: myStories = [], isLoading } = useQuery({
-    queryKey: ["/api/my-posts"],
+    queryKey: ["/api/series/my-stories"],
     queryFn: async () => {
       try {
-        const response = await apiRequest("GET", "/api/my-posts");
+        const response = await apiRequest("GET", "/api/series/my-stories");
         return Array.isArray(response) ? response : [];
       } catch (error) {
-        console.error("Error fetching my posts:", error);
+        console.error("Error fetching my stories:", error);
         return [];
       }
     },
     enabled: !!user,
   });
 
-  const deletePostMutation = useMutation({
-    mutationFn: async (postId: string) => {
-      return apiRequest("DELETE", `/api/posts/${postId}`);
+  const deleteSeriesMutation = useMutation({
+    mutationFn: async (seriesId: string) => {
+      return apiRequest("DELETE", `/api/series/${seriesId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/my-posts"] });
-      toast({ title: "Success", description: "Post deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/series/my-stories"] });
+      toast({ title: "Success", description: "Story deleted successfully" });
     },
   });
 
@@ -177,16 +177,16 @@ function MyStoriesSection() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => deletePostMutation.mutate(post.id)}
+                  onClick={() => deleteSeriesMutation.mutate(post.id)}
                   className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                  data-testid="button-delete-post"
+                  data-testid="button-delete-story"
                 >
                   <X className="w-4 h-4" />
                 </Button>
               </div>
 
               <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                {post.excerpt || (post.content ? post.content.substring(0, 100) : 'No description')}
+                {post.description || 'No description'}
               </p>
 
               <div className="flex items-center justify-between text-xs text-muted-foreground mb-3 gap-3 flex-wrap">
@@ -208,11 +208,11 @@ function MyStoriesSection() {
               </div>
 
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" asChild data-testid="button-read-post">
-                  <a href={`/post/${post.id}`}>Read</a>
+                <Button size="sm" variant="outline" asChild data-testid="button-read-story">
+                  <a href={`/series/${post.id}`}>Read</a>
                 </Button>
-                <Button size="sm" asChild data-testid="button-edit-post">
-                  <a href={`/post/${post.id}/edit`}>Edit</a>
+                <Button size="sm" asChild data-testid="button-edit-story">
+                  <a href={`/series/${post.id}/edit`}>Edit</a>
                 </Button>
               </div>
             </div>
