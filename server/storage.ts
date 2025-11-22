@@ -195,10 +195,6 @@ export class DatabaseStorage implements IStorage {
   // User operations
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
-    if (user && user.isDeactivated) {
-      console.log(`User account is deactivated: ${id}`);
-      return undefined;
-    }
     return user;
   }
 
@@ -230,12 +226,7 @@ export class DatabaseStorage implements IStorage {
   async getUserByUsername(username: string): Promise<User | undefined> {
     try {
       const userList = await db.select().from(users).where(eq(users.username, username));
-      const user = userList[0];
-      if (user && user.isDeactivated) {
-        console.log(`User account is deactivated: ${username}`);
-        return undefined;
-      }
-      return user;
+      return userList[0];
     } catch (error) {
       console.error("Error fetching user by username:", error);
       throw error;
@@ -245,12 +236,7 @@ export class DatabaseStorage implements IStorage {
   async getUserByEmail(email: string): Promise<User | undefined> {
     try {
       const userList = await db.select().from(users).where(eq(users.email, email));
-      const user = userList[0];
-      if (user && user.isDeactivated) {
-        console.log(`User account is deactivated: ${email}`);
-        return undefined;
-      }
-      return user;
+      return userList[0];
     } catch (error) {
       console.error("Error fetching user by email:", error);
       throw error;
