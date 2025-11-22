@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Music, ExternalLink, Play, Pause } from "lucide-react";
+import { Music, ExternalLink, Play, Pause, Volume2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface SpotifyTrack {
@@ -75,7 +75,25 @@ export function SpotifyTrackDisplay({ track, size = "md", showPreview = true, cl
   const [duration, setDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [usePreview, setUsePreview] = useState(true);
   const { toast } = useToast();
+
+  // Initialize Spotify Web Playback SDK
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://sdk.scdn.co/spotify-player.js';
+    script.async = true;
+    document.body.appendChild(script);
+
+    // Set up window callback for SDK
+    (window as any).onSpotifyWebPlaybackSDKReady = () => {
+      console.log('✅ Spotify Web Playback SDK ready');
+    };
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -97,104 +115,107 @@ export function SpotifyTrackDisplay({ track, size = "md", showPreview = true, cl
   }, [fullTrack?.preview_url]);
 
   const handlePlayPause = async () => {
-    // Check if we have preview URL
-    let currentTrack = fullTrack;
-    
-    // First try to get preview URL if not available
-    if (!currentTrack?.preview_url && currentTrack?.id) {
-      setIsLoading(true);
-      try {
-        const response = await fetch(`/api/spotify/track/${currentTrack.id}`);
-        if (response.ok) {
-          const trackData = await response.json();
-          if (trackData.preview_url) {
-            // Create updated track object
-            currentTrack = { ...currentTrack, preview_url: trackData.preview_url };
-          }
-        }
-      } catch (error) {
-        console.error("Failed to fetch track preview:", error);
-      }
-      setIsLoading(false);
-    }
-    
-    if (!currentTrack?.preview_url) {
-      // Open Spotify directly as fallback
-      window.open(`https://open.spotify.com/track/${currentTrack?.id}`, '_blank');
-      toast({
-        title: "Opening in Spotify 🎵", 
-        description: "This track doesn't have a preview, so we're opening it in Spotify for you!",
-      });
-      return;
-    }
+    if (!fullTrack?.id) return;
 
-    if (isPlaying && audioRef.current) {
-      audioRef.current.pause();
-      setIsPlaying(false);
-    } else {
-      if (!audioRef.current || audioRef.current.src !== currentTrack.preview_url) {
-        // Clean up old audio if exists
-        if (audioRef.current) {
-          audioRef.current.pause();
-          audioRef.current = null;
-        }
-        
-        const newAudio = new Audio();
-        
-        // Set up event listeners before setting src
-        newAudio.addEventListener('ended', () => {
-          setIsPlaying(false);
-        });
-        
-        newAudio.addEventListener('error', (e) => {
-          console.error("Audio error:", e);
-          setIsPlaying(false);
-          toast({
-            title: "Playback error 🎵",
-            description: "Could not load this track preview. The audio file might be unavailable.",
-            variant: "destructive",
+    setIsLoading(true);
+
+    try {
+      // Try using Spotify Web Playback SDK if available
+      if ((window as any).Spotify) {
+        const player = (window as any).Spotify.Player;
+        if (player && isPlaying) {
+          // Stop playback via Spotify
+          await fetch('https://api.spotify.com/v1/me/player/pause', {
+            method: 'PUT',
           });
-        });
+          setIsPlaying(false);
+          setUsePreview(false);
+          setIsLoading(false);
+          return;
+        }
+      }
 
-        newAudio.addEventListener('canplaythrough', () => {
-          console.log("Audio ready to play");
-        });
-
-        // Set crossOrigin to allow CORS
-        newAudio.crossOrigin = "anonymous";
-        newAudio.preload = "auto";
-        
-        newAudio.src = currentTrack.preview_url;
-        
-        audioRef.current = newAudio;
+      // Fallback to preview playback
+      let currentTrack = fullTrack;
+      
+      // First try to get preview URL if not available
+      if (!currentTrack?.preview_url && currentTrack?.id) {
+        try {
+          const response = await fetch(`/api/spotify/track/${currentTrack.id}`);
+          if (response.ok) {
+            const trackData = await response.json();
+            if (trackData.preview_url) {
+              currentTrack = { ...currentTrack, preview_url: trackData.preview_url };
+            }
+          }
+        } catch (error) {
+          console.error("Failed to fetch track preview:", error);
+        }
       }
       
-      try {
-        // Add user interaction check
-        const playPromise = audioRef.current.play();
-        if (playPromise !== undefined) {
-          await playPromise;
-          setIsPlaying(true);
-        }
-      } catch (error) {
-        console.error("Audio play error:", error);
+      if (!currentTrack?.preview_url) {
+        // Open Spotify directly as fallback
+        window.open(`https://open.spotify.com/track/${currentTrack?.id}`, '_blank');
+        toast({
+          title: "Open in Spotify 🎵", 
+          description: "Click the link to play the full track on Spotify!",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      setUsePreview(true);
+
+      if (isPlaying && audioRef.current) {
+        audioRef.current.pause();
         setIsPlaying(false);
-        
-        // Try direct Spotify URL as fallback
-        if ((error as any).name === 'NotAllowedError') {
-          toast({
-            title: "Playback blocked 🎵",
-            description: "Click anywhere on the page first, then try playing again.",
-            variant: "destructive",
+      } else {
+        if (!audioRef.current || audioRef.current.src !== currentTrack.preview_url) {
+          if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current = null;
+          }
+          
+          const newAudio = new Audio();
+          
+          newAudio.addEventListener('ended', () => {
+            setIsPlaying(false);
           });
-        } else {
+          
+          newAudio.addEventListener('error', (e) => {
+            console.error("Audio error:", e);
+            setIsPlaying(false);
+            toast({
+              title: "Playback error 🎵",
+              description: "Could not load preview. Tap to open in Spotify instead.",
+              variant: "destructive",
+            });
+          });
+
+          newAudio.crossOrigin = "anonymous";
+          newAudio.preload = "auto";
+          newAudio.src = currentTrack.preview_url;
+          audioRef.current = newAudio;
+        }
+        
+        try {
+          const playPromise = audioRef.current.play();
+          if (playPromise !== undefined) {
+            await playPromise;
+            setIsPlaying(true);
+          }
+        } catch (error) {
+          console.error("Audio play error:", error);
+          setIsPlaying(false);
           toast({
             title: "Playback error 🎵",
-            description: "Unable to play audio. Try opening in Spotify instead.",
+            description: "Open in Spotify to play this track.",
             variant: "destructive",
           });
         }
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -315,20 +336,27 @@ export function SpotifyTrackDisplay({ track, size = "md", showPreview = true, cl
                   onClick={handlePlayPause}
                   size="sm"
                   variant="ghost"
-                  className="h-8 w-8 p-0 hover:bg-white/20"
+                  className="h-8 w-8 p-0 hover:bg-green-400/20 transition-colors"
                   disabled={isLoading}
+                  title={isPlaying ? "Pause preview" : "Play preview (30 sec)"}
+                  data-testid="button-spotify-play"
                 >
                   {isLoading ? (
-                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <div className="h-4 w-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
                   ) : isPlaying ? (
-                    <Pause className="h-4 w-4 text-white" />
+                    <Pause className="h-4 w-4 text-green-500" />
                   ) : (
-                    <Play className="h-4 w-4 text-white" />
+                    <Play className="h-4 w-4 text-green-500" />
                   )}
                 </Button>
-                {duration > 0 && !isLoading && (
+                {usePreview && duration > 0 && !isLoading && (
                   <span className="text-xs text-muted-foreground min-w-[3rem]">
                     {formatTime(currentTime)}/{formatTime(duration)}
+                  </span>
+                )}
+                {usePreview && !fullTrack.preview_url && !isLoading && (
+                  <span className="text-xs text-muted-foreground">
+                    No preview
                   </span>
                 )}
                 <audio
@@ -343,10 +371,11 @@ export function SpotifyTrackDisplay({ track, size = "md", showPreview = true, cl
               variant="ghost"
               size="sm"
               onClick={() => window.open(fullTrack.external_urls.spotify, '_blank')}
-              className="p-2"
-              title="Open in Spotify"
+              className="p-2 hover:bg-green-400/20 transition-colors"
+              title="Open full track in Spotify"
+              data-testid="button-spotify-open"
             >
-              <ExternalLink className={classes.icon} />
+              <ExternalLink className={`${classes.icon} text-green-500`} />
             </Button>
           </div>
         </div>
