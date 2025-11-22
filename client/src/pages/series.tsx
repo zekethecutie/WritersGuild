@@ -107,52 +107,52 @@ function MyStoriesSection() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: myStories = [], isLoading } = useQuery({
-    queryKey: ["/api/series/my-stories"],
+  const { data: myArticles = [], isLoading } = useQuery({
+    queryKey: ["/api/posts"],
     queryFn: async () => {
       try {
-        const response = await apiRequest("GET", "/api/series/my-stories");
-        return Array.isArray(response) ? response : [];
+        const response = await apiRequest("GET", "/api/posts");
+        return Array.isArray(response) ? response.filter((p: any) => p.authorId === user?.id) : [];
       } catch (error) {
-        console.error("Error fetching my stories:", error);
+        console.error("Error fetching my articles:", error);
         return [];
       }
     },
     enabled: !!user,
   });
 
-  const deleteSeriesMutation = useMutation({
-    mutationFn: async (seriesId: string) => {
-      return apiRequest("DELETE", `/api/series/${seriesId}`);
+  const deletePostMutation = useMutation({
+    mutationFn: async (postId: string) => {
+      return apiRequest("DELETE", `/api/posts/${postId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/series/my-stories"] });
-      toast({ title: "Success", description: "Story deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      toast({ title: "Success", description: "Article deleted successfully" });
     },
   });
 
   if (isLoading) {
-    return <LoadingScreen title="Loading Stories..." subtitle="Discovering amazing tales" />;
+    return <LoadingScreen title="Loading Your Articles..." subtitle="Gathering your published works" />;
   }
 
-  if (!Array.isArray(myStories)) {
+  if (!Array.isArray(myArticles)) {
     return (
       <div className="text-center py-8">
-        <p className="text-muted-foreground">Unable to load stories. Please try again.</p>
+        <p className="text-muted-foreground">Unable to load articles. Please try again.</p>
       </div>
     );
   }
 
-  if (myStories.length === 0) {
+  if (myArticles.length === 0) {
     return (
       <Card className="p-8 text-center border-2 border-dashed">
         <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-        <h3 className="text-lg font-semibold mb-2">No stories yet</h3>
-        <p className="text-muted-foreground mb-4">Start your writing journey by publishing your first article</p>
+        <h3 className="text-lg font-semibold mb-2">No articles published yet</h3>
+        <p className="text-muted-foreground mb-4">Start sharing your thoughts and stories with the community</p>
         <Button asChild>
           <a href="/">
             <Plus className="w-4 h-4 mr-2" />
-            Write Your First Story
+            Publish Your First Article
           </a>
         </Button>
       </Card>
@@ -160,59 +160,65 @@ function MyStoriesSection() {
   }
 
   return (
-    <div className="space-y-3">
-      {Array.isArray(myStories) && myStories.map((post: any) => (
-        <Card key={post.id} className="group hover:shadow-lg transition-shadow p-4">
-          <div className="flex gap-4">
-            {post.coverImageUrl && (
+    <div className="space-y-4">
+      {Array.isArray(myArticles) && myArticles.map((article: any) => (
+        <Card key={article.id} className="group hover:shadow-lg transition-shadow overflow-hidden">
+          <div className="flex gap-4 p-4">
+            {article.coverImageUrl && (
               <img
-                src={post.coverImageUrl}
-                alt={post.title || 'Post cover'}
-                className="w-24 h-24 rounded-lg object-cover flex-shrink-0"
+                src={article.coverImageUrl}
+                alt={article.title || 'Article cover'}
+                className="w-32 h-32 rounded-lg object-cover flex-shrink-0"
               />
             )}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between mb-2 gap-2">
-                <h3 className="font-semibold text-base line-clamp-2">{post.title || 'Untitled'}</h3>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => deleteSeriesMutation.mutate(post.id)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                  data-testid="button-delete-story"
-                >
-                  <X className="w-4 h-4" />
-                </Button>
+            <div className="flex-1 min-w-0 flex flex-col justify-between">
+              <div>
+                <div className="flex items-start justify-between mb-2 gap-2">
+                  <h3 className="font-semibold text-lg line-clamp-2">{article.title || 'Untitled'}</h3>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => deletePostMutation.mutate(article.id)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                    data-testid="button-delete-article"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                  {article.excerpt || article.content?.substring(0, 120) || 'No description'}
+                </p>
               </div>
 
-              <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                {post.description || 'No description'}
-              </p>
-
-              <div className="flex items-center justify-between text-xs text-muted-foreground mb-3 gap-3 flex-wrap">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between text-xs text-muted-foreground gap-3 flex-wrap mb-3">
+                <div className="flex items-center gap-4 flex-wrap">
                   <span className="flex items-center gap-1">
                     <Heart className="w-3 h-3" />
-                    {post.likesCount ?? 0}
+                    {article.likesCount ?? 0}
                   </span>
                   <span className="flex items-center gap-1">
                     <MessageSquare className="w-3 h-3" />
-                    {post.commentsCount ?? 0}
+                    {article.commentsCount ?? 0}
                   </span>
-                  {post.createdAt && (
+                  {article.category && <Badge variant="secondary" className="text-xs">{article.category}</Badge>}
+                  {article.readTimeMinutes && (
+                    <span className="text-xs">{article.readTimeMinutes} min read</span>
+                  )}
+                  {article.publishedAt && (
                     <span className="text-xs">
-                      {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true })}
                     </span>
                   )}
                 </div>
               </div>
 
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" asChild data-testid="button-read-story">
-                  <a href={`/series/${post.id}`}>Read</a>
+                <Button size="sm" variant="outline" asChild data-testid="button-read-article">
+                  <a href={`/posts/${article.id}`}>Read</a>
                 </Button>
-                <Button size="sm" asChild data-testid="button-edit-story">
-                  <a href={`/series/${post.id}/edit`}>Edit</a>
+                <Button size="sm" asChild data-testid="button-edit-article">
+                  <a href={`/posts/${article.id}/edit`}>Edit</a>
                 </Button>
               </div>
             </div>

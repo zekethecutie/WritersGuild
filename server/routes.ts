@@ -2790,13 +2790,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/user/profile', requireAuth, async (req: any, res) => {
     try {
       const userId = req.session.userId;
-      const { displayName, bio, location, website } = req.body;
+      const { displayName, bio, location, website, userRole } = req.body;
 
       const updatedUser = await storage.updateUserProfile(userId, {
         displayName,
         bio,
         location,
         website,
+        userRole: userRole || 'reader',
       });
       res.json(updatedUser);
     } catch (error: any) {

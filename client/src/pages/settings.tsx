@@ -71,10 +71,7 @@ export default function Settings() {
     compactMode: false,
   });
 
-  const [userPreferences, setUserPreferences] = useState({
-    isReader: user?.userRole === 'reader' || true,
-    isWriter: user?.userRole === 'writer' || true,
-  });
+  const [userRole, setUserRole] = useState(user?.userRole || 'reader');
 
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
@@ -193,13 +190,13 @@ export default function Settings() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(profile),
+        body: JSON.stringify({ ...profile, userRole }),
       });
 
       if (response.ok) {
         toast({
           title: "Profile updated",
-          description: "Your profile has been saved successfully.",
+          description: "Your profile and role preference have been saved successfully.",
         });
       }
     } catch (error) {
@@ -454,32 +451,28 @@ export default function Settings() {
                   <Separator />
 
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Content Preferences</h3>
-                    <p className="text-sm text-muted-foreground">Choose what you want to do on Writers Guild</p>
+                    <h3 className="text-lg font-semibold">Content Role</h3>
+                    <p className="text-sm text-muted-foreground">Choose your primary role on Writers Guild (Reader or Writer)</p>
                     
-                    <div className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex-1">
-                        <Label className="text-base font-medium">Reader</Label>
-                        <p className="text-sm text-muted-foreground">Discover and read articles from your community</p>
+                    <RadioGroup value={userRole} onValueChange={setUserRole}>
+                      <div className="flex items-center gap-4 p-4 border rounded-lg cursor-pointer hover-elevate" onClick={() => setUserRole('reader')}>
+                        <RadioGroupItem value="reader" id="reader-role" />
+                        <div className="flex-1">
+                          <Label htmlFor="reader-role" className="text-base font-medium cursor-pointer">Reader</Label>
+                          <p className="text-sm text-muted-foreground">Discover and read articles from your community</p>
+                        </div>
+                        <Badge variant="outline">Read Mode</Badge>
                       </div>
-                      <Switch 
-                        checked={userPreferences.isReader}
-                        onCheckedChange={(checked) => setUserPreferences({...userPreferences, isReader: checked})}
-                        data-testid="switch-reader-mode"
-                      />
-                    </div>
 
-                    <div className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex-1">
-                        <Label className="text-base font-medium">Writer</Label>
-                        <p className="text-sm text-muted-foreground">Create and publish articles for your audience</p>
+                      <div className="flex items-center gap-4 p-4 border rounded-lg cursor-pointer hover-elevate" onClick={() => setUserRole('writer')}>
+                        <RadioGroupItem value="writer" id="writer-role" />
+                        <div className="flex-1">
+                          <Label htmlFor="writer-role" className="text-base font-medium cursor-pointer">Writer</Label>
+                          <p className="text-sm text-muted-foreground">Create and publish articles for your audience</p>
+                        </div>
+                        <Badge variant="default">Write Mode</Badge>
                       </div>
-                      <Switch 
-                        checked={userPreferences.isWriter}
-                        onCheckedChange={(checked) => setUserPreferences({...userPreferences, isWriter: checked})}
-                        data-testid="switch-writer-mode"
-                      />
-                    </div>
+                    </RadioGroup>
                   </div>
 
                   <Button onClick={handleProfileUpdate}>
