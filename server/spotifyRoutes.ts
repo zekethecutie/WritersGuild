@@ -10,17 +10,23 @@ router.get('/search', async (req, res) => {
 
   try {
     if (!q || typeof q !== 'string') {
+      console.error('❌ Search query is missing');
       return res.status(400).json({ error: 'Search query is required' });
     }
 
+    console.log('🔍 Searching Spotify for:', q);
     const spotify = await getSpotifyClient();
     
     try {
+      console.log('📡 Calling spotify.search() with query:', q, 'limit:', limitNum);
       const results = await spotify.search(q, ['track'], undefined, limitNum);
-      console.log('Spotify search successful, found', results.tracks.items.length, 'tracks');
+      console.log('✅ Spotify search successful, found', results.tracks.items.length, 'tracks');
+      console.log('📊 Full response:', JSON.stringify(results, null, 2));
       res.json(results);
     } catch (spotifyError: any) {
-      console.error('Spotify API error:', spotifyError);
+      console.error('❌ Spotify API error:', spotifyError);
+      console.error('Error details:', spotifyError.message);
+      console.error('Error body:', spotifyError.body);
 
       // Return empty results instead of error to prevent UI breaks
       res.json({
@@ -33,7 +39,7 @@ router.get('/search', async (req, res) => {
       });
     }
   } catch (error: any) {
-    console.error('Spotify search error:', error);
+    console.error('❌ Spotify search error:', error);
 
     // Always return a valid response structure
     res.json({
