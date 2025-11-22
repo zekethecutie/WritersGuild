@@ -303,7 +303,7 @@ export function SpotifyTrackDisplay({ track, size = "md", showPreview = true, cl
           {albumArt ? (
             <img
               src={albumArt}
-              alt={`${fullTrack.album || 'album'} art`}
+              alt={`${typeof fullTrack.album === 'string' ? fullTrack.album : fullTrack.album?.name || 'album'} art`}
               className={`${classes.image} rounded object-cover`}
               onError={(e) => { (e.target as any).style.display = 'none'; }}
             />
@@ -335,7 +335,7 @@ export function SpotifyTrackDisplay({ track, size = "md", showPreview = true, cl
               minHeight: '1.5em',
               paddingBottom: '2px'
             }}>
-              {fullTrack.artist || (fullTrack.artists?.map((artist: any) => artist.name).join(", ")) || 'Unknown Artist'}
+              {(fullTrack as any)?.artist || (Array.isArray((fullTrack as any)?.artists) ? (fullTrack as any).artists.map((artist: any) => artist.name).join(", ") : 'Unknown Artist')}
             </p>
             {size !== "sm" && (
               <p className="text-xs text-muted-foreground" style={{
@@ -347,7 +347,7 @@ export function SpotifyTrackDisplay({ track, size = "md", showPreview = true, cl
                 minHeight: '1.4em',
                 paddingBottom: '2px'
               }}>
-                {fullTrack.album || 'Unknown Album'} {fullTrack.duration_ms ? `• ${formatDuration(fullTrack.duration_ms)}` : ''}
+                {typeof fullTrack.album === 'string' ? fullTrack.album : fullTrack.album?.name || 'Unknown Album'} {fullTrack.duration_ms ? `• ${formatDuration(fullTrack.duration_ms)}` : ''}
               </p>
             )}
           </div>
