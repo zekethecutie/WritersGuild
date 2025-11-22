@@ -171,6 +171,18 @@ export const writingGoals = pgTable("writing_goals", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Feedback table
+export const feedback = pgTable("feedback", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+  category: varchar("category").notNull().default("general"), // bug, feature, general, ui, other
+  subject: varchar("subject").notNull(),
+  message: text("message").notNull(),
+  contactEmail: varchar("contact_email"),
+  isResolved: boolean("is_resolved").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Series table for Wattpad-like functionality
 export const series = pgTable("series", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -583,3 +595,11 @@ export type ReadingProgress = typeof readingProgress.$inferSelect;
 export type Leaderboard = typeof leaderboards.$inferSelect;
 export type PostCollaborator = typeof postCollaborators.$inferSelect;
 export type InsertPostCollaborator = z.infer<typeof insertPostCollaboratorSchema>;
+export type Feedback = typeof feedback.$inferSelect;
+
+const insertFeedbackSchema = createInsertSchema(feedback).omit({
+  id: true,
+  isResolved: true,
+  createdAt: true,
+});
+export type InsertFeedback = z.infer<typeof insertFeedbackSchema>;
