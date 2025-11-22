@@ -15,6 +15,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import Sidebar from "@/components/sidebar";
 import MobileNav from "@/components/mobile-nav";
 import AuthDialog from "@/components/auth-dialog";
+import type { Post } from "@shared/schema";
 
 // Define interfaces for data types
 interface TrendingTopic {
@@ -32,29 +33,6 @@ interface TrendingUser {
   isVerified?: boolean;
   bio?: string;
   postsCount?: number; // Added for guest view
-}
-
-interface Post {
-  id: string;
-  content: string;
-  authorId: string;
-  author: {
-    id: string;
-    username: string;
-    displayName: string;
-    profileImageUrl?: string;
-    isVerified?: boolean;
-  };
-  createdAt: string;
-  imageUrls?: string[];
-  likeCount: number;
-  commentCount: number;
-  repostCount: number;
-  isLiked?: boolean;
-  isBookmarked?: boolean;
-  isReposted?: boolean;
-  spotifyTrack?: any;
-  genre?: string; // Added genre for post display
 }
 
 export default function Explore() {
