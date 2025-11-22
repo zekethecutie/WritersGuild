@@ -275,47 +275,6 @@ function PostCard({ post, isLiked, likesCount, isBookmarked, isReposted, reposts
             </time>
           </div>
         </div>
-      </div>
-      {/* Dropdown for post options */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <div
-            className="absolute top-4 right-4 p-1 rounded-md bg-secondary hover:bg-secondary/70 z-10"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <MoreVertical className="w-4 h-4 text-muted-foreground" />
-          </div>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48" sideOffset={5}>
-          <DropdownMenuItem onClick={() => window.location.href = `/post/${post.id}`}>
-            <Eye className="mr-2 h-4 w-4" />
-            View Post
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          {/* Edit and Delete options for own posts or admin */}
-          {(user?.id === author.id || user?.isAdmin) && (
-            <>
-              <DropdownMenuItem onClick={(e) => {
-                e.stopPropagation();
-                setShowEditModal(true);
-              }}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit Post
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowDeleteDialog(true);
-                }}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete Post
-              </DropdownMenuItem>
-            </>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
 
       {/* Edit Post Modal */}
       {showEditModal && (

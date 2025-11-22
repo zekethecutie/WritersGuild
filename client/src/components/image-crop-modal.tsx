@@ -18,6 +18,8 @@ export default function ImageCropModal({ isOpen, imageSrc, onCropComplete, onClo
   const [aspectRatio, setAspectRatio] = useState<"1:1" | "21:9">("21:9");
   const [isProcessing, setIsProcessing] = useState(false);
 
+  if (!isOpen || !imageSrc) return null;
+
   const onCropAreaChange = useCallback((croppedArea: Area, croppedAreaPixels: Area) => {
     setCroppedAreaPixels(croppedAreaPixels);
   }, []);
