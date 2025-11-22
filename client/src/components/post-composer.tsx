@@ -44,36 +44,36 @@ export default function PostComposer() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const coverInputRef = useRef < HTMLInputElement > (null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
 
   const [content, setContent] = useState("");
   const [title, setTitle] = useState("");
-  const [category, setCategory] = useState < string > ("general");
+  const [category, setCategory] = useState<string>("general");
   const [excerpt, setExcerpt] = useState("");
-  const [coverImageUrl, setCoverImageUrl] = useState < string > ("");
-  const [privacy, setPrivacy] = useState < "public" | "followers" | "private" > ("public");
-  const [selectedImages, setSelectedImages] = useState < string[] > ([]);
+  const [coverImageUrl, setCoverImageUrl] = useState<string>("");
+  const [privacy, setPrivacy] = useState<"public" | "followers" | "private">("public");
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [isRichEditor, setIsRichEditor] = useState(false);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [showCollaboratorSearch, setShowCollaboratorSearch] = useState(false);
   const [collaboratorSearchQuery, setCollaboratorSearchQuery] = useState("");
-  const [selectedCollaborators, setSelectedCollaborators] = useState < any[] > ([]);
-  const [mentions, setMentions] = useState < Set < string >> (new Set());
-  const [hashtags, setHashtags] = useState < Set < string >> (new Set());
+  const [selectedCollaborators, setSelectedCollaborators] = useState<any[]>([]);
+  const [mentions, setMentions] = useState<Set<string >> (new Set());
+  const [hashtags, setHashtags] = useState<Set<string >> (new Set());
   const [mentionDropdownVisible, setMentionDropdownVisible] = useState(false);
   const [mentionSearchText, setMentionSearchText] = useState("");
   const [mentionCursorPos, setMentionCursorPos] = useState(0);
-  const contentTextareaRef = useRef < HTMLTextAreaElement > (null);
+  const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Spotify track state
-  const [spotifyTrack, setSpotifyTrack] = useState < any > (null);
+  const [spotifyTrack, setSpotifyTrack] = useState<any>(null);
   const [showSpotifySearch, setShowSpotifySearch] = useState(false);
 
   // Parse mentions and hashtags from content
   useEffect(() => {
-    const newMentions = new Set < string > ();
-    const newHashtags = new Set < string > ();
+    const newMentions = new Set<string>();
+    const newHashtags = new Set<string>();
 
     // Extract mentions (@username)
     const mentionMatches = content.match(/@(\w+)/g);
@@ -255,7 +255,7 @@ export default function PostComposer() {
       return;
     }
 
-    if (file.size > maxSize) {
+    if (file.size>maxSize) {
       toast({
         title: "File too large",
         description: `${file.name} is larger than 10MB.`,
@@ -319,7 +319,7 @@ export default function PostComposer() {
         return false;
       }
 
-      if (file.size > maxSize) {
+      if (file.size>maxSize) {
         toast({
           title: "File too large",
           description: `${file.name} is larger than 10MB.`,
@@ -404,7 +404,7 @@ export default function PostComposer() {
     }
 
     // Validate content length
-    if (content.length > 10000) {
+    if (content.length>10000) {
       toast({
         title: "Article too long",
         description: "Articles must be under 10,000 characters.",
@@ -414,7 +414,7 @@ export default function PostComposer() {
     }
 
     // Validate excerpt length
-    if (excerpt.length > 500) {
+    if (excerpt.length>500) {
       toast({
         title: "Excerpt too long",
         description: "Excerpt must be under 500 characters.",
@@ -496,7 +496,7 @@ export default function PostComposer() {
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center space-x-3">
             <img
-              src={user ? .profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user ? .username}`}
+              src={user ?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user ?.username}`}
               alt="Your profile"
               className="w-10 h-10 rounded-full object-cover flex-shrink-0"
               data-testid="img-composer-avatar"
@@ -596,7 +596,7 @@ export default function PostComposer() {
               />
               <Button
                 variant="outline"
-                onClick={() => document.getElementById('cover-upload') ? .click()}
+                onClick={() => document.getElementById('cover-upload') ?.click()}
                 disabled={isUploadingCover}
                 className="w-full h-32 border-dashed border-2"
                 data-testid="button-upload-cover"
@@ -675,7 +675,7 @@ export default function PostComposer() {
                 className="resize-none min-h-[300px] border-border"
                 data-testid="textarea-post-content"
               />
-              {mentionDropdownVisible && mentionSearchQuery.data && Array.isArray(mentionSearchQuery.data) && mentionSearchQuery.data.length > 0 && (
+              {mentionDropdownVisible && mentionSearchQuery.data && Array.isArray(mentionSearchQuery.data) && mentionSearchQuery.data.length>0 && (
                 <Card className="absolute left-0 right-0 top-full mt-1 z-50 max-h-60 overflow-y-auto border-border shadow-lg">
                   <CardContent className="p-2">
                     <div className="space-y-1">
@@ -706,7 +706,7 @@ export default function PostComposer() {
         </div>
 
         {/* Body Images Gallery */}
-        {selectedImages.length > 0 && (
+        {selectedImages.length>0 && (
           <div className="space-y-2">
             <label className="text-sm font-semibold">Body Images</label>
             <ImageGallery
@@ -720,7 +720,7 @@ export default function PostComposer() {
         )}
 
         {/* Collaborators Display */}
-        {selectedCollaborators.length > 0 && (
+        {selectedCollaborators.length>0 && (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <UserPlus className="w-4 h-4 text-blue-500" />
@@ -794,12 +794,12 @@ export default function PostComposer() {
                   </div>
                 )}
 
-                {searchUsersQuery.data && Array.isArray(searchUsersQuery.data) && searchUsersQuery.data.length > 0 && (
+                {searchUsersQuery.data && Array.isArray(searchUsersQuery.data) && searchUsersQuery.data.length>0 && (
                   <ScrollArea className="h-64 pr-2">
                     <div className="space-y-2 pr-2">
                       {searchUsersQuery.data.map((searchUser: any) => {
                         const isAlreadyCollaborator = selectedCollaborators.some(c => c.id === searchUser.id);
-                        const isCurrentUser = searchUser.id === user ? .id;
+                        const isCurrentUser = searchUser.id === user ?.id;
 
                         return (
                           <div
@@ -817,7 +817,7 @@ export default function PostComposer() {
                             <div className="flex items-center space-x-3 flex-1 min-w-0">
                               <Avatar className="w-10 h-10">
                                 <AvatarImage src={searchUser.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${searchUser.username}`} alt={searchUser.displayName} />
-                                <AvatarFallback>{searchUser.displayName ? .charAt(0)}</AvatarFallback>
+                                <AvatarFallback>{searchUser.displayName ?.charAt(0)}</AvatarFallback>
                               </Avatar>
                               <div className="flex-1 min-w-0">
                                 <p className="font-medium text-sm truncate">{searchUser.displayName}</p>
@@ -872,7 +872,7 @@ export default function PostComposer() {
                   </div>
                 )}
 
-                {selectedCollaborators.length > 0 && (
+                {selectedCollaborators.length>0 && (
                   <div className="pt-3 border-t border-blue-200 dark:border-blue-800">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm font-semibold text-foreground flex items-center gap-1">
@@ -897,7 +897,7 @@ export default function PostComposer() {
                         >
                           <Avatar className="w-4 h-4">
                             <AvatarImage src={collaborator.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${collaborator.username}`} alt={collaborator.displayName} />
-                            <AvatarFallback>{collaborator.displayName ? .charAt(0)}</AvatarFallback>
+                            <AvatarFallback>{collaborator.displayName ?.charAt(0)}</AvatarFallback>
                           </Avatar>
                           <span className="font-medium">{collaborator.displayName}</span>
                           <button
@@ -1002,7 +1002,7 @@ export default function PostComposer() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => document.getElementById('body-images-upload') ? .click()}
+              onClick={() => document.getElementById('body-images-upload') ?.click()}
               disabled={isUploadingImages || selectedImages.length >= 4}
               title={isUploadingImages ? "Uploading..." : selectedImages.length >= 4 ? "Maximum 4 images" : "Add body images"}
               data-testid="button-add-images"
@@ -1012,20 +1012,20 @@ export default function PostComposer() {
               ) : (
                 <ImageIcon className="w-4 h-4 mr-2" />
               )}
-              Add Images {selectedImages.length > 0 && `(${selectedImages.length}/4)`}
+              Add Images {selectedImages.length>0 && `(${selectedImages.length}/4)`}
             </Button>
 
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowCollaboratorSearch(!showCollaboratorSearch)}
-              className={`${showCollaboratorSearch || selectedCollaborators.length > 0 ? "bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : ""} transition-all`}
-              title={selectedCollaborators.length > 0 ? `${selectedCollaborators.length} collaborator${selectedCollaborators.length !== 1 ? 's' : ''} added` : "Add collaborators"}
+              className={`${showCollaboratorSearch || selectedCollaborators.length>0 ? "bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : ""} transition-all`}
+              title={selectedCollaborators.length>0 ? `${selectedCollaborators.length} collaborator${selectedCollaborators.length !== 1 ? 's' : ''} added` : "Add collaborators"}
               data-testid="button-add-collaborators"
             >
-              <UserPlus className={`w-4 h-4 mr-2 ${selectedCollaborators.length > 0 ? 'text-blue-500' : ''}`} />
-              Collaborators {selectedCollaborators.length > 0 && `(${selectedCollaborators.length})`}
-              {selectedCollaborators.length > 0 && (
+              <UserPlus className={`w-4 h-4 mr-2 ${selectedCollaborators.length>0 ? 'text-blue-500' : ''}`} />
+              Collaborators {selectedCollaborators.length>0 && `(${selectedCollaborators.length})`}
+              {selectedCollaborators.length>0 && (
                 <span className="ml-1">✓</span>
               )}
             </Button>
@@ -1047,7 +1047,7 @@ export default function PostComposer() {
           </div>
 
           <div className="flex items-center gap-3">
-            {content.length > 0 && (
+            {content.length>0 && (
               <span className="text-xs text-muted-foreground">
                 {content.length}/10,000 characters
               </span>
