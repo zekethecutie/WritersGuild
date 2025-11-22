@@ -332,9 +332,10 @@ export default function NotificationsPage() {
                         </div>
                         
                         {notification.post && (
-                          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                            {notification.post.content}
-                          </p>
+                          <div 
+                            className="text-sm text-muted-foreground mt-1 line-clamp-2"
+                            dangerouslySetInnerHTML={{ __html: notification.post.content }}
+                          />
                         )}
                         
                         <p className="text-xs text-muted-foreground mt-2">
