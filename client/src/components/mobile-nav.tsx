@@ -56,23 +56,23 @@ export default function MobileNav() {
 
   return (
     <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-background border-t border-border z-40">
-      <div className="flex items-center justify-between px-2 py-3 gap-1">
+      <div className="flex items-center justify-center px-0 py-2 gap-0">
         {/* Left Arrow */}
         <Button
           variant="ghost"
           size="icon"
           onClick={handlePrevPage}
           disabled={page === 0}
-          className="h-9 w-9 flex-shrink-0"
+          className="h-11 w-11 flex-shrink-0"
           title="Previous"
           data-testid="button-nav-prev"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="w-5 h-5" />
         </Button>
 
-        {/* Navigation Items - 5 visible */}
-        <div className="flex items-center gap-1 flex-1">
-          {currentPageItems.map((item) => {
+        {/* Navigation Items - 5 visible, evenly spaced */}
+        <div className="flex items-center justify-center flex-1 gap-0">
+          {currentPageItems.map((item, idx) => {
             const isActive = location === item.path || location.startsWith(item.path);
             const Icon = item.icon;
 
@@ -84,11 +84,11 @@ export default function MobileNav() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-9 w-9 flex-shrink-0"
+                      className="h-11 w-11 flex-shrink-0"
                       title={item.label}
                       data-testid={item.testid}
                     >
-                      <Icon className="w-4 h-4" />
+                      <Icon className="w-5 h-5" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-40">
@@ -110,11 +110,11 @@ export default function MobileNav() {
                 variant="ghost"
                 size="icon"
                 onClick={() => window.location.href = item.path}
-                className={`h-9 w-9 flex-shrink-0 ${isActive ? "text-primary" : "text-muted-foreground"}`}
+                className={`h-11 w-11 flex-shrink-0 ${isActive ? "text-primary" : "text-muted-foreground"}`}
                 title={item.label}
                 data-testid={item.testid}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-5 h-5" />
               </Button>
             );
           })}
@@ -126,11 +126,11 @@ export default function MobileNav() {
           size="icon"
           onClick={handleNextPage}
           disabled={page === totalPages - 1}
-          className="h-9 w-9 flex-shrink-0"
+          className="h-11 w-11 flex-shrink-0"
           title="Next"
           data-testid="button-nav-next"
         >
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="w-5 h-5" />
         </Button>
       </div>
     </div>

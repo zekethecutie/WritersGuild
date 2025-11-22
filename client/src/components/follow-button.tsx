@@ -34,6 +34,7 @@ export default function FollowButton({
         });
         if (response.ok) {
           const data = await response.json();
+          setOptimisticFollowing(data.isFollowing || false);
           return data.isFollowing || false;
         }
       } catch (error) {
@@ -44,13 +45,6 @@ export default function FollowButton({
     enabled: !!userId,
     initialData: isFollowing,
   });
-
-  // Sync optimistic state with server data
-  React.useEffect(() => {
-    if (following !== undefined) {
-      setOptimisticFollowing(following);
-    }
-  }, [following]);
 
   const followMutation = useMutation({
     mutationFn: async () => {
