@@ -41,28 +41,39 @@ function useTrackDetails(track: SpotifyTrack | null) {
   const [fullTrack, setFullTrack] = React.useState<SpotifyTrack | null>(track);
 
   React.useEffect(() => {
-    if (!track || track.preview_url !== null) {
+    if (!track) {
+      setFullTrack(null);
+      return;
+    }
+
+    // Check if we have preview_url already (could be from full API response or stored data)
+    if ('preview_url' in track && track.preview_url) {
       setFullTrack(track);
       return;
     }
 
     // If we don't have preview_url, fetch full track details
-    const fetchTrackDetails = async () => {
-      try {
-        const response = await fetch(`/api/spotify/track/${track.id}`);
-        if (response.ok) {
-          const fullTrackData = await response.json();
-          setFullTrack(fullTrackData);
-        } else {
+    if (track.id) {
+      const fetchTrackDetails = async () => {
+        try {
+          const response = await fetch(`/api/spotify/track/${track.id}`);
+          if (response.ok) {
+            const fullTrackData = await response.json();
+            // Merge with existing track data to preserve any fields we have
+            setFullTrack({ ...track, ...fullTrackData } as SpotifyTrack);
+          } else {
+            setFullTrack(track);
+          }
+        } catch (error) {
+          console.error('Failed to fetch track details:', error);
           setFullTrack(track);
         }
-      } catch (error) {
-        console.error('Failed to fetch track details:', error);
-        setFullTrack(track);
-      }
-    };
+      };
 
-    fetchTrackDetails();
+      fetchTrackDetails();
+    } else {
+      setFullTrack(track);
+    }
   }, [track]);
 
   return fullTrack;
@@ -232,6 +243,30 @@ export function SpotifyTrackDisplay({ track, size = "md", showPreview = true, cl
   };
 
   if (!fullTrack) return null;
+
+  // Helper function to extract album art URL
+  const getAlbumArt = (track: SpotifyTrack | any) => {
+    if (!track) return undefined;
+    
+    // Handle simplified stored track data (has image string directly)
+    if (typeof track.image === 'string') {
+      return track.image;
+    }
+    
+    // Handle full API track data (has album.images array)
+    if (track.album?.images && Array.isArray(track.album.images)) {
+      const sizeMap = {
+        sm: 300,
+        md: 640,
+        lg: 640,
+      };
+      const targetSize = sizeMap[size];
+      const image = track.album.images.find((img: any) => img.height && img.height <= targetSize) || track.album.images[0];
+      return image?.url;
+    }
+    
+    return undefined;
+  };
 
   const sizeClasses = {
     sm: {
