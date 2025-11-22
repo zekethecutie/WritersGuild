@@ -118,6 +118,15 @@ export const follows = pgTable("follows", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// User Deactivations table - tracks account deactivations separately
+export const userDeactivations = pgTable("user_deactivations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().unique().references(() => users.id, { onDelete: "cascade" }),
+  deactivatedAt: timestamp("deactivated_at").defaultNow(),
+  deactivatedBy: uuid("deactivated_by").references(() => users.id),
+  reason: text("reason"),
+});
+
 // Reposts table
 export const reposts = pgTable("reposts", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -472,6 +481,17 @@ export const postCollaboratorsRelations = relations(postCollaborators, ({ one })
   }),
 }));
 
+export const userDeactivationsRelations = relations(userDeactivations, ({ one }) => ({
+  user: one(users, {
+    fields: [userDeactivations.userId],
+    references: [users.id],
+  }),
+  deactivatedByUser: one(users, {
+    fields: [userDeactivations.deactivatedBy],
+    references: [users.id],
+  }),
+}));
+
 export const leaderboardsRelations = relations(leaderboards, ({ one }) => ({
   user: one(users, {
     fields: [leaderboards.userId],
@@ -566,6 +586,7 @@ export const insertPostCollaboratorSchema = createInsertSchema(postCollaborators
 export type UpsertUser = z.infer<typeof upsertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type UserDeactivation = typeof userDeactivations.$inferSelect;
 export type InsertPost = z.infer<typeof insertPostSchema>;
 export type Post = typeof posts.$inferSelect & {
   excerpt?: string | null;

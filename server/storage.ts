@@ -15,6 +15,7 @@ import {
   seriesLikes,
   readingProgress,
   postCollaborators,
+  userDeactivations,
   type User,
   type UpsertUser,
   type InsertPost,
@@ -29,6 +30,7 @@ import {
   type Bookmark,
   type Notification,
   type WritingGoal,
+  type UserDeactivation,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, sql, count, exists, notExists, asc, ne, isNotNull, gte, ilike } from "drizzle-orm";
@@ -226,7 +228,14 @@ export class DatabaseStorage implements IStorage {
   async getUserByUsername(username: string): Promise<User | undefined> {
     try {
       const userList = await db.select().from(users).where(eq(users.username, username));
-      return userList[0];
+      const user = userList[0];
+      if (user) {
+        const deactivation = await db.select().from(userDeactivations).where(eq(userDeactivations.userId, user.id)).limit(1);
+        if (deactivation.length > 0) {
+          return undefined;
+        }
+      }
+      return user;
     } catch (error) {
       console.error("Error fetching user by username:", error);
       throw error;
@@ -236,11 +245,35 @@ export class DatabaseStorage implements IStorage {
   async getUserByEmail(email: string): Promise<User | undefined> {
     try {
       const userList = await db.select().from(users).where(eq(users.email, email));
-      return userList[0];
+      const user = userList[0];
+      if (user) {
+        const deactivation = await db.select().from(userDeactivations).where(eq(userDeactivations.userId, user.id)).limit(1);
+        if (deactivation.length > 0) {
+          return undefined;
+        }
+      }
+      return user;
     } catch (error) {
       console.error("Error fetching user by email:", error);
       throw error;
     }
+  }
+
+  async deactivateUser(userId: string, deactivatedBy: string, reason?: string): Promise<UserDeactivation> {
+    const [deactivation] = await db
+      .insert(userDeactivations)
+      .values({ userId, deactivatedBy, reason })
+      .returning();
+    return deactivation;
+  }
+
+  async reactivateUser(userId: string): Promise<void> {
+    await db.delete(userDeactivations).where(eq(userDeactivations.userId, userId));
+  }
+
+  async isUserDeactivated(userId: string): Promise<boolean> {
+    const result = await db.select().from(userDeactivations).where(eq(userDeactivations.userId, userId)).limit(1);
+    return result.length > 0;
   }
 
   async createUser(userData: { email?: string; password: string; displayName: string; username: string }): Promise<User> {
