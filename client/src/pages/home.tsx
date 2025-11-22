@@ -457,6 +457,7 @@ export default function Home() {
       </div>
 
       <MobileNav />
+      <MobileNavButtons />
 
       {/* Post Modal */}
       {showPostModal && (

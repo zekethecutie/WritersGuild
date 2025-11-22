@@ -275,6 +275,7 @@ function PostCard({ post, isLiked, likesCount, isBookmarked, isReposted, reposts
             </time>
           </div>
         </div>
+      </div>
 
       {/* Edit Post Modal */}
       {showEditModal && (
