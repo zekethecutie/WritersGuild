@@ -7,7 +7,6 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import Sidebar from "@/components/sidebar";
 import MobileNav from "@/components/mobile-nav";
-import { MobileNavButtons } from "@/components/mobile-nav-buttons";
 import CommentThread from "@/components/comment-thread";
 import LoadingScreen from "@/components/loading-screen";
 import FollowButton from "@/components/follow-button";
@@ -551,7 +550,6 @@ export default function PostPage() {
       )}
 
       <MobileNav />
-      <MobileNavButtons />
     </div>
   );
 }

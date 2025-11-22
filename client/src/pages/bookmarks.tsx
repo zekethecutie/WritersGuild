@@ -5,7 +5,6 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import Sidebar from "@/components/sidebar";
 import MobileNav from "@/components/mobile-nav";
-import { MobileNavButtons } from "@/components/mobile-nav-buttons";
 import PostCard from "@/components/post-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -289,7 +288,6 @@ export default function Bookmarks() {
       </div>
       
       <MobileNav />
-      <MobileNavButtons />
     </div>
   );
 }

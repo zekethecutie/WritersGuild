@@ -7,7 +7,6 @@ import Sidebar from "@/components/sidebar";
 import PostModal from "@/components/post-modal";
 import PostCard from "@/components/post-card";
 import MobileNav from "@/components/mobile-nav";
-import { MobileNavButtons } from "@/components/mobile-nav-buttons";
 import LoadingScreen from "@/components/loading-screen";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -457,7 +456,6 @@ export default function Home() {
       </div>
 
       <MobileNav />
-      <MobileNavButtons />
 
       {/* Post Modal */}
       {showPostModal && (
