@@ -233,18 +233,6 @@ export function SpotifyTrackDisplay({ track, size = "md", showPreview = true, cl
 
   if (!fullTrack) return null;
 
-  const getAlbumArt = (track: SpotifyTrack) => {
-    const sizeMap = {
-      sm: 300,
-      md: 640,
-      lg: 640,
-    };
-
-    const targetSize = sizeMap[size];
-    const image = track.album.images.find(img => img.height && img.height <= targetSize) || track.album.images[0];
-    return image?.url;
-  };
-
   const sizeClasses = {
     sm: {
       container: "p-3",
@@ -280,8 +268,9 @@ export function SpotifyTrackDisplay({ track, size = "md", showPreview = true, cl
           {albumArt ? (
             <img
               src={albumArt}
-              alt={`${fullTrack.album.name} album art`}
+              alt={`${fullTrack.album || 'album'} art`}
               className={`${classes.image} rounded object-cover`}
+              onError={(e) => { (e.target as any).style.display = 'none'; }}
             />
           ) : (
             <div className={`${classes.image} bg-green-100 dark:bg-green-900 rounded flex items-center justify-center`}>
@@ -300,7 +289,7 @@ export function SpotifyTrackDisplay({ track, size = "md", showPreview = true, cl
               minHeight: '1.6em',
               paddingBottom: '2px'
             }}>
-              {fullTrack.name}
+              {fullTrack.name || fullTrack.name || 'Unknown Track'}
             </p>
             <p className={`text-muted-foreground ${classes.artist}`} style={{
               whiteSpace: 'normal',
@@ -311,7 +300,7 @@ export function SpotifyTrackDisplay({ track, size = "md", showPreview = true, cl
               minHeight: '1.5em',
               paddingBottom: '2px'
             }}>
-              {fullTrack.artists.map(artist => artist.name).join(", ")}
+              {fullTrack.artist || (fullTrack.artists?.map((artist: any) => artist.name).join(", ")) || 'Unknown Artist'}
             </p>
             {size !== "sm" && (
               <p className="text-xs text-muted-foreground" style={{
@@ -323,7 +312,7 @@ export function SpotifyTrackDisplay({ track, size = "md", showPreview = true, cl
                 minHeight: '1.4em',
                 paddingBottom: '2px'
               }}>
-                {fullTrack.album.name} • {formatDuration(fullTrack.duration_ms)}
+                {fullTrack.album || 'Unknown Album'} {fullTrack.duration_ms ? `• ${formatDuration(fullTrack.duration_ms)}` : ''}
               </p>
             )}
           </div>
