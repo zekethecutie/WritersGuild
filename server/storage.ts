@@ -31,7 +31,7 @@ import {
   type WritingGoal,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, or, sql, count, exists, notExists, asc, ne, isNotNull, gte, ilike } from "drizzle-orm";
+import { eq, desc, and, or, sql, count, exists, notExists, asc, ne, isNotNull, gte, ilike, coalesce } from "drizzle-orm";
 import crypto from 'crypto'; // Import crypto for UUID generation
 
 export interface IStorage {
