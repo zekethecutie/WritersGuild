@@ -81,43 +81,43 @@ const requireAuth = (req: any, res: any, next: any) => {
   next();
 };
 
-// Require admin middleware
-const requireAdmin = async (req: any, res: any, next: any) => {
-  if (!req.session?.userId) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-  try {
-    const user = await storage.getUser(req.session.userId);
-    if (!user?.isAdmin && !user?.isSuperAdmin) {
-      return res.status(403).json({ message: "Forbidden: Admins only" });
-    }
-    next();
-  } catch (error) {
-    console.error("Admin check error:", error);
-    res.status(500).json({ message: "Internal server error during admin check" });
-  }
-};
-
-// Require super admin middleware
-const requireSuperAdmin = async (req: any, res: any, next: any) => {
-  if (!req.session?.userId) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-  try {
-    const user = await storage.getUser(req.session.userId);
-    if (!user?.isSuperAdmin) {
-      return res.status(403).json({ message: "Forbidden: Super Admin only" });
-    }
-    next();
-  } catch (error) {
-    console.error("Super admin check error:", error);
-    res.status(500).json({ message: "Internal server error during super admin check" });
-  }
-};
-
 export async function registerRoutes(app: Express): Promise<Server> {
   // Create storage instance
   const storage = new DatabaseStorage();
+
+  // Require admin middleware (moved inside registerRoutes to access storage)
+  const requireAdmin = async (req: any, res: any, next: any) => {
+    if (!req.session?.userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const user = await storage.getUser(req.session.userId);
+      if (!user?.isAdmin && !user?.isSuperAdmin) {
+        return res.status(403).json({ message: "Forbidden: Admins only" });
+      }
+      next();
+    } catch (error) {
+      console.error("Admin check error:", error);
+      res.status(500).json({ message: "Internal server error during admin check" });
+    }
+  };
+
+  // Require super admin middleware (moved inside registerRoutes to access storage)
+  const requireSuperAdmin = async (req: any, res: any, next: any) => {
+    if (!req.session?.userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const user = await storage.getUser(req.session.userId);
+      if (!user?.isSuperAdmin) {
+        return res.status(403).json({ message: "Forbidden: Super Admin only" });
+      }
+      next();
+    } catch (error) {
+      console.error("Super admin check error:", error);
+      res.status(500).json({ message: "Internal server error during super admin check" });
+    }
+  };
 
   // Initialize admin account
   await storage.initializeAdminAccount();
