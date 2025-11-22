@@ -248,17 +248,29 @@ function PostCard({ post, isLiked, likesCount, isBookmarked, isReposted, reposts
               </AvatarFallback>
             </Avatar>
 
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
-              <span className="font-medium text-foreground truncate" data-testid={`text-author-${post.id}`}>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0 flex-wrap">
+              <span className="font-medium text-foreground" data-testid={`text-author-${post.id}`}>
                 {author.displayName}
-                {post.collaborators && post.collaborators.length > 0 && (
-                  <span>
-                    {post.collaborators.map((collab, idx) => (
-                      <span key={collab.id}> & {collab.displayName}</span>
-                    ))}
-                  </span>
-                )}
               </span>
+              {post.collaborators && post.collaborators.length > 0 && (
+                <div className="flex items-center gap-1.5 min-w-0">
+                  {post.collaborators.map((collab) => (
+                    <div key={collab.id} className="flex items-center gap-1.5">
+                      <span className="text-muted-foreground">&</span>
+                      <Avatar className="w-6 h-6 flex-shrink-0">
+                        <AvatarImage
+                          src={getProfileImageUrl(collab.profileImageUrl)}
+                          alt={collab.displayName}
+                        />
+                        <AvatarFallback className="text-xs">
+                          {collab.displayName?.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="font-medium text-foreground truncate">{collab.displayName}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               {author.isVerified && (
                 <CheckCircle className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
               )}
@@ -273,6 +285,30 @@ function PostCard({ post, isLiked, likesCount, isBookmarked, isReposted, reposts
             <time data-testid={`text-date-${post.id}`}>
               {formatPublishDate(post.publishedAt || post.createdAt || new Date())}
             </time>
+            {user?.id === post.authorId && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                  <Button size="icon" variant="ghost" className="h-6 w-6" data-testid={`button-menu-${post.id}`}>
+                    <MoreVertical className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenuItem onClick={(e) => {e.stopPropagation(); handleCardClick();}} data-testid={`menu-view-${post.id}`}>
+                    <Eye className="w-4 h-4 mr-2" />
+                    View Post
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={(e) => {e.stopPropagation(); setShowEditModal(true);}} data-testid={`menu-edit-${post.id}`}>
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit Post
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={(e) => {e.stopPropagation(); setShowDeleteDialog(true);}} className="text-destructive" data-testid={`menu-delete-${post.id}`}>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Post
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
       </div>
