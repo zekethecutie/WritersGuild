@@ -2242,6 +2242,15 @@ export class DatabaseStorage implements IStorage {
     return updated[0];
   }
 
+  async updateUserSuperAdminStatus(userId: string, isSuperAdmin: boolean): Promise<User> {
+    const updated = await db
+      .update(users)
+      .set({ isSuperAdmin })
+      .where(eq(users.id, userId))
+      .returning();
+    return updated[0];
+  }
+
   async updateUserVerificationStatus(userId: string, isVerified: boolean): Promise<User> {
     const updated = await db
       .update(users)
