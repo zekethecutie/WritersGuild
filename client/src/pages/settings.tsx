@@ -70,6 +70,11 @@ export default function Settings() {
     compactMode: false,
   });
 
+  const [userPreferences, setUserPreferences] = useState({
+    isReader: user?.userRole === 'reader' || true,
+    isWriter: user?.userRole === 'writer' || true,
+  });
+
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
 
@@ -441,6 +446,37 @@ export default function Settings() {
                         value={profile.website}
                         onChange={(e) => setProfile({ ...profile, website: e.target.value })}
                         placeholder="https://yourwebsite.com"
+                      />
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Content Preferences</h3>
+                    <p className="text-sm text-muted-foreground">Choose what you want to do on Writers Guild</p>
+                    
+                    <div className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex-1">
+                        <Label className="text-base font-medium">Reader</Label>
+                        <p className="text-sm text-muted-foreground">Discover and read articles from your community</p>
+                      </div>
+                      <Switch 
+                        checked={userPreferences.isReader}
+                        onCheckedChange={(checked) => setUserPreferences({...userPreferences, isReader: checked})}
+                        data-testid="switch-reader-mode"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex-1">
+                        <Label className="text-base font-medium">Writer</Label>
+                        <p className="text-sm text-muted-foreground">Create and publish articles for your audience</p>
+                      </div>
+                      <Switch 
+                        checked={userPreferences.isWriter}
+                        onCheckedChange={(checked) => setUserPreferences({...userPreferences, isWriter: checked})}
+                        data-testid="switch-writer-mode"
                       />
                     </div>
                   </div>

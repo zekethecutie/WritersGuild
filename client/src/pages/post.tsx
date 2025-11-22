@@ -405,19 +405,23 @@ export default function PostPage() {
                       {author.isVerified && (
                         <CheckCircle className="w-4 h-4 text-blue-500" />
                       )}
-                      {/* Show collaborators */}
+                      {/* Show collaborators with avatars */}
                       {post.collaborators && post.collaborators.length > 0 && (
-                        <span className="text-sm text-muted-foreground">
-                          &{' '}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-muted-foreground">&</span>
                           {post.collaborators.map((c: any, idx: number) => (
-                            <span key={c.id}>
-                              <Link href={`/profile/${c.username}`} className="hover:underline">
-                                @{c.username}
+                            <div key={c.id} className="flex items-center gap-1.5">
+                              <Link href={`/profile/${c.username}`} className="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
+                                <Avatar className="w-5 h-5">
+                                  <AvatarImage src={getProfileImageUrl(c.profileImageUrl)} alt={c.displayName} />
+                                  <AvatarFallback className="text-xs">{c.displayName?.[0]}</AvatarFallback>
+                                </Avatar>
+                                <span className="font-semibold text-base">{c.displayName || c.username}</span>
                               </Link>
-                              {idx < post.collaborators.length - 1 && ', '}
-                            </span>
+                              {idx < post.collaborators.length - 1 && <span className="text-muted-foreground">,</span>}
+                            </div>
                           ))}
-                        </span>
+                        </div>
                       )}
                     </div>
                   </Link>
