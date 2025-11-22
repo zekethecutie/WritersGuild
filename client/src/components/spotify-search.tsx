@@ -99,17 +99,18 @@ export function SpotifySearch({ onTrackSelect, selectedTrack, placeholder, class
   };
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative w-full ${className}`}>
       {/* Selected Track Display */}
       {selectedTrack && !showResults && (
-        <Card className="mb-4">
+        <Card className="mb-4 bg-gradient-to-r from-green-500/10 to-green-600/10 border-green-200 dark:border-green-800">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               {getAlbumArt(selectedTrack) && (
                 <img
                   src={getAlbumArt(selectedTrack)}
                   alt={`${selectedTrack.album.name} album art`}
-                  className="w-12 h-12 rounded object-cover"
+                  className="w-12 h-12 rounded object-cover flex-shrink-0"
+                  data-testid="img-selected-spotify-track"
                 />
               )}
               <div className="flex-1 min-w-0">
@@ -118,12 +119,13 @@ export function SpotifySearch({ onTrackSelect, selectedTrack, placeholder, class
                   {selectedTrack.artists.map(artist => artist.name).join(", ")}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 flex-shrink-0">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => window.open(selectedTrack.external_urls.spotify, '_blank')}
                   className="p-2"
+                  data-testid="button-open-spotify-track"
                 >
                   <ExternalLink className="w-4 h-4" />
                 </Button>
@@ -132,6 +134,7 @@ export function SpotifySearch({ onTrackSelect, selectedTrack, placeholder, class
                   size="sm"
                   onClick={clearSelection}
                   className="p-2"
+                  data-testid="button-clear-spotify-track"
                 >
                   <X className="w-4 h-4" />
                 </Button>
@@ -142,47 +145,49 @@ export function SpotifySearch({ onTrackSelect, selectedTrack, placeholder, class
       )}
 
       {/* Search Input */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+      <div className="relative w-full">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
         <Input
           type="text"
-          placeholder={placeholder || "Search for a song..."}
+          placeholder={placeholder || "Search Spotify tracks..."}
           value={searchQuery}
           onChange={(e) => handleSearch(e.target.value)}
           onFocus={() => setShowResults(true)}
-          className="pl-10 bg-card border-border"
+          className="pl-10 bg-card border-border w-full"
+          data-testid="input-spotify-search"
         />
       </div>
 
-      {/* Search Results */}
+      {/* Search Results - Dropdown */}
       {showResults && (searchQuery || isLoading) && (
-        <Card className="absolute top-full left-0 right-0 z-50 mt-1 bg-card border shadow-lg">
-          <ScrollArea className="max-h-80">
-            <div className="p-2">
-              {isLoading && (
-                <div className="flex items-center justify-center py-4">
-                  <Music className="w-4 h-4 animate-spin mr-2" />
-                  <span className="text-sm text-muted-foreground">Searching...</span>
-                </div>
-              )}
+        <>
+          <div className="absolute top-full left-0 right-0 z-[9999] mt-1 bg-card border border-border rounded-md shadow-lg max-h-80 overflow-y-auto">
+            {isLoading && (
+              <div className="flex items-center justify-center py-4">
+                <Music className="w-4 h-4 animate-spin mr-2" />
+                <span className="text-sm text-muted-foreground">Searching...</span>
+              </div>
+            )}
 
-              {!isLoading && searchResults?.tracks?.items?.length === 0 && searchQuery && (
-                <div className="flex items-center justify-center py-4">
-                  <span className="text-sm text-muted-foreground">No songs found</span>
-                </div>
-              )}
+            {!isLoading && searchResults?.tracks?.items?.length === 0 && searchQuery && (
+              <div className="flex items-center justify-center py-4">
+                <span className="text-sm text-muted-foreground">No songs found</span>
+              </div>
+            )}
 
+            <div className="divide-y">
               {searchResults?.tracks?.items?.map((track: SpotifyTrack) => (
                 <div
                   key={track.id}
-                  className="flex items-center gap-3 p-2 hover:bg-muted rounded cursor-pointer"
+                  className="flex items-center gap-3 p-3 hover:bg-muted cursor-pointer transition-colors"
                   onClick={() => handleTrackSelect(track)}
+                  data-testid={`spotify-track-result-${track.id}`}
                 >
                   {getAlbumArt(track) && (
                     <img
                       src={getAlbumArt(track)}
                       alt={`${track.album.name} album art`}
-                      className="w-10 h-10 rounded object-cover"
+                      className="w-10 h-10 rounded object-cover flex-shrink-0"
                     />
                   )}
                   <div className="flex-1 min-w-0">
@@ -191,22 +196,20 @@ export function SpotifySearch({ onTrackSelect, selectedTrack, placeholder, class
                       {track.artists.map(artist => artist.name).join(", ")} • {track.album.name}
                     </p>
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs text-muted-foreground flex-shrink-0">
                     {formatDuration(track.duration_ms)}
                   </div>
                 </div>
               ))}
             </div>
-          </ScrollArea>
-        </Card>
-      )}
+          </div>
 
-      {/* Overlay to close results */}
-      {showResults && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setShowResults(false)}
-        />
+          {/* Overlay to close results */}
+          <div
+            className="fixed inset-0 z-[9998]"
+            onClick={() => setShowResults(false)}
+          />
+        </>
       )}
     </div>
   );
