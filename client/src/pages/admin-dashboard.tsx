@@ -85,7 +85,7 @@ export default function AdminDashboard() {
     queryFn: async () => {
       try {
         const response = await apiRequest("GET", "/api/admin/stats");
-        return response as AdminStats;
+        return response as unknown as AdminStats;
       } catch (error) {
         console.error("Failed to fetch stats:", error);
         return null;
@@ -133,6 +133,20 @@ export default function AdminDashboard() {
       toast({
         title: "Success",
         description: "User verification status updated",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+    },
+  });
+
+  // Deactivate user mutation
+  const deactivateUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      return apiRequest("DELETE", `/api/admin/users/${userId}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "User account deactivated",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
     },
@@ -321,6 +335,28 @@ export default function AdminDashboard() {
                                         <p className="text-xs text-muted-foreground">
                                           This admin can manage users, verify content, and view
                                           analytics.
+                                        </p>
+                                      </div>
+                                    )}
+
+                                    {isSuperAdmin && (
+                                      <div className="pt-4 border-t space-y-2">
+                                        <label className="text-sm font-medium text-destructive">
+                                          Danger Zone
+                                        </label>
+                                        <Button
+                                          variant="destructive"
+                                          className="w-full"
+                                          onClick={() =>
+                                            selectedUser &&
+                                            deactivateUserMutation.mutate(selectedUser.id)
+                                          }
+                                          data-testid={`button-deactivate-user-${selectedUser?.id}`}
+                                        >
+                                          Deactivate Account
+                                        </Button>
+                                        <p className="text-xs text-muted-foreground">
+                                          This will prevent the user from logging in.
                                         </p>
                                       </div>
                                     )}

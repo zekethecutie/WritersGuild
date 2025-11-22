@@ -49,6 +49,7 @@ export const users = pgTable("users", {
   isVerified: boolean("is_verified").default(false),
   isAdmin: boolean("is_admin").default(false),
   isSuperAdmin: boolean("is_super_admin").default(false),
+  isDeactivated: boolean("is_deactivated").default(false),
   postsCount: integer("posts_count").default(0),
   commentsCount: integer("comments_count").default(0),
   createdAt: timestamp("created_at").defaultNow(),
@@ -180,6 +181,17 @@ export const feedback = pgTable("feedback", {
   message: text("message").notNull(),
   contactEmail: varchar("contact_email"),
   isResolved: boolean("is_resolved").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Reports table for content moderation
+export const reports = pgTable("reports", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  reportedById: uuid("reported_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  targetType: varchar("target_type").notNull(), // 'post', 'profile', 'story', 'article'
+  targetId: uuid("target_id").notNull(),
+  reason: text("reason").notNull(),
+  status: varchar("status").notNull().default("pending"), // pending, resolved, dismissed
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -603,3 +615,11 @@ const insertFeedbackSchema = createInsertSchema(feedback).omit({
   createdAt: true,
 });
 export type InsertFeedback = z.infer<typeof insertFeedbackSchema>;
+
+const insertReportSchema = createInsertSchema(reports).omit({
+  id: true,
+  status: true,
+  createdAt: true,
+});
+export type InsertReport = z.infer<typeof insertReportSchema>;
+export type Report = typeof reports.$inferSelect;

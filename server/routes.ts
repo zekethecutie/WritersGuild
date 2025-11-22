@@ -11,7 +11,7 @@ import MemoryStore from "memorystore";
 import rateLimit from "express-rate-limit";
 import { eq, desc, asc, like, ilike, and, or, isNull, sql, gt, lt, gte, lte, ne, count, inArray } from "drizzle-orm";
 import { db } from "./db"; // Assuming db is your Drizzle client instance
-import { users as usersTable, posts, comments, notifications, series, chapters, bookmarks, likes, follows, reposts, postCollaborators, feedback } from "../shared/schema"; // Import necessary tables and schema
+import { users as usersTable, posts, comments, notifications, series, chapters, bookmarks, likes, follows, reposts, postCollaborators, feedback, reports } from "../shared/schema"; // Import necessary tables and schema
 import { insertPostSchema, insertCommentSchema } from "@shared/schema";
 import { DatabaseStorage } from "./storage";
 import { getSpotifyClient } from "./spotifyClient";
@@ -2897,7 +2897,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/admin/users/:id', requireSuperAdmin, async (req: any, res) => {
     try {
       const userId = req.params.id;
-      const { isAdmin, isVerified } = req.body;
+      const { isAdmin, isVerified, isDeactivated } = req.body;
 
       if (typeof isAdmin === 'boolean') {
         await storage.updateUserAdminStatus(userId, isAdmin);
@@ -2905,12 +2905,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (typeof isVerified === 'boolean') {
         await storage.updateUserVerificationStatus(userId, isVerified);
       }
+      if (typeof isDeactivated === 'boolean') {
+        await db.update(usersTable).set({ isDeactivated }).where(eq(usersTable.id, userId));
+      }
 
       const updatedUser = await storage.getUser(userId);
       res.json(updatedUser);
     } catch (error: any) {
       console.error("Error updating user:", error);
       res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  app.delete('/api/admin/users/:id', requireSuperAdmin, async (req: any, res) => {
+    try {
+      const userId = req.params.id;
+      await db.update(usersTable).set({ isDeactivated: true }).where(eq(usersTable.id, userId));
+      res.json({ message: "User account deactivated" });
+    } catch (error: any) {
+      console.error("Error deactivating user:", error);
+      res.status(500).json({ message: "Failed to deactivate user" });
+    }
+  });
+
+  app.post('/api/reports', requireAuth, async (req: any, res) => {
+    try {
+      const { targetType, targetId, reason } = req.body;
+      const reportedById = req.session.userId;
+
+      if (!targetType || !targetId || !reason) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      const report = await db.insert(reports).values({
+        reportedById,
+        targetType,
+        targetId,
+        reason,
+      }).returning();
+
+      const admins = await db.select().from(usersTable).where(or(eq(usersTable.isAdmin, true), eq(usersTable.isSuperAdmin, true)));
+
+      for (const admin of admins) {
+        await db.insert(notifications).values({
+          userId: admin.id,
+          type: 'report',
+          actorId: reportedById,
+          data: JSON.stringify({ targetType, targetId, reason }),
+        });
+      }
+
+      res.status(201).json({ success: true, reportId: report[0]?.id });
+    } catch (error: any) {
+      console.error("Error submitting report:", error);
+      res.status(500).json({ message: "Failed to submit report" });
+    }
+  });
+
+  app.get('/api/admin/reports', requireAdmin, async (req: any, res) => {
+    try {
+      const allReports = await db.select().from(reports).where(eq(reports.status, 'pending')).orderBy(desc(reports.createdAt));
+      res.json(allReports);
+    } catch (error: any) {
+      console.error("Error fetching reports:", error);
+      res.status(500).json({ message: "Failed to fetch reports" });
+    }
+  });
+
+  app.patch('/api/admin/reports/:id', requireAdmin, async (req: any, res) => {
+    try {
+      const { status } = req.body;
+      await db.update(reports).set({ status }).where(eq(reports.id, req.params.id));
+      res.json({ message: "Report updated" });
+    } catch (error: any) {
+      console.error("Error updating report:", error);
+      res.status(500).json({ message: "Failed to update report" });
     }
   });
 
