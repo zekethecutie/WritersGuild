@@ -59,8 +59,11 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
 
-  // Check if user is super admin
-  if (!isAuthenticated || user?.username !== "itsicxrus" || !user?.isSuperAdmin) {
+  // Check if user is admin or super admin
+  const isSuperAdmin = user?.isSuperAdmin;
+  const isAdmin = user?.isAdmin || user?.isSuperAdmin;
+
+  if (!isAuthenticated || !isAdmin) {
     return (
       <div className="flex h-screen bg-background items-center justify-center">
         <Card className="border-destructive">
@@ -68,7 +71,7 @@ export default function AdminDashboard() {
             <Lock className="w-12 h-12 text-destructive mx-auto mb-4" />
             <h2 className="text-xl font-bold mb-2">Access Denied</h2>
             <p className="text-muted-foreground">
-              Only super admin accounts can access this page.
+              Only admin accounts can access this page.
             </p>
           </CardContent>
         </Card>
@@ -157,6 +160,16 @@ export default function AdminDashboard() {
           <div className="flex items-center gap-3 mb-8">
             <Shield className="w-8 h-8 text-primary" />
             <h1 className="text-4xl font-bold">Admin Dashboard</h1>
+            {!isSuperAdmin && (
+              <Badge className="ml-auto" variant="secondary">
+                Limited Admin
+              </Badge>
+            )}
+            {isSuperAdmin && (
+              <Badge className="ml-auto bg-purple-600">
+                Super Admin
+              </Badge>
+            )}
           </div>
 
           {/* Statistics Grid */}
@@ -268,11 +281,16 @@ export default function AdminDashboard() {
                                             isAdmin: !selectedUser.isAdmin,
                                           })
                                         }
-                                        disabled={selectedUser?.isSuperAdmin}
+                                        disabled={selectedUser?.isSuperAdmin || !isSuperAdmin}
                                         data-testid={`button-toggle-admin-${selectedUser?.id}`}
                                       >
                                         {selectedUser?.isAdmin ? "Remove Admin" : "Make Admin"}
                                       </Button>
+                                      {!isSuperAdmin && (
+                                        <p className="text-xs text-muted-foreground mt-2">
+                                          Only super admins can promote users to admin
+                                        </p>
+                                      )}
                                     </div>
 
                                     <div>
