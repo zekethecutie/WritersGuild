@@ -19,12 +19,12 @@ localPort = 33719
 externalPort = 3002
 
 [[ports]]
-localPort = 34491
-externalPort = 3003
-
-[[ports]]
 localPort = 38317
 externalPort = 3001
+
+[[ports]]
+localPort = 39159
+externalPort = 3003
 
 [[ports]]
 localPort = 45075
@@ -77,3 +77,9 @@ args = "sleep 2"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run dev"
+
+[userenv]
+
+[userenv.shared]
+SPOTIFY_CLIENT_ID = "5b85082ed9314c21840a7ce1b59e4541"
+SPOTIFY_CLIENT_SECRET = "c512f729238a44deb9ffe4b6f71ecbbc"
