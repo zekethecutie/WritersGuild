@@ -263,6 +263,7 @@ function PostCard({ post, isLiked, likesCount, isBookmarked, isReposted, reposts
                 <CheckCircle className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
               )}
             </div>
+          </div>
 
           <div className="flex items-center gap-2 text-xs text-muted-foreground flex-shrink-0">
             <span data-testid={`text-readtime-${post.id}`}>
