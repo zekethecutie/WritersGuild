@@ -85,7 +85,7 @@ export default function AdminDashboard() {
     queryFn: async () => {
       try {
         const response = await apiRequest("GET", "/api/admin/stats");
-        return response as unknown as AdminStats;
+        return await response.json() as unknown as AdminStats;
       } catch (error) {
         console.error("Failed to fetch stats:", error);
         return null;
@@ -102,7 +102,8 @@ export default function AdminDashboard() {
           "GET",
           `/api/admin/users${searchQuery ? `?search=${searchQuery}` : ""}`
         );
-        return Array.isArray(response) ? response : [];
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
       } catch (error) {
         console.error("Failed to fetch users:", error);
         return [];

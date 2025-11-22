@@ -519,6 +519,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get popular music from posts - specific route for home page (MUST BE BEFORE :id route)
+  app.get("/api/posts/popular-music", async (req, res) => {
+    try {
+      const { limit = 10 } = req.query;
+      
+      const musicPosts = await db
+        .select({
+          spotifyTrackData: posts.spotifyTrackData,
+          likesCount: posts.likesCount
+        })
+        .from(posts)
+        .where(and(
+          eq(posts.isPrivate, false),
+          sql`${posts.spotifyTrackData} IS NOT NULL`
+        ))
+        .orderBy(desc(posts.likesCount))
+        .limit(parseInt(limit as string));
+
+      // Extract unique Spotify tracks
+      const tracks = musicPosts
+        .filter(post => post.spotifyTrackData)
+        .map(post => {
+          const trackData = post.spotifyTrackData as any;
+          return {
+            id: trackData.id,
+            name: trackData.name,
+            artist: trackData.artist,
+            album: trackData.album,
+            image: trackData.image,
+            preview_url: trackData.preview_url,
+            external_urls: trackData.external_urls
+          };
+        })
+        .filter((track, index, self) => 
+          index === self.findIndex(t => t?.id === track?.id)
+        )
+        .slice(0, parseInt(limit as string));
+
+      res.json(tracks);
+    } catch (error) {
+      console.error("Error fetching popular music:", error);
+      res.status(500).json([]);
+    }
+  });
+
   // Get single post with collaborators
   app.get('/api/posts/:id', async (req, res) => {
     try {
@@ -704,153 +749,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get popular music from posts - specific route for home page
-  app.get("/api/posts/popular-music", async (req, res) => {
-    try {
-      const { limit = 10 } = req.query;
-      
-      const musicPosts = await db
-        .select({
-          spotifyTrackData: posts.spotifyTrackData,
-          likesCount: posts.likesCount
-        })
-        .from(posts)
-        .where(and(
-          eq(posts.isPrivate, false),
-          sql`${posts.spotifyTrackData} IS NOT NULL`
-        ))
-        .orderBy(desc(posts.likesCount))
-        .limit(parseInt(limit as string));
-
-      // Extract unique Spotify tracks
-      const tracks = musicPosts
-        .filter(post => post.spotifyTrackData)
-        .map(post => {
-          const trackData = post.spotifyTrackData as any;
-          return {
-            id: trackData.id,
-            name: trackData.name,
-            artist: trackData.artist,
-            album: trackData.album,
-            image: trackData.image,
-            preview_url: trackData.preview_url,
-            external_urls: trackData.external_urls
-          };
-        })
-        .filter((track, index, self) => 
-          index === self.findIndex(t => t?.id === track?.id)
-        )
-        .slice(0, parseInt(limit as string));
-
-      res.json(tracks);
-    } catch (error) {
-      console.error("Error fetching popular music:", error);
-      res.status(500).json([]);
-    }
-  });
-
-  // Get single post with comments
-  app.get("/api/posts/:id", async (req, res) => {
-    try {
-      const postId = req.params.id;
-      const userId = req.session?.userId;
-
-      // Get the post with author data in one query
-      const [postData] = await db
-        .select({
-          id: posts.id,
-          authorId: posts.authorId,
-          title: posts.title,
-          content: posts.content,
-          excerpt: posts.excerpt,
-          category: posts.category,
-          coverImageUrl: posts.coverImageUrl,
-          readTimeMinutes: posts.readTimeMinutes,
-          publishedAt: posts.publishedAt,
-          spotifyTrackData: posts.spotifyTrackData,
-          imageUrls: posts.imageUrls,
-          isPrivate: posts.isPrivate,
-          likesCount: posts.likesCount,
-          commentsCount: posts.commentsCount,
-          repostsCount: posts.repostsCount,
-          viewsCount: posts.viewsCount,
-          createdAt: posts.createdAt,
-          updatedAt: posts.updatedAt,
-          // Author data
-          authorDisplayName: usersTable.displayName,
-          authorUsername: usersTable.username,
-          authorProfileImageUrl: usersTable.profileImageUrl,
-          authorIsVerified: usersTable.isVerified,
-          authorIsAdmin: usersTable.isAdmin,
-          authorIsSuperAdmin: usersTable.isSuperAdmin,
-          authorUserRole: usersTable.userRole,
-        })
-        .from(posts)
-        .leftJoin(usersTable, eq(posts.authorId, usersTable.id))
-        .where(eq(posts.id, postId))
-        .limit(1);
-
-      if (!postData) {
-        return res.status(404).json({ error: "Post not found" });
-      }
-
-      // Get engagement data for current user if logged in
-      let isLiked = false;
-      let isBookmarked = false;
-      let isReposted = false;
-
-      if (userId) {
-        const [userLike, userBookmark, userRepost] = await Promise.all([
-          db.select().from(likes).where(and(eq(likes.userId, userId), eq(likes.postId, postId))).limit(1),
-          db.select().from(bookmarks).where(and(eq(bookmarks.userId, userId), eq(bookmarks.postId, postId))).limit(1),
-          db.select().from(reposts).where(and(eq(reposts.userId, userId), eq(reposts.postId, postId))).limit(1)
-        ]);
-
-        isLiked = userLike.length > 0;
-        isBookmarked = userBookmark.length > 0;
-        isReposted = userRepost.length > 0;
-      }
-
-      const postWithEngagement = {
-        id: postData.id,
-        authorId: postData.authorId,
-        title: postData.title,
-        content: postData.content,
-        excerpt: postData.excerpt,
-        category: postData.category,
-        coverImageUrl: postData.coverImageUrl,
-        readTimeMinutes: postData.readTimeMinutes,
-        publishedAt: postData.publishedAt,
-        spotifyTrackData: postData.spotifyTrackData,
-        imageUrls: postData.imageUrls,
-        isPrivate: postData.isPrivate,
-        likesCount: postData.likesCount,
-        commentsCount: postData.commentsCount,
-        repostsCount: postData.repostsCount,
-        viewsCount: postData.viewsCount,
-        createdAt: postData.createdAt,
-        updatedAt: postData.updatedAt,
-        author: {
-          id: postData.authorId,
-          displayName: postData.authorDisplayName,
-          username: postData.authorUsername,
-          profileImageUrl: postData.authorProfileImageUrl,
-          isVerified: postData.authorIsVerified,
-          isAdmin: postData.authorIsAdmin,
-          isSuperAdmin: postData.authorIsSuperAdmin,
-          userRole: postData.authorUserRole,
-        },
-        isLiked,
-        isBookmarked,
-        isReposted,
-      };
-
-      res.json(postWithEngagement);
-    } catch (error) {
-      console.error("Error fetching post:", error);
-      res.status(500).json({ error: "Failed to fetch post" });
-    }
-  });
 
   app.get('/api/users/:userId/posts', async (req, res) => {
     try {
