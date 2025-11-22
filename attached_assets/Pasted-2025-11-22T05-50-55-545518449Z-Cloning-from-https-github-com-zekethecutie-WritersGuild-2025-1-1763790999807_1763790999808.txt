@@ -1,0 +1,93 @@
+2025-11-22T05:50:55.545518449Z ==> Cloning from https://github.com/zekethecutie/WritersGuild
+2025-11-22T05:51:02.157742616Z ==> Checking out commit 9fdb3c2c97229a42f4ee034331b3693bdaad7247 in branch main222
+2025-11-22T05:51:16.446729338Z ==> Using Node.js version 22.16.0 (default)
+2025-11-22T05:51:16.480809127Z ==> Docs on specifying a Node.js version: https://render.com/docs/node-version
+2025-11-22T05:51:18.71666202Z ==> Running build command 'npm install; npm run build'...
+2025-11-22T05:51:30.254900333Z 
+2025-11-22T05:51:30.254948084Z added 600 packages, and audited 601 packages in 11s
+2025-11-22T05:51:30.254972235Z 
+2025-11-22T05:51:30.254979285Z 112 packages are looking for funding
+2025-11-22T05:51:30.254995145Z   run `npm fund` for details
+2025-11-22T05:51:30.276971608Z 
+2025-11-22T05:51:30.276991749Z 9 vulnerabilities (3 low, 5 moderate, 1 high)
+2025-11-22T05:51:30.276996699Z 
+2025-11-22T05:51:30.277001669Z To address issues that do not require attention, run:
+2025-11-22T05:51:30.277005959Z   npm audit fix
+2025-11-22T05:51:30.277009869Z 
+2025-11-22T05:51:30.277013909Z To address all issues (including breaking changes), run:
+2025-11-22T05:51:30.277018869Z   npm audit fix --force
+2025-11-22T05:51:30.2770234Z 
+2025-11-22T05:51:30.277028089Z Run `npm audit` for details.
+2025-11-22T05:51:30.439824178Z 
+2025-11-22T05:51:30.439848219Z > rest-express@1.0.0 build
+2025-11-22T05:51:30.439853049Z > vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist
+2025-11-22T05:51:30.439859949Z 
+2025-11-22T05:51:30.625719555Z vite v5.4.20 building for production...
+2025-11-22T05:51:30.675786816Z transforming...
+2025-11-22T05:51:30.925553766Z Browserslist: browsers data (caniuse-lite) is 13 months old. Please run:
+2025-11-22T05:51:30.925572157Z   npx update-browserslist-db@latest
+2025-11-22T05:51:30.925576947Z   Why you should do it regularly: https://github.com/browserslist/update-db#readme
+2025-11-22T05:51:36.191453868Z ✓ 2137 modules transformed.
+2025-11-22T05:51:36.407777544Z rendering chunks...
+2025-11-22T05:51:36.684035607Z [plugin:vite:reporter] [plugin vite:reporter] 
+2025-11-22T05:51:36.684055477Z (!) /opt/render/project/src/client/src/pages/series-edit.tsx is dynamically imported by /opt/render/project/src/client/src/App.tsx but also statically imported by /opt/render/project/src/client/src/App.tsx, dynamic import will not move module into another chunk.
+2025-11-22T05:51:36.684059498Z 
+2025-11-22T05:51:36.684204101Z [plugin:vite:reporter] [plugin vite:reporter] 
+2025-11-22T05:51:36.684215601Z (!) /opt/render/project/src/client/src/pages/chapter-editor.tsx is dynamically imported by /opt/render/project/src/client/src/App.tsx but also statically imported by /opt/render/project/src/client/src/App.tsx, dynamic import will not move module into another chunk.
+2025-11-22T05:51:36.684218941Z 
+2025-11-22T05:51:36.710491219Z computing gzip size...
+2025-11-22T05:51:36.738892713Z ../dist/public/index.html                                                          1.95 kB │ gzip:   0.74 kB
+2025-11-22T05:51:36.739047697Z ../dist/public/assets/Anonymous_profile_silhouette_icon_df21024f-BG7Z-UuO.png    644.86 kB
+2025-11-22T05:51:36.739145939Z ../dist/public/assets/index-ECZlEPOn.css                                         136.67 kB │ gzip:  20.49 kB
+2025-11-22T05:51:36.73919292Z ../dist/public/assets/leaderboard-DWUjSpNg.js                                      8.99 kB │ gzip:   2.37 kB
+2025-11-22T05:51:36.73923437Z ../dist/public/assets/index-DQIvAf-V.js                                        1,067.62 kB │ gzip: 304.47 kB
+2025-11-22T05:51:36.739247521Z 
+2025-11-22T05:51:36.739251161Z (!) Some chunks are larger than 500 kB after minification. Consider:
+2025-11-22T05:51:36.739254361Z - Using dynamic import() to code-split the application
+2025-11-22T05:51:36.739259371Z - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+2025-11-22T05:51:36.739261941Z - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+2025-11-22T05:51:36.739543807Z ✓ built in 6.09s
+2025-11-22T05:51:36.867123542Z 
+2025-11-22T05:51:36.867144673Z   dist/index.js  181.7kb
+2025-11-22T05:51:36.867148082Z 
+2025-11-22T05:51:36.867150913Z ⚡ Done in 69ms
+2025-11-22T05:51:52.292364126Z ==> Uploading build...
+2025-11-22T05:52:07.559574768Z ==> Uploaded in 10.3s. Compression took 5.0s
+2025-11-22T05:52:07.653209057Z ==> Build successful 🎉
+2025-11-22T05:52:21.990785427Z ==> Deploying...
+2025-11-22T05:52:46.446266601Z ==> Running 'npm run start'
+2025-11-22T05:52:47.546270196Z 
+2025-11-22T05:52:47.546298157Z > rest-express@1.0.0 start
+2025-11-22T05:52:47.546323089Z > NODE_ENV=production node dist/index.js
+2025-11-22T05:52:47.546329439Z 
+2025-11-22T05:52:54.754276127Z file:///opt/render/project/src/dist/index.js:2502
+2025-11-22T05:52:54.754354001Z     throw new Error("SESSION_SECRET environment variable is required for security");
+2025-11-22T05:52:54.754362912Z           ^
+2025-11-22T05:52:54.754367982Z 
+2025-11-22T05:52:54.754373932Z Error: SESSION_SECRET environment variable is required for security
+2025-11-22T05:52:54.754380053Z     at createSessionMiddleware (file:///opt/render/project/src/dist/index.js:2502:11)
+2025-11-22T05:52:54.754385603Z     at file:///opt/render/project/src/dist/index.js:2522:25
+2025-11-22T05:52:54.754390923Z     at ModuleJob.run (node:internal/modules/esm/module_job:274:25)
+2025-11-22T05:52:54.754396204Z     at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:644:26)
+2025-11-22T05:52:54.754402254Z     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+2025-11-22T05:52:54.754406404Z 
+2025-11-22T05:52:54.754409934Z Node.js v22.16.0
+2025-11-22T05:52:56.09148036Z ==> Exited with status 1
+2025-11-22T05:52:56.26744703Z ==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys
+2025-11-22T05:53:00.851994441Z ==> Running 'npm run start'
+2025-11-22T05:53:01.740327266Z 
+2025-11-22T05:53:01.740360558Z > rest-express@1.0.0 start
+2025-11-22T05:53:01.740365768Z > NODE_ENV=production node dist/index.js
+2025-11-22T05:53:01.740368308Z 
+2025-11-22T05:53:08.940951257Z file:///opt/render/project/src/dist/index.js:2502
+2025-11-22T05:53:08.940982679Z     throw new Error("SESSION_SECRET environment variable is required for security");
+2025-11-22T05:53:08.940987779Z           ^
+2025-11-22T05:53:08.940991859Z 
+2025-11-22T05:53:08.940996489Z Error: SESSION_SECRET environment variable is required for security
+2025-11-22T05:53:08.941000729Z     at createSessionMiddleware (file:///opt/render/project/src/dist/index.js:2502:11)
+2025-11-22T05:53:08.94100542Z     at file:///opt/render/project/src/dist/index.js:2522:25
+2025-11-22T05:53:08.94101013Z     at ModuleJob.run (node:internal/modules/esm/module_job:274:25)
+2025-11-22T05:53:08.9410145Z     at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:644:26)
+2025-11-22T05:53:08.94101849Z     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+2025-11-22T05:53:08.941022371Z 
+2025-11-22T05:53:08.941026281Z Node.js v22.16.0
