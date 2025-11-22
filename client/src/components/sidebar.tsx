@@ -148,19 +148,9 @@ export default function Sidebar() {
         {/* Guest Button - Updated styling */}
         {!isAuthenticated && (
           <Button
-            variant="outline" // Added outline variant for a button outline
-            className="w-full mt-4 font-semibold border-primary text-primary hover:bg-primary/10" // Added styling for outline and hover effect
-            onClick={() => {
-              // Simulate guest login or redirect to guest page
-              // For now, just toast a message
-              toast({
-                title: "Continue as Guest",
-                description: "You are now continuing as a guest.",
-                variant: "default"
-              });
-              // In a real app, you might redirect to a guest-specific page or set a guest state
-              // window.location.href = "/guest";
-            }}
+            variant="outline"
+            className="w-full mt-4 font-semibold border-primary text-primary hover:bg-primary/10"
+            onClick={() => window.location.href = '/explore'}
             data-testid="button-continue-as-guest"
           >
             Continue as Guest

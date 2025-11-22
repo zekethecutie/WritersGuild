@@ -692,25 +692,42 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
                 placeholder="Search for users..."
                 onClick={(e) => e.stopPropagation()}
               />
+              {searchUsersQuery.isLoading && (
+                <div className="text-sm text-muted-foreground p-4 text-center">Searching...</div>
+              )}
               {searchUsersQuery.data && searchUsersQuery.data.length > 0 && (
-                <ScrollArea className="border rounded-md bg-card p-2 max-h-40">
-                  {searchUsersQuery.data.map((user: any) => (
-                    <div
-                      key={user.id}
-                      className="p-2 hover:bg-muted rounded flex items-center justify-between cursor-pointer"
-                      onClick={() => handleAddCollaborator(user)}
-                    >
-                      <div className="flex items-center gap-2">
-                        <img
-                          src={user.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`}
-                          alt={user.displayName}
-                          className="w-6 h-6 rounded-full"
-                        />
-                        <span className="text-sm">@{user.username}</span>
-                      </div>
+                <div className="border rounded-md bg-card overflow-hidden">
+                  <ScrollArea className="w-full max-h-64">
+                    <div className="p-2">
+                      {searchUsersQuery.data.map((user: any) => (
+                        <div
+                          key={user.id}
+                          className="p-3 hover:bg-muted rounded cursor-pointer transition-colors"
+                          onClick={() => {
+                            handleAddCollaborator(user);
+                            setCollaboratorSearchQuery("");
+                          }}
+                          data-testid={`collab-user-${user.id}`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={user.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`}
+                              alt={user.displayName}
+                              className="w-8 h-8 rounded-full"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm">{user.displayName}</p>
+                              <p className="text-xs text-muted-foreground">@{user.username}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </ScrollArea>
+                  </ScrollArea>
+                </div>
+              )}
+              {searchUsersQuery.data && searchUsersQuery.data.length === 0 && collaboratorSearchQuery.trim() && (
+                <div className="text-sm text-muted-foreground p-4 text-center">No users found</div>
               )}
             </div>
           )}
