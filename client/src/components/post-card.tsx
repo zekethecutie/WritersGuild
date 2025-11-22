@@ -288,7 +288,7 @@ function PostCard({ post, isLiked, likesCount, isBookmarked, isReposted, reposts
             {user?.id === post.authorId && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                  <Button size="icon" variant="ghost" className="h-6 w-6" data-testid={`button-menu-${post.id}`}>
+                  <Button size="sm" variant="ghost" className="ml-2" data-testid={`button-menu-${post.id}`}>
                     <MoreVertical className="w-4 h-4" />
                   </Button>
                 </DropdownMenuTrigger>
