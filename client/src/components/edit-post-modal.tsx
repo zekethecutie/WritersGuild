@@ -512,7 +512,7 @@ export default function EditPostModal({ post, isOpen, onClose }: EditPostModalPr
                   ref={coverInputRef}
                   type="file"
                   accept="image/jpeg,image/png,image/webp,image/gif"
-                  onChange={(e) => e.target.files && handleCoverImageUpload(e.target.files[0])}
+                  onChange={(e) => e.target.files && handleCoverImageUpload(e.target.files)}
                   className="hidden"
                   id="cover-upload-edit"
                 />

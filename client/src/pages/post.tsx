@@ -341,6 +341,17 @@ export default function PostPage() {
               >
                 <Share className="w-5 h-5" />
               </Button>
+              {user && user.id === author.id && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsEditModalOpen(true)}
+                  data-testid="button-edit-article"
+                  title="Edit this article"
+                >
+                  <Edit className="w-5 h-5" />
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -528,6 +539,15 @@ export default function PostPage() {
           </div>
         </div>
       </div>
+
+      {/* Edit Post Modal */}
+      {post && (
+        <EditPostModal
+          post={post}
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+        />
+      )}
 
       <MobileNav />
     </div>
