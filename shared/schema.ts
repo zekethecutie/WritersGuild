@@ -49,7 +49,6 @@ export const users = pgTable("users", {
   isVerified: boolean("is_verified").default(false),
   isAdmin: boolean("is_admin").default(false),
   isSuperAdmin: boolean("is_super_admin").default(false),
-  isDeactivated: boolean("is_deactivated").default(false),
   postsCount: integer("posts_count").default(0),
   commentsCount: integer("comments_count").default(0),
   createdAt: timestamp("created_at").defaultNow(),
@@ -282,21 +281,6 @@ export const leaderboards = pgTable("leaderboards", {
   periodEnd: timestamp("period_end").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// Reports table for content moderation
-export const reports = pgTable("reports", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  reporterId: uuid("reporter_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  targetType: varchar("target_type").notNull(), // 'post', 'profile', 'story', 'article'
-  targetId: uuid("target_id").notNull(), // id of post/profile/story
-  reason: varchar("reason").notNull(), // harassment, spam, inappropriate, copyright, etc.
-  description: text("description"),
-  status: varchar("status").default("pending"), // pending, reviewed, resolved, dismissed
-  resolvedBy: uuid("resolved_by").references(() => users.id, { onDelete: "set null" }),
-  resolutionNotes: text("resolution_notes"),
-  createdAt: timestamp("created_at").defaultNow(),
-  resolvedAt: timestamp("resolved_at"),
 });
 
 // Relations

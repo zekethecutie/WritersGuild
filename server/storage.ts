@@ -315,7 +315,6 @@ export class DatabaseStorage implements IStorage {
           isVerified: users.isVerified,
           isAdmin: users.isAdmin,
           isSuperAdmin: users.isSuperAdmin,
-          isDeactivated: users.isDeactivated,
           postsCount: users.postsCount,
           commentsCount: users.commentsCount,
           createdAt: users.createdAt,
@@ -336,7 +335,7 @@ export class DatabaseStorage implements IStorage {
           WHERE ${reposts.userId} = ${userId} 
           AND ${reposts.postId} = ${posts.id}
         )` : sql<boolean>`false`,
-      }) as any
+      })
       .from(posts)
       .leftJoin(users, eq(posts.authorId, users.id))
       .where(eq(posts.isPrivate, false))
@@ -345,7 +344,7 @@ export class DatabaseStorage implements IStorage {
       .offset(offset);
 
     const results = await postsQuery;
-    return results.map((row: any) => ({
+    return results.map(row => ({
       id: row.id,
       authorId: row.authorId,
       title: row.title,
@@ -659,7 +658,6 @@ export class DatabaseStorage implements IStorage {
       isVerified: users.isVerified,
       isAdmin: users.isAdmin,
       isSuperAdmin: users.isSuperAdmin,
-      isDeactivated: users.isDeactivated,
       postsCount: users.postsCount,
       commentsCount: users.commentsCount,
       createdAt: users.createdAt,
@@ -692,7 +690,6 @@ export class DatabaseStorage implements IStorage {
       isVerified: users.isVerified,
       isAdmin: users.isAdmin,
       isSuperAdmin: users.isSuperAdmin,
-      isDeactivated: users.isDeactivated,
       postsCount: users.postsCount,
       commentsCount: users.commentsCount,
       createdAt: users.createdAt,
@@ -909,19 +906,19 @@ export class DatabaseStorage implements IStorage {
   async searchUsers(query: string, currentUserId?: string, limit: number = 10): Promise<User[]> {
     const searchTerm = `%${query.toLowerCase()}%`;
 
-    let whereCondition: any = or(
-      sql`LOWER(${users.username}) LIKE ${searchTerm}`,
-      sql`LOWER(${users.displayName}) LIKE ${searchTerm}`
-    );
-
-    if (currentUserId) {
-      whereCondition = and(ne(users.id, currentUserId), whereCondition);
-    }
-
     const result = await db
       .select()
       .from(users)
-      .where(whereCondition)
+      .where(
+        and(
+          ne(users.id, currentUserId),
+          or(
+            sql`LOWER(${users.username}) LIKE ${searchTerm}`,
+            sql`LOWER(${users.displayName}) LIKE ${searchTerm}`
+          )
+        )
+      )
+      .orderBy(desc(users.followersCount))
       .limit(limit);
 
     return result;
@@ -985,7 +982,6 @@ export class DatabaseStorage implements IStorage {
           isVerified: users.isVerified,
           isAdmin: users.isAdmin,
           isSuperAdmin: users.isSuperAdmin,
-          isDeactivated: users.isDeactivated,
           postsCount: users.postsCount,
           commentsCount: users.commentsCount,
           createdAt: users.createdAt,
@@ -1006,7 +1002,7 @@ export class DatabaseStorage implements IStorage {
           WHERE ${reposts.userId} = ${userId} 
           AND ${reposts.postId} = ${posts.id}
         )` : sql<boolean>`false`,
-      }) as any
+      })
       .from(posts)
       .leftJoin(users, eq(posts.authorId, users.id))
       .where(gte(posts.createdAt, oneDayAgo))
@@ -1015,7 +1011,7 @@ export class DatabaseStorage implements IStorage {
       )
       .limit(limit);
 
-    return trendingPosts.map((row: any) => ({
+    return trendingPosts.map(row => ({
       id: row.id,
       authorId: row.authorId,
       title: row.title,
